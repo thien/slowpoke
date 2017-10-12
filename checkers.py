@@ -3,18 +3,19 @@
     Built on top of Andrew Edwards's Checkers board. -- (almostimplemented.com)
 """
 
+from termcolor import colored
+
 ### CONSTANTS
 
-# Black moves "forward", white moves "backward"
-BLACK, WHITE = 0, 1
+# Black moves "forward", White moves "backward"
+Black, White = 0, 1
 
 # The IBM704 had 36-bit words. Arthur Samuel used the extra bits to
 # ensure that every normal move could be performed by flipping the
 # original bit and the bit either 4 or 5 bits away, in the cases of
 # moving right and left respectively.
 
-UNUSED_BITS = 0b100000000100000000100000000100000000
-
+unusedBits = 0b100000000100000000100000000100000000
 
 
 class CheckerBoard:
@@ -31,21 +32,21 @@ class CheckerBoard:
     Resets current state to new game.
     """
     def new_game(self):
-        self.active = BLACK
-        self.passive = WHITE
+        self.active = Black
+        self.passive = White
 
-        self.forward[BLACK] = 0x1eff
-        self.backward[BLACK] = 0
-        self.pieces[BLACK] = self.forward[BLACK] | self.backward[BLACK]
+        self.forward[Black] = 0x1eff
+        self.backward[Black] = 0
+        self.pieces[Black] = self.forward[Black] | self.backward[Black]
 
-        self.forward[WHITE] = 0
-        self.backward[WHITE] = 0x7fbc00000
-        self.pieces[WHITE] = self.forward[WHITE] | self.backward[WHITE]
+        self.forward[White] = 0
+        self.backward[White] = 0x7fbc00000
+        self.pieces[White] = self.forward[White] | self.backward[White]
 
-        self.empty = UNUSED_BITS ^ (2**36 - 1) ^ (self.pieces[BLACK] | self.pieces[WHITE])
+        self.empty = unusedBits ^ (2**36 - 1) ^ (self.pieces[Black] | self.pieces[White])
 
         self.jump = 0
-        self.mandatory_jumps = []
+        self.mandatoryJumps = []
 
     """
     Updates the game state to reflect the effects of the input
@@ -59,12 +60,12 @@ class CheckerBoard:
         passive = self.passive
         if move < 0:
             move *= -1
-            taken_piece = int(1 << sum(i for (i, b) in enumerate(bin(move)[::-1]) if b == '1')//2)
-            self.pieces[passive] ^= taken_piece
-            if self.forward[passive] & taken_piece:
-                self.forward[passive] ^= taken_piece
-            if self.backward[passive] & taken_piece:
-                self.backward[passive] ^= taken_piece
+            takenPiece = int(1 << sum(i for (i, b) in enumerate(bin(move)[::-1]) if b == '1')//2)
+            self.pieces[passive] ^= takenPiece
+            if self.forward[passive] & takenPiece:
+                self.forward[passive] ^= takenPiece
+            if self.backward[passive] & takenPiece:
+                self.backward[passive] ^= takenPiece
             self.jump = 1
 
         self.pieces[active] ^= move
@@ -74,17 +75,17 @@ class CheckerBoard:
             self.backward[active] ^= move
 
         destination = move & self.pieces[active]
-        self.empty = UNUSED_BITS ^ (2**36 - 1) ^ (self.pieces[BLACK] | self.pieces[WHITE])
+        self.empty = unusedBits ^ (2**36 - 1) ^ (self.pieces[Black] | self.pieces[White])
 
         if self.jump:
-            self.mandatory_jumps = self.jumps_from(destination)
-            if self.mandatory_jumps:
+            self.mandatoryJumps = self.jumps_from(destination)
+            if self.mandatoryJumps:
                 return
 
-        if active == BLACK and (destination & 0x780000000) != 0:
-            self.backward[BLACK] |= destination
-        elif active == WHITE and (destination & 0xf) != 0:
-            self.forward[WHITE] |= destination
+        if active == Black and (destination & 0x780000000) != 0:
+            self.backward[Black] |= destination
+        elif active == White and (destination & 0xf) != 0:
+            self.forward[White] |= destination
 
         self.jump = 0
         self.active, self.passive = self.passive, self.active
@@ -102,12 +103,12 @@ class CheckerBoard:
         passive = B.passive
         if move < 0:
             move *= -1
-            taken_piece = int(1 << sum(i for (i, b) in enumerate(bin(move)[::-1]) if b == '1')/2)
-            B.pieces[passive] ^= taken_piece
-            if B.forward[passive] & taken_piece:
-                B.forward[passive] ^= taken_piece
-            if B.backward[passive] & taken_piece:
-                B.backward[passive] ^= taken_piece
+            takenPiece = int(1 << sum(i for (i, b) in enumerate(bin(move)[::-1]) if b == '1')/2)
+            B.pieces[passive] ^= takenPiece
+            if B.forward[passive] & takenPiece:
+                B.forward[passive] ^= takenPiece
+            if B.backward[passive] & takenPiece:
+                B.backward[passive] ^= takenPiece
             B.jump = 1
 
         B.pieces[active] ^= move
@@ -117,17 +118,17 @@ class CheckerBoard:
             B.backward[active] ^= move
 
         destination = move & B.pieces[active]
-        B.empty = UNUSED_BITS ^ (2**36 - 1) ^ (B.pieces[BLACK] | B.pieces[WHITE])
+        B.empty = unusedBits ^ (2**36 - 1) ^ (B.pieces[Black] | B.pieces[White])
 
         if B.jump:
-            B.mandatory_jumps = B.jumps_from(destination)
-            if B.mandatory_jumps:
+            B.mandatoryJumps = B.jumps_from(destination)
+            if B.mandatoryJumps:
                 return B
 
-        if active == BLACK and (destination & 0x780000000) != 0:
-            B.backward[BLACK] |= destination
-        elif active == WHITE and (destination & 0xf) != 0:
-            B.forward[WHITE] |= destination
+        if active == Black and (destination & 0x780000000) != 0:
+            B.backward[Black] |= destination
+        elif active == White and (destination & 0xf) != 0:
+            B.forward[White] |= destination
 
         B.jump = 0
         B.active, B.passive = B.passive, B.active
@@ -167,7 +168,7 @@ class CheckerBoard:
     def get_moves(self):
         # First check if we are in a jump sequence
         if self.jump:
-            return self.mandatory_jumps
+            return self.mandatoryJumps
 
         # Next check if there are jumps
         jumps = self.get_jumps()
@@ -219,7 +220,7 @@ class CheckerBoard:
     representaiton of the board).
     """
     def jumps_from(self, piece):
-        if self.active == BLACK:
+        if self.active == Black:
             rfj = (self.empty >> 8) & (self.pieces[self.passive] >> 4) & piece
             lfj = (self.empty >> 10) & (self.pieces[self.passive] >> 5) & piece
             if piece & self.backward[self.active]: # piece at square is a king
@@ -244,7 +245,6 @@ class CheckerBoard:
             moves += [-0x401 << i for (i, bit) in enumerate(bin(lfj)[::-1]) if bit == '1']
             moves += [-0x101 << i - 8 for (i, bit) in enumerate(bin(rbj)[::-1]) if bit == '1']
             moves += [-0x401 << i - 10 for (i, bit) in enumerate(bin(lbj)[::-1]) if bit == '1']
-
         return moves
 
     """
@@ -262,6 +262,9 @@ class CheckerBoard:
             return True
         return False
 
+    """
+    Returns true if there are no more possible moves to make.
+    """
     def is_over(self):
         return len(self.get_moves()) == 0
 
@@ -275,49 +278,44 @@ class CheckerBoard:
         B.empty = self.empty
         B.forward = [x for x in self.forward]
         B.jump = self.jump
-        B.mandatory_jumps = [x for x in self.mandatory_jumps]
+        B.mandatoryJumps = [x for x in self.mandatoryJumps]
         B.passive = self.passive
         B.pieces = [x for x in self.pieces]
         return B
 
     """
-    Prints out PDN notation of the current position of the board.
-    """
-    
-
-    """
     Prints out ASCII art representation of board.
     """
     def __str__(self):
-        EMPTY = -1
-        BLACK_KING = 2
-        WHITE_KING = 3
+        empty = -1
+        blackKing = 2
+        whiteKing = 3
 
-        if self.active == BLACK:
-            black_kings = self.backward[self.active]
-            black_men = self.forward[self.active] ^ black_kings
-            white_kings = self.forward[self.passive]
-            white_men = self.backward[self.passive] ^ white_kings
+        if self.active == Black:
+            blackKings = self.backward[self.active]
+            blackMen = self.forward[self.active] ^ blackKings
+            whiteKings = self.forward[self.passive]
+            whiteMen = self.backward[self.passive] ^ whiteKings
         else:
-            black_kings = self.backward[self.passive]
-            black_men = self.forward[self.passive] ^ black_kings
-            white_kings = self.forward[self.active]
-            white_men = self.backward[self.active] ^ white_kings
+            blackKings = self.backward[self.passive]
+            blackMen = self.forward[self.passive] ^ blackKings
+            whiteKings = self.forward[self.active]
+            whiteMen = self.backward[self.active] ^ whiteKings
 
         state = [[None for _ in range(8)] for _ in range(4)]
         for i in range(4):
             for j in range(8):
                 cell = 1 << (9*i + j)
-                if cell & black_men:
-                    state[i][j] = BLACK
-                elif cell & white_men:
-                    state[i][j] = WHITE
-                elif cell & black_kings:
-                    state[i][j] = BLACK_KING
-                elif cell & white_kings:
-                    state[i][j] = WHITE_KING
+                if cell & blackMen:
+                    state[i][j] = Black
+                elif cell & whiteMen:
+                    state[i][j] = White
+                elif cell & blackKings:
+                    state[i][j] = blackKing
+                elif cell & whiteKings:
+                    state[i][j] = whiteKing
                 else:
-                    state[i][j] = EMPTY
+                    state[i][j] = empty
 
         board = [None] * 17
         for i in range(9):
@@ -332,8 +330,8 @@ class CheckerBoard:
         def paddingCheck(i,j):
             return ' ' if j + 8*i < 9 else ''
 
-        black_pieces = []
-        white_pieces = []
+        blackPieces = []
+        whitePieces = []
 
         # render the ASCII board content
         for i, chunk in enumerate(state):
@@ -348,32 +346,33 @@ class CheckerBoard:
                 else:
                     x = 2*(6 - 2*i) + 1
                     y = 2*(7 - 2*j) - 1
-                # start initiating the board with values.
+                
                 piece = " "
                 king = False
-                if cell == BLACK:
-                    piece = "b"
-                    black_pieces.append(str(cellPos(i,j)))
-                elif cell == WHITE:
-                    piece = "w"
-                    white_pieces.append(str(cellPos(i,j)))
-                elif cell == BLACK_KING:
-                    piece = "B"
+                if cell == Black:
+                    piece = colored("b", 'red', attrs=['reverse'])
+                    blackPieces.append(str(cellPos(i,j)))
+                elif cell == White:
+                    piece = colored("w", 'cyan', attrs=['reverse'])
+                    whitePieces.append(str(cellPos(i,j)))
+                elif cell == blackKing:
+                    piece = colored("B", 'red', attrs=['reverse'])
                     king = True
-                    black_pieces.append(("K" + str(cellPos(i,j))))
-                elif cell == WHITE_KING:
-                    piece = "W"
+                    blackPieces.append(("K" + str(cellPos(i,j))))
+                elif cell == whiteKing:
+                    piece = colored("B", 'cyan', attrs=['reverse'])
                     king = True
-                    white_pieces.append(("K" + str(cellPos(i,j))))
+                    whitePieces.append(("K" + str(cellPos(i,j))))
+
+                # initiate the board with values.
                 board[x][y] = piece + str(cellPos(i,j)) + (paddingCheck(i,j))
 
-
         # generate the PDN for the current board.
-        def genPDN(black_pieces, white_pieces):
-            black_list = ','.join(black_pieces)
-            white_list = ','.join(white_pieces)
-            li = "W" + white_list + ":" + "B" + black_list
+        def genPDN(blackPieces, whitePieces):
+            Black_list = ','.join(blackPieces)
+            White_list = ','.join(whitePieces)
+            li = "W" + White_list + ":" + "B" + Black_list
             return li
-        print(genPDN(black_pieces,white_pieces))
+        print(genPDN(blackPieces,whitePieces))
 
         return "".join(map(lambda x: "".join(x), board))
