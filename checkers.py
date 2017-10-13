@@ -23,7 +23,6 @@ class CheckerBoard:
     Initiates board via new_game().
     """
     def __init__(self):
-
         self.forward = [None, None]
         self.backward = [None, None]
         self.pieces = [None, None]
@@ -278,6 +277,7 @@ class CheckerBoard:
     Returns true if there are no more possible moves to make.
     """
     def is_over(self):
+        # probably the smallest function here.
         return len(self.get_moves()) == 0
 
     """
@@ -345,6 +345,15 @@ class CheckerBoard:
             regular_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rb + lb]
             reverse_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rf + lf]
             return reverse_moves + regular_moves
+
+    """
+    Checks for a winner.
+    """
+    def checkWinner(self):
+        if self.active == White:
+            print ("Congrats Black, you win!")
+        else:
+            print ("Congrats White, you win!")
 
     """
     Prints out ASCII art representation of board.
