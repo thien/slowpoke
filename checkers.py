@@ -43,7 +43,9 @@ class CheckerBoard:
             "Event" : "Some Event",
             "Date"  : currentDateTime.strftime("%y/%m/%d"),
             "Time"  : currentDateTime.strftime("%H:%M:%S"),
-            "FEN"   : "B:W21-32:B1-16"
+            "Result": "*",
+            "FEN"   : "B:W21-32:B1-16",
+            "Moves" : []
         }
     
     """
@@ -68,7 +70,8 @@ class CheckerBoard:
         self.mandatoryJumps = []
 
         self.pgn = self.init_pgn()
-        self.moves = []
+        self.turnCount = 0
+        self.multipleJumpStack = []
         self.state = []
 
     """
@@ -79,6 +82,16 @@ class CheckerBoard:
     bits turned on: the old position and the new position.
     """
     def make_move(self, move):
+        # translate move bit
+        legalMoves = self.get_moves()
+        # find the move within the legal_moves bit and get its position
+        moveBitPosition = legalMoves.index(move)
+        # load the possible moves from the string text
+        moveString = self.get_move_strings()[moveBitPosition]
+        
+        # ---
+
+        # perform move action below
         active = self.active
         passive = self.passive
         if move < 0:
@@ -100,8 +113,13 @@ class CheckerBoard:
         destination = move & self.pieces[active]
         self.empty = unusedBits ^ (2**36 - 1) ^ (self.pieces[Black] | self.pieces[White])
 
+        # if theres a jump, see if the user needs to make more jumps.
         if self.jump:
             self.mandatoryJumps = self.jumps_from(destination)
+            # now put the previous position on cache.
+            positions = moveString.split("x")
+            self.multipleJumpStack.append(positions[0])
+            self.multipleJumpStack.append(positions[1])
             if self.mandatoryJumps:
                 return
 
@@ -110,6 +128,14 @@ class CheckerBoard:
         elif active == White and (destination & 0xf) != 0:
             self.forward[White] |= destination
 
+        # need to add the move to the list of moves.
+        if len(self.multipleJumpStack) > 0:
+            # concatenate the move attack into one string.
+            self.pgn["Moves"].append("x".join(self.multipleJumpStack))
+            self.multipleJumpStack = []
+        else:
+            self.pgn["Moves"].append(moveString)
+        # reset the number of jumps, switch players and continue.
         self.jump = 0
         self.active, self.passive = self.passive, self.active
         # now we can update the state of the board.
@@ -312,6 +338,7 @@ class CheckerBoard:
     Returns a list of possible moves that the player can choose to make.
     """
     def get_move_strings(self):
+        moves = []
         rfj = self.right_forward_jumps()
         lfj = self.left_forward_jumps()
         rbj = self.right_backward_jumps()
@@ -328,36 +355,39 @@ class CheckerBoard:
                         for (i, bit) in enumerate(bin(lbj)[::-1]) if bit == '1']
 
             if self.active == Black:
-                regular_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rfj + lfj]
-                reverse_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rbj + lbj]
-                return regular_moves + reverse_moves
+                regular_moves = ["%ix%i" % (orig, dest) for (orig, dest) in rfj + lfj]
+                reverse_moves = ["%ix%i" % (orig, dest) for (orig, dest) in rbj + lbj]
+                moves = regular_moves + reverse_moves
             else:
-                reverse_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rfj + lfj]
-                regular_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rbj + lbj]
-                return reverse_moves + regular_moves
+                reverse_moves = ["%ix%i" % (orig, dest) for (orig, dest) in rfj + lfj]
+                regular_moves = ["%ix%i" % (orig, dest) for (orig, dest) in rbj + lbj]
+                moves = reverse_moves + regular_moves
 
-        rf = self.right_forward()
-        lf = self.left_forward()
-        rb = self.right_backward()
-        lb = self.left_backward()
-
-        rf = [(1 + i - i//9, 1 + (i + 4) - (i + 4)//9)
-                    for (i, bit) in enumerate(bin(rf)[::-1]) if bit == '1']
-        lf = [(1 + i - i//9, 1 + (i + 5) - (i + 5)//9)
-                    for (i, bit) in enumerate(bin(lf)[::-1]) if bit == '1']
-        rb = [(1 + i - i//9, 1 + (i - 4) - (i - 4)//9)
-                    for (i, bit) in enumerate(bin(rb)[::-1]) if bit ==  '1']
-        lb = [(1 + i - i//9, 1 + (i - 5) - (i - 5)//9)
-                    for (i, bit) in enumerate(bin(lb)[::-1]) if bit == '1']
-
-        if self.active == Black:
-            regular_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rf + lf]
-            reverse_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rb + lb]
-            return regular_moves + reverse_moves
         else:
-            regular_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rb + lb]
-            reverse_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rf + lf]
-            return reverse_moves + regular_moves
+            rf = self.right_forward()
+            lf = self.left_forward()
+            rb = self.right_backward()
+            lb = self.left_backward()
+
+            rf = [(1 + i - i//9, 1 + (i + 4) - (i + 4)//9)
+                        for (i, bit) in enumerate(bin(rf)[::-1]) if bit == '1']
+            lf = [(1 + i - i//9, 1 + (i + 5) - (i + 5)//9)
+                        for (i, bit) in enumerate(bin(lf)[::-1]) if bit == '1']
+            rb = [(1 + i - i//9, 1 + (i - 4) - (i - 4)//9)
+                        for (i, bit) in enumerate(bin(rb)[::-1]) if bit ==  '1']
+            lb = [(1 + i - i//9, 1 + (i - 5) - (i - 5)//9)
+                        for (i, bit) in enumerate(bin(lb)[::-1]) if bit == '1']
+
+            if self.active == Black:
+                regular_moves = ["%i-%i" % (orig, dest) for (orig, dest) in rf + lf]
+                reverse_moves = ["%i-%i" % (orig, dest) for (orig, dest) in rb + lb]
+                moves = regular_moves + reverse_moves
+            else:
+                regular_moves = ["%i-%i" % (orig, dest) for (orig, dest) in rb + lb]
+                reverse_moves = ["%i-%i" % (orig, dest) for (orig, dest) in rf + lf]
+                moves = reverse_moves + regular_moves
+        return moves
+
 
     """
     Checks for a winner.
@@ -365,8 +395,10 @@ class CheckerBoard:
     def checkWinner(self):
         if self.active == White:
             print ("Congrats Black, you win!")
+            self.pgn["Result"] = "1-0"
         else:
             print ("Congrats White, you win!")
+            self.pgn["Result"] = "0-1"
 
     """
     Returns a record of the positions of the pieces on the board.
@@ -420,6 +452,7 @@ class CheckerBoard:
                 else:
                     state[i][j] = empty
         self.state = state
+        self.turnCount += 1
         genPDN(blackPieces,whitePieces)
 
     """
