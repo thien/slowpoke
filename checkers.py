@@ -34,7 +34,6 @@ class CheckerBoard:
         # initiate the state.
         self.updateState()
 
-
     """
     Initiates the PGN for the game (for export).
     """
@@ -46,6 +45,7 @@ class CheckerBoard:
             "Time"  : currentDateTime.strftime("%H:%M:%S"),
             "FEN"   : "B:W21-32:B1-16"
         }
+    
     """
     Resets current state to new game.
     """
@@ -180,7 +180,6 @@ class CheckerBoard:
         return (self.empty << 8) & (self.pieces[self.passive] << 4) & self.backward[self.active]
     def left_backward_jumps(self):
         return (self.empty << 10) & (self.pieces[self.passive] << 5) & self.backward[self.active]
-
 
     """
     Returns a list of all possible moves.
@@ -369,6 +368,10 @@ class CheckerBoard:
         else:
             print ("Congrats White, you win!")
 
+    """
+    Returns a record of the positions of the pieces on the board.
+    This also updates the FEN.
+    """
     def updateState(self):
         # generate the PDN for the current board.
         def genPDN(blackPieces, whitePieces):
@@ -418,7 +421,6 @@ class CheckerBoard:
                     state[i][j] = empty
         self.state = state
         genPDN(blackPieces,whitePieces)
-
 
     """
     Prints out ASCII art representation of board.
