@@ -141,6 +141,7 @@ def BotGame():
                 B.make_move(cpu_2.make_move(B))
             current_player = B.active
         B.checkWinner()
+        print(B.pgn)
         return 0
 
 def main():

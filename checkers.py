@@ -47,6 +47,12 @@ class CheckerBoard:
             "FEN"   : "B:W21-32:B1-16",
             "Moves" : []
         }
+
+    """
+    Prints the PGN of the game.
+    """
+    def print_pgn(self):
+        return self.pgn
     
     """
     Resets current state to new game.
