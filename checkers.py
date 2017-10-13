@@ -9,6 +9,10 @@ from termcolor import colored
 
 # Black moves "forward", White moves "backward"
 Black, White = 0, 1
+empty = -1
+blackKing = 2
+whiteKing = 3
+
 
 # The IBM704 had 36-bit words. Arthur Samuel used the extra bits to
 # ensure that every normal move could be performed by flipping the
@@ -26,9 +30,14 @@ class CheckerBoard:
         self.forward = [None, None]
         self.backward = [None, None]
         self.pieces = [None, None]
-        self.moves = []
         self.new_game()
+        # initiate the state.
+        self.updateState()
 
+
+    """
+    Initiates the PGN for the game (for export).
+    """
     def init_pgn(self):
         currentDateTime = datetime.datetime.now()
         return {
@@ -41,8 +50,7 @@ class CheckerBoard:
     Resets current state to new game.
     """
     def new_game(self):
-        self.pgn = self.init_pgn()
-
+        
         self.active = Black
         self.passive = White
 
@@ -58,6 +66,10 @@ class CheckerBoard:
 
         self.jump = 0
         self.mandatoryJumps = []
+
+        self.pgn = self.init_pgn()
+        self.moves = []
+        self.state = []
 
     """
     Updates the game state to reflect the effects of the input
@@ -100,6 +112,8 @@ class CheckerBoard:
 
         self.jump = 0
         self.active, self.passive = self.passive, self.active
+        # now we can update the state of the board.
+        self.updateState()
 
     """
     Updates the game state to reflect the effects of the input
@@ -355,13 +369,23 @@ class CheckerBoard:
         else:
             print ("Congrats White, you win!")
 
-    """
-    Prints out ASCII art representation of board.
-    """
-    def __str__(self):
-        empty = -1
-        blackKing = 2
-        whiteKing = 3
+    def updateState(self):
+        # generate the PDN for the current board.
+        def genPDN(blackPieces, whitePieces):
+            Black_list = ','.join(blackPieces)
+            White_list = ','.join(whitePieces)
+            current = "B"
+            if self.active == White:
+                current = "W"
+            li = current + ":W" + White_list + ":" + "B" + Black_list
+            self.pgn["FEN"] = li
+
+        # shorthand code for calculating the cell position.
+        def cellPos(i,j):
+            return 1 + j + 8*i
+
+        blackPieces = []
+        whitePieces = []
 
         if self.active == Black:
             blackKings = self.backward[self.active]
@@ -380,33 +404,41 @@ class CheckerBoard:
                 cell = 1 << (9*i + j)
                 if cell & blackMen:
                     state[i][j] = Black
+                    blackPieces.append(str(cellPos(i,j)))
                 elif cell & whiteMen:
                     state[i][j] = White
+                    whitePieces.append(str(cellPos(i,j)))
                 elif cell & blackKings:
                     state[i][j] = blackKing
+                    blackPieces.append(("K" + str(cellPos(i,j))))
                 elif cell & whiteKings:
                     state[i][j] = whiteKing
+                    whitePieces.append(("K" + str(cellPos(i,j))))
                 else:
                     state[i][j] = empty
+        self.state = state
+        genPDN(blackPieces,whitePieces)
 
+
+    """
+    Prints out ASCII art representation of board.
+    """
+    def __str__(self):
+        # generate ASCII board frame
         board = [None] * 17
         for i in range(9):
-            board[2*i] = ["+", " - "] + ["+", " - "]*7 + ["+", "\n"]
+            board[2*i] = ["+", " - "] + ["-", " - "]*7 + ["+", "\n"]
             if i < 8:
               board[2*i + 1] = ["|", "   "] \
                              + [a for subl in [["|", "   "] for _ in range(7)] for a in subl] \
                              + ["|", "\n"]
 
-        def cellPos(i,j):
-            return 1 + j + 8*i
+        
         def paddingCheck(i,j):
             return ' ' if j + 8*i < 9 else ''
 
-        blackPieces = []
-        whitePieces = []
-
         # render the ASCII board content
-        for i, chunk in enumerate(state):
+        for i, chunk in enumerate(self.state):
             for j, cell in enumerate(chunk):
                 # clean code writing for list indexes for the board.
                 x = -1
@@ -420,31 +452,17 @@ class CheckerBoard:
                     y = 2*(7 - 2*j) - 1
                 
                 piece = " "
-                king = False
+          
                 if cell == Black:
                     piece = colored("b", 'red', attrs=['reverse'])
-                    blackPieces.append(str(cellPos(i,j)))
                 elif cell == White:
                     piece = colored("w", 'cyan', attrs=['reverse'])
-                    whitePieces.append(str(cellPos(i,j)))
                 elif cell == blackKing:
                     piece = colored("B", 'red', attrs=['reverse'])
-                    king = True
-                    blackPieces.append(("K" + str(cellPos(i,j))))
                 elif cell == whiteKing:
                     piece = colored("B", 'cyan', attrs=['reverse'])
-                    king = True
-                    whitePieces.append(("K" + str(cellPos(i,j))))
 
                 # initiate the board with values.
-                board[x][y] = piece + str(cellPos(i,j)) + (paddingCheck(i,j))
-
-        # generate the PDN for the current board.
-        def genPDN(blackPieces, whitePieces):
-            Black_list = ','.join(blackPieces)
-            White_list = ','.join(whitePieces)
-            li = "W" + White_list + ":" + "B" + Black_list
-            return li
-        print(genPDN(blackPieces,whitePieces))
+                board[x][y] = piece + str(1 + j + 8*i) + (paddingCheck(i,j))
 
         return "".join(map(lambda x: "".join(x), board))
