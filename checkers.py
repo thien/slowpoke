@@ -495,7 +495,7 @@ class CheckerBoard:
                 elif cell == blackKing:
                     piece = colored("B", 'red', attrs=['reverse'])
                 elif cell == whiteKing:
-                    piece = colored("B", 'cyan', attrs=['reverse'])
+                    piece = colored("W", 'cyan', attrs=['reverse'])
 
                 # initiate the board with values.
                 board[x][y] = piece + str(1 + j + 8*i) + (paddingCheck(i,j))
