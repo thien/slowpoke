@@ -2,7 +2,7 @@
     This module defines the CheckerBoard class.
     Built on top of Andrew Edwards's Checkers board. -- (almostimplemented.com)
 """
-
+import datetime
 from termcolor import colored
 
 ### CONSTANTS
@@ -23,15 +23,27 @@ class CheckerBoard:
     Initiates board via new_game().
     """
     def __init__(self):
+
         self.forward = [None, None]
         self.backward = [None, None]
         self.pieces = [None, None]
+        self.moves = []
         self.new_game()
 
+    def init_pgn(self):
+        currentDateTime = datetime.datetime.now()
+        return {
+            "Event" : "Some Event",
+            "Date"  : currentDateTime.strftime("%y/%m/%d"),
+            "Time"  : currentDateTime.strftime("%H:%M:%S"),
+            "FEN"   : "B:W21-32:B1-16"
+        }
     """
     Resets current state to new game.
     """
     def new_game(self):
+        self.pgn = self.init_pgn()
+
         self.active = Black
         self.passive = White
 
@@ -282,6 +294,57 @@ class CheckerBoard:
         B.passive = self.passive
         B.pieces = [x for x in self.pieces]
         return B
+
+    """
+    Returns a list of possible moves that the player can choose to make.
+    """
+    def get_move_strings(self):
+        rfj = self.right_forward_jumps()
+        lfj = self.left_forward_jumps()
+        rbj = self.right_backward_jumps()
+        lbj = self.left_backward_jumps()
+
+        if (rfj | lfj | rbj | lbj) != 0:
+            rfj = [(1 + i - i//9, 1 + (i + 8) - (i + 8)//9)
+                        for (i, bit) in enumerate(bin(rfj)[::-1]) if bit == '1']
+            lfj = [(1 + i - i//9, 1 + (i + 10) - (i + 8)//9)
+                        for (i, bit) in enumerate(bin(lfj)[::-1]) if bit == '1']
+            rbj = [(1 + i - i//9, 1 + (i - 8) - (i - 8)//9)
+                        for (i, bit) in enumerate(bin(rbj)[::-1]) if bit ==  '1']
+            lbj = [(1 + i - i//9, 1 + (i - 10) - (i - 10)//9)
+                        for (i, bit) in enumerate(bin(lbj)[::-1]) if bit == '1']
+
+            if self.active == Black:
+                regular_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rfj + lfj]
+                reverse_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rbj + lbj]
+                return regular_moves + reverse_moves
+            else:
+                reverse_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rfj + lfj]
+                regular_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rbj + lbj]
+                return reverse_moves + regular_moves
+
+        rf = self.right_forward()
+        lf = self.left_forward()
+        rb = self.right_backward()
+        lb = self.left_backward()
+
+        rf = [(1 + i - i//9, 1 + (i + 4) - (i + 4)//9)
+                    for (i, bit) in enumerate(bin(rf)[::-1]) if bit == '1']
+        lf = [(1 + i - i//9, 1 + (i + 5) - (i + 5)//9)
+                    for (i, bit) in enumerate(bin(lf)[::-1]) if bit == '1']
+        rb = [(1 + i - i//9, 1 + (i - 4) - (i - 4)//9)
+                    for (i, bit) in enumerate(bin(rb)[::-1]) if bit ==  '1']
+        lb = [(1 + i - i//9, 1 + (i - 5) - (i - 5)//9)
+                    for (i, bit) in enumerate(bin(lb)[::-1]) if bit == '1']
+
+        if self.active == Black:
+            regular_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rf + lf]
+            reverse_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rb + lb]
+            return regular_moves + reverse_moves
+        else:
+            regular_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rb + lb]
+            reverse_moves = ["%i to %i" % (orig, dest) for (orig, dest) in rf + lf]
+            return reverse_moves + regular_moves
 
     """
     Prints out ASCII art representation of board.
