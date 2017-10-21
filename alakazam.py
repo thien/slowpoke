@@ -6,15 +6,88 @@ import random
 import os
 import numpy as np
 
-
+# import Tensorflow!
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
-
 import tensorflow as tf
 
-def move_function(board):
+
+"""
+Piece Weights
+"""
+pieceWeights = {
+  "Black" : 0,
+  "White" : 1,
+  "empty" : -1,
+  "blackKing" : -2,
+  "whiteKing" : -3
+}
+customWeights = {
+  "Black" : -1,
+  "White" : 1,
+  "empty" : 0,
+  "blackKing" : -1.5,
+  "whiteKing" : 1.5
+}
+
+"""
+Configuration 
+(don't change this unless you know what you're doing!)
+"""
+config = {
+  "colour": None,
+  "colourCheck" : False
+}
+
+# --------------------------------------------------------------------
+
+"""
+Checks the board's colour choice; this is needed so we can
+determine whether we need to rotate the board and manipulate
+the inputs for the NN.
+"""
+def checkColour(colour):
+  if config['colourCheck'] == False:
+    if colour == pieceWeights['Black']:
+      config['colour'] = pieceWeights['Black']
+    else:
+      config['colour'] = pieceWeights['White']
+  return config['colour']
+
+
+"""
+Prints the colour string.
+"""
+def getColourString():
+  if config['colour'] == pieceWeights['Black']:
+    return "Black"
+  elif config['colour'] == pieceWeights['White']:
+    return "White"
+  else:
+    return "NAN"
+
+"""
+This function gets called by the game client!
+"""
+def move_function(board, col, depth):
   # first we need to establish whether we're white or black.
-  print('dank')
+  checkColour(col)
+
+  # now that we have our colour, we'll need to get the 
+  # current pieces of the board, manipulated in a way so that
+  # it can be shoved into the NN.
+  print(getColourString())
+  boardStatus = board.getBoardPosWeighted(config['colour'], customWeights)
+  print(boardStatus)
+
+
   return random.choice(board.get_moves())
+
+
+# --------------------------------------------------------------------
+"""
+Neural Network Stuff!
+This is one of the exciting parts of the project.
+"""
 
 # def leaky_relu(z, alpha=0.01):
 #     return np.maximum(alpha*z, z)
