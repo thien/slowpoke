@@ -411,6 +411,7 @@ class CheckerBoard:
     This also updates the FEN.
     """
     def updateState(self):
+
         # generate the PDN for the current board.
         def genPDN(blackPieces, whitePieces):
             Black_list = ','.join(blackPieces)
@@ -440,26 +441,50 @@ class CheckerBoard:
             whiteMen = self.backward[self.active] ^ whiteKings
 
         state = [[None for _ in range(8)] for _ in range(4)]
+
+        rank = []
         for i in range(4):
+        
             for j in range(8):
                 cell = 1 << (9*i + j)
                 if cell & blackMen:
                     state[i][j] = Black
                     blackPieces.append(str(cellPos(i,j)))
+                    rank.append(Black)
                 elif cell & whiteMen:
                     state[i][j] = White
                     whitePieces.append(str(cellPos(i,j)))
+                    rank.append(White)
                 elif cell & blackKings:
                     state[i][j] = blackKing
                     blackPieces.append(("K" + str(cellPos(i,j))))
+                    rank.append(blackKing)
                 elif cell & whiteKings:
                     state[i][j] = whiteKing
                     whitePieces.append(("K" + str(cellPos(i,j))))
+                    rank.append(whiteKing)
                 else:
                     state[i][j] = empty
+                    rank.append(empty)
+        print("Rank", rank)
+        self.AIBoardPos = rank
         self.state = state
         self.turnCount += 1
         genPDN(blackPieces,whitePieces)
+
+
+    """
+    Returns the positions of the pieces for the AI.
+    """
+    def getBoardPos(self, colour):
+        if colour == Black:
+            return self.AIBoardPos
+        else:
+            # perform ugly position swap
+            self.AIBoardPos.reverse()
+            results = self.AIBoardPos
+            self.AIBoardPos.reverse()
+            return results
 
     """
     Prints out ASCII art representation of board.
