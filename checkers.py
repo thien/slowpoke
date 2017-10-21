@@ -466,7 +466,7 @@ class CheckerBoard:
                 else:
                     state[i][j] = empty
                     rank.append(empty)
-        print("Rank", rank)
+        # print("Rank", rank)
         self.AIBoardPos = rank
         self.state = state
         self.turnCount += 1
@@ -485,6 +485,29 @@ class CheckerBoard:
             results = self.AIBoardPos
             self.AIBoardPos.reverse()
             return results
+
+    """
+    Same as above, but option to convert weights.
+    """
+    def getBoardPosWeighted(self, colour, weights):
+        results = []
+        if colour != Black:
+            # perform ugly position swap
+            self.AIBoardPos.reverse()
+            results = self.AIBoardPos
+            self.AIBoardPos.reverse()
+        else:
+            results = self.AIBoardPos
+        # initiate pythonic conversion
+        rep = {
+            Black:weights['Black'], 
+            White:weights['White'], 
+            empty:weights['empty'], 
+            whiteKing:weights['whiteKing'], 
+            blackKing:weights['blackKing']
+            }
+        # return manipulated list
+        return [rep[n] if n in rep else n for n in results]
 
     """
     Prints out ASCII art representation of board.
