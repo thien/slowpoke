@@ -1,7 +1,7 @@
 import checkers
 import agent
 import alakazam
-import random_agent
+# import random_agent
 
 BLACK, WHITE = 0, 1
 
