@@ -74,7 +74,7 @@ def play2Player():
             current_player = B.active
     # print for the last time before showing the winner.
     print(B)
-    B.checkWinner()
+    B.getWinnerMessage()
 
     return 0
 
@@ -113,7 +113,7 @@ def playCPU():
             else:
                 current_player = B.active
     print (B)
-    B.checkWinner()
+    B.getWinnerMessage()
     return 0
 
 def slowpokeGame():
@@ -131,9 +131,9 @@ def slowpokeGame():
     # start game.
     B = checkers.CheckerBoard()
     current_player = B.active
-    # if debug:
-    #     print ("sorry not ready")
-    #     return 0
+    if debug:
+        print ("sorry not ready")
+        return 0
     else:
         while not B.is_over():
             B.make_move(cpu_1.make_move(B))
@@ -143,7 +143,7 @@ def slowpokeGame():
             while B.active == current_player and not B.is_over():
                 B.make_move(cpu_2.make_move(B))
             current_player = B.active
-        B.checkWinner()
+        B.getWinnerMessage()
         print(B.pgn)
         return 0
 
@@ -174,13 +174,13 @@ def BotGame():
             while B.active == current_player and not B.is_over():
                 B.make_move(cpu_2.make_move(B))
             current_player = B.active
-        B.checkWinner()
+        B.getWinnerMessage()
         print(B.pgn)
         return 0
 
 def main():
-    handlePlayerOption()
-    # play2Player()
+    # handlePlayerOption()
+    play2Player()
 
 if __name__ == '__main__':
     try:

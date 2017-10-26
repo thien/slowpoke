@@ -79,6 +79,7 @@ class CheckerBoard:
         self.turnCount = 0
         self.multipleJumpStack = []
         self.state = []
+        self.winner = None
 
     """
     Updates the game state to reflect the effects of the input
@@ -323,7 +324,11 @@ class CheckerBoard:
     """
     def is_over(self):
         # probably the smallest function here.
-        return len(self.get_moves()) == 0
+        if len(self.get_moves()) == 0:
+            self.checkWinner()
+            return True
+        else:
+            return False
 
     """
     Returns a new board with the exact same state as the calling object.
@@ -400,11 +405,17 @@ class CheckerBoard:
     """
     def checkWinner(self):
         if self.active == White:
-            print ("Congrats Black, you win!")
+            self.winner = Black
             self.pgn["Result"] = "1-0"
         else:
-            print ("Congrats White, you win!")
+            self.winner = White
             self.pgn["Result"] = "0-1"
+
+    def getWinnerMessage(self):
+        if self.winner == Black:
+            print ("Congrats Black, you win!")
+        else:
+            print ("Congrats White, you win!")
 
     """
     Returns a record of the positions of the pieces on the board.

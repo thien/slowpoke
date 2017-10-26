@@ -242,7 +242,20 @@ class Alakazam:
     print("\nOutput values are: ")
     showVector(result, 4)
 
-  def minimax(self, board):
+  def minimax(self, B):
+    if B.is_over():
+      return -1
+    # do actual magic.
+    scores = []
+    moves = []
+
+    possibleMoves = B.get_moves()
+    for i in possibleMoves:
+      # HB represents a hypothetical game position.
+      HB = B.copy()
+      HB.MakeMove(i)
+      # Evaluate the board at this current stage.
+
     # def minimax(game)
     #   return score(game) if game.over?
     #   scores = [] # an array of scores

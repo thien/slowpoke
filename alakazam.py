@@ -4,12 +4,13 @@
 Alakazam is a draughts AI based on a feed forward
 neural network chucked alongside a genetic algorithm.
 """
-import random
 import os
+import numpy as np
+import random
+import math
 
 # we'll be using PyTorch
 import torch
-import random
 from torch.autograd import Variable
 
 
@@ -144,7 +145,7 @@ def move_function(board, col, depth):
   boardStatus = board.getBoardPosWeighted(config['colour'], customWeights)
   
   # Now we can shove boardStatus in the neural network!
-  runNN(boardStatus)
+  # runNN(boardStatus)
 
   # 
   return random.choice(board.get_moves())
@@ -246,4 +247,4 @@ def runNN(board):
 
   return y_pred
 
-runNN(0)
+# -------------------------------------------------------------
