@@ -40,10 +40,10 @@ def showMatrix(m, dec):
 # -----
 	
 class NeuralNetwork:
-"""
-Code based on
-https://visualstudiomagazine.com/Articles/2017/05/01/Python-and-NumPy.aspx
-"""
+  """
+  Code based on
+  https://visualstudiomagazine.com/Articles/2017/05/01/Python-and-NumPy.aspx
+  """
 
   def __init__(self, numInput, numHidden, numHidden2, numOutput):
     self.numInputs = numInput
@@ -203,6 +203,78 @@ https://visualstudiomagazine.com/Articles/2017/05/01/Python-and-NumPy.aspx
   def totalWeights(nInput, nHidden, nOutput):
    tw = (nInput * nHidden) + (nHidden * nOutput) + nHidden + nOutput
    return tw
+class Alakazam:
+  """
+  Machine Learning Agent Class
+  """
+  def __init__():
+    """
+    Initialise the Machine Learning Agent
+    Note that we keep the weights since it is
+    essential for the bot to evaluate the board.
+    """
+    self.weights = []
+    self.kingWeight = 1.5
+    self.ELO = 1600
+    self.nn = False
+    self.ply = 4
+
+    # Once we have everything we are ready to initiate
+    # the board.
+    self.initiate(self.weights)
+
+  def initiate(self,weights):
+    numInput = 32
+    numHidden1 = 40
+    numHidden2 = 10
+    numOutput = 1
+    # Now we can initialise the neural network.
+    self.nn = NeuralNetwork(numInput, numHidden1, numHidden2, numOutput)
+    # make it initialise random weights.
+    self.nn.initialiseRandomWeights()
+
+  def evaluateBoard(self,board):
+    """
+    We throw in the board into the neural network here.
+    """
+    boardArray = np.array(board,dtype=np.float32)
+    result = nn.computeOutputs(boardArray)
+    print("\nOutput values are: ")
+    showVector(result, 4)
+
+  def minimax(self, board):
+    # def minimax(game)
+    #   return score(game) if game.over?
+    #   scores = [] # an array of scores
+    #   moves = []  # an array of moves
+
+    #   # Populate the scores array, recursing as needed
+    #   game.get_available_moves.each do |move|
+    #       possible_game = game.get_new_state(move)
+    #       scores.push minimax(possible_game)
+    #       moves.push move
+    #   end
+
+    #   # Do the min or the max calculation
+    #   if game.active_turn == @player
+    #       # This is the max calculation
+    #       max_score_index = scores.each_with_index.max[1]
+    #       @choice = moves[max_score_index]
+    #       return scores[max_score_index]
+    #   else
+    #       # This is the min calculation
+    #       min_score_index = scores.each_with_index.min[1]
+    #       @choice = moves[min_score_index]
+    #       return scores[min_score_index]
+    #   end
+    # end
+
+  def chooseMove(self,board):
+    # Look at all the moves,
+    # choose the best one.
+    # return that move.
+    return False
+  
 
 def main():
   # np.random.seed(0)  # does not affect the NN
