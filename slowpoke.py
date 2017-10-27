@@ -1,415 +1,638 @@
 """
-    Slowpoke
-                                      _.---"'----"'`--.._
-                                 _,.-'                   `-._
-                             _,."                            -.
-                         .-""   ___...---------.._             `.
-                         `---'""                  `-.            `.
-                                                     `.            \
-                                                       `.           \
-                                                         \           \
-                                                          .           \
-                                                          |            .
-                                                          |            |
-                                    _________             |            |
-                              _,.-'"         `"'-.._      :            |
-                          _,-'                      `-._.'             |
-                       _.'                              `.             '
-            _.-.    _,+......__                           `.          .
-          .'    `-"'           `"-.,-""--._                 \        /
-         /    ,'                  |    __  \                 \      /
-        `   ..                       +"  )  \                 \    /
-         `.'  \          ,-"`-..    |       |                  \  /
-          / " |        .'       \   '.    _.'                   .'
-         |,.."--"-"--..|    "    |    `""`.                     |
-       ,"               `-._     |        |                     |
-     .'                     `-._+         |                     |
-    /                           `.                        /     |
-    |    `     '                  |                      /      |
-    `-.....--.__                  |              |      /       |
-       `./ "| / `-.........--.-   '              |    ,'        '
-         /| ||        `.'  ,'   .'               |_,-+         /
-        / ' '.`.        _,'   ,'     `.          |   '   _,.. /
-       /   `.  `"'"'""'"   _,^--------"`.        |    `.'_  _/
-      /... _.`:.________,.'              `._,.-..|        "'
-     `.__.'                                 `._  /
-                                               "' mh
+  Slowpoke
+                                    _.---"'----"'`--.._
+                               _,.-'                   `-._
+                           _,."                            -.
+                       .-""   ___...---------.._             `.
+                       `---'""                  `-.            `.
+                                                   `.            \
+                                                     `.           \
+                                                       \           \
+                                                        .           \
+                                                        |            .
+                                                        |            |
+                                  _________             |            |
+                            _,.-'"         `"'-.._      :            |
+                        _,-'                      `-._.'             |
+                     _.'                              `.             '
+          _.-.    _,+......__                           `.          .
+        .'    `-"'           `"-.,-""--._                 \        /
+       /    ,'                  |    __  \                 \      /
+      `   ..                       +"  )  \                 \    /
+       `.'  \          ,-"`-..    |       |                  \  /
+        / " |        .'       \   '.    _.'                   .'
+       |,.."--"-"--..|    "    |    `""`.                     |
+     ,"               `-._     |        |                     |
+   .'                     `-._+         |                     |
+  /                           `.                        /     |
+  |    `     '                  |                      /      |
+  `-.....--.__                  |              |      /       |
+     `./ "| / `-.........--.-   '              |    ,'        '
+       /| ||        `.'  ,'   .'               |_,-+         /
+      / ' '.`.        _,'   ,'     `.          |   '   _,.. /
+     /   `.  `"'"'""'"   _,^--------"`.        |    `.'_  _/
+    /... _.`:.________,.'              `._,.-..|        "'
+   `.__.'                                 `._  /
+                                             "' 
 
-Slowpoke is a draughts AI based on a feed forward convolutional
-neural network chucked alongside a genetic algorithm.
-
-Some of the code is based on Sean K's Neural Network code, of
-which the source code can be found here:
-http://seank.50webs.com.
-
+Slowpoke is a draughts AI based on a convolutional neural network.
+It's been trained using genetic algorithms :)
 """
 
-
-# Iimports
-import math
-import pickle
-import threading
-# everyone loves a good debugger.
-import pdb
+import numpy as np
 import random
+import math
+
+"""
+Piece Weights
+"""
+pieceWeights = {
+  "Black" : 0,
+  "White" : 1,
+  "empty" : -1,
+  "blackKing" : -2,
+  "whiteKing" : -3
+}
 
 
-def move_function(board):
-    return random.choice(board.get_moves())
+# helper functions
 
-def sigmoid(val):
-  # tanh function with the range of [-1,1]
-  raw = math.tanh(val)
-  if raw >= 0:
-    return min(raw, 1)
-  else:
-    return max(raw, -1)
-
-class Neuron:
-  # Class to define a neuron.
-  def __init__(self, weights, bias):
-    """
-    Creates a new Neuron.
-
-    Args:
-      weights:
-        an interable of floats that represent the weights
-        of the neuron.
-      bias:
-        a float that represents the bias of the neuron.
-    """
-
-    if not weights:
-      pdb.set_trace()
-    self.weights = weights
-    self.bias = bias
-
-  def evaluate(self, inputs):
-    """
-    Evaluates an output based on a list of inputs.
-
-    Arguments:
-      inputs:
-      a list of inputs where the size if equal to the
-      size of the weights
-
-    Return:
-      a float corresponding to the output of the neuron.
-    """
-    raw = sum([i*j for i,j in zip(self.weights, inputs)])
-    biased_evaluation = raw - self.bias
-    return sigmoid(biased_evaluation)
-
-  def combine(self, neuron, f):
-    """
-    Takes a neuron and a function f, and creates another neuron
-    where all the weights have been combined according to the
-    rules of f.
-
-    neuron:
-      A neuron to combine with self.
-    f:
-      A binary function that takes two weights (floats) and
-      returns a new weight.
-    """
-    weights = [f(a,b) for a,b in zip(self.weights, neuron.weights)]
-    bias = fn(self.bias, neuron.bias)
-    return Neuron(weights, bias)
-
-  def map(self, f):
-    """
-    Creates a new neuron where the weights have been changed
-    according to f.
-
-    f:
-      an unary operator that returns a new float, given a
-      double.
-
-    This function returns a new neuron where its weights have
-    been altered by fn.
-    """
-    weights = [f(w) for w in self.weights]
-    bias = fn(self.bias)
-    return Neuron(weights, bias)
-
-  count = property(lambda self: len(self.weights + 1))
-
-class Layer:
+def loadFile(df):
+  # load a comma-delimited text file into an np matrix
+  resultList = []
+  f = open(df, 'r')
+  for line in f:
+    line = line.rstrip('\n')  # "1.0,2.0,3.0"
+    sVals = line.split(',')   # ["1.0", "2.0, "3.0"]
+    fVals = list(map(np.float3232, sVals))  # [1.0, 2.0, 3.0]
+    resultList.append(fVals)  # [[1.0, 2.0, 3.0] , [4.0, 5.0, 6.0]]
+  f.close()
+  return np.asarray(resultList, dtype=np.float32)  # not necessary
+# end loadFile
+  
+def showVector(v, dec):
+  fmt = "%." + str(dec) + "f" # like %.4f
+  for i in range(len(v)):
+    x = v[i]
+    if x >= 0.0: print(' ', end='')
+    print(fmt % x + '  ', end='')
+  print('')
+  
+def showMatrix(m, dec):
+  fmt = "%." + str(dec) + "f" # like %.4f  
+  for i in range(len(m)):
+    for j in range(len(m[i])):
+      x = m[i,j]
+      if x >= 0.0: print(' ', end='')
+      print(fmt % x + '  ', end='')
+    print('')
+  
+# -----
+	
+class NeuralNetwork:
   """
-  This layer class represents a single layer of neurons in
-  the ANN.
+  Code based on
+  https://visualstudiomagazine.com/Articles/2017/05/01/Python-and-NumPy.aspx
   """
 
-  def __init__(self, neurons):
-    """
-    init with a list of neurons, where the number of weights
-    are exactly equal.
-    """
-    self.neurons = neurons
+  def __init__(self, numInput, numHidden, numHidden2, numOutput):
+    self.numInputs = numInput
+    self.numHidden1 = numHidden
+    self.numOutput = numOutput
+	
+    self.iNodes = np.zeros(shape=[self.numInputs], dtype=np.float32)
+    self.hNodes = np.zeros(shape=[self.numHidden1], dtype=np.float32)
+    self.oNodes = np.zeros(shape=[self.numOutput], dtype=np.float32)
+	
+    self.ihWeights = np.zeros(shape=[self.numInputs,self.numHidden1], dtype=np.float32)
+    self.hoWeights = np.zeros(shape=[self.numHidden1,self.numOutput], dtype=np.float32)
+	
+    self.hBiases = np.zeros(shape=[self.numHidden1], dtype=np.float32)
+    self.oBiases = np.zeros(shape=[self.numOutput], dtype=np.float32)
+	
+    self.rnd = random.Random(0) # allows multiple instances
+ 	
+  def setWeights(self, weights):
+    if len(weights) != self.totalWeights(self.numInputs, self.numHidden1, self.numOutput):
+      print("Warning: len(weights) error in setWeights()")	
 
-  def evaluate(self, inputs):
-    """
-    This function evaluates an output list based on a list of
-    inputs.
+    idx = 0
+    for i in range(self.numInputs):
+      for j in range(self.numHidden1):
+        self.ihWeights[i][j] = weights[idx]
+        idx += 1
+		
+    # adds biases
+    for j in range(self.numHidden1):
+      self.hBiases[j] = weights[idx]
+      idx +=1
 
-    Arguments:
-      inputs:
-        a list of inputs where the size is equal to the size
-        of the individual neurons in the layer.
+    for i in range(self.numHidden1):
+      for j in range(self.numOutput):
+        self.hoWeights[i][j] = weights[idx]
+        idx += 1
+	  
+    # adds biases
+    for k in range(self.numOutput):
+      self.oBiases[k] = weights[idx]
+      idx += 1
+	  
+  def getWeights(self):
+    tw = self.totalWeights(self.numInputs, self.numHidden1, self.numOutput)
+    result = np.zeros(shape=[tw], dtype=np.float32)
+    idx = 0  # points into result
+    
+    for i in range(self.numInputs):
+      for j in range(self.numHidden1):
+        result[idx] = self.ihWeights[i][j]
+        idx += 1
+		
+    for j in range(self.numHidden1):
+      result[idx] = self.hBiases[j]
+      idx +=1
 
-    Returns:
-      a list of floats corresponding to the outputs of the network.
-    """
-    return [n.evaluate(inputs) for n in self.neurons]
+    for i in range(self.numHidden1):
+      for j in range(self.numOutput):
+        result[idx] = self.hoWeights[i][j]
+        idx += 1
+	  
+    for k in range(self.numOutput):
+      result[idx] = self.oBiases[k]
+      idx += 1
+	  
+    return result
+ 	
+  def initialiseRandomWeights(self):
+    numWts = self.totalWeights(self.numInputs, self.numHidden1, self.numOutput)
+    weights = np.zeros(shape=[numWts], dtype=np.float32)
+    lo = -0.2; hi = 0.2
+    for idx in range(len(weights)):
+      weights[idx] = (hi - lo) * self.rnd.random() + lo
+    self.setWeights(weights)
 
-  def combine(self, layer, f):
-    """
-    Combine takes a layer, and a function f, and creates another
-    one where the weights have been combined according to the rules
-    of f.
+  # deals with computing outputs.
+  def computeOutputs(self, xValues):
+    print("\n ihWeights: ")
+    showMatrix(self.ihWeights, 2)
+	
+    print("\n hBiases: ")
+    showVector(self.hBiases, 2)
+	
+    print("\n hoWeights: ")
+    showMatrix(self.hoWeights, 2)
+  
+    print("\n oBiases: ")
+    showVector(self.oBiases, 2)  
+  
+    hSums = np.zeros(shape=[self.numHidden1], dtype=np.float32)
+    oSums = np.zeros(shape=[self.numOutput], dtype=np.float32)
 
-    Arguments:
-      layer:
-        A layer to combine with `self`.
-      f:
-        A binary function; it takes two weights (floats) and returns
-        a new weight.
-    """
-    zipped = zip(self.neurons, layer.neurons)
-    neurons = [a.combine(b, fn) for a,b in zipped]
-    return Layer(neurons)
+    for i in range(self.numInputs):
+      self.iNodes[i] = xValues[i]
 
-  def map(self, f):
-    """
-    Creates a new layer where all the weights have been changed
-    according to f.
+    for j in range(self.numHidden1):
+      for i in range(self.numInputs):
+        hSums[j] += self.iNodes[i] * self.ihWeights[i][j]
 
-    Arguments:
-      f:
-        an unary operator that returns a new float, given a double.
-    """
-    return Layer([n.map(f) for n in self.neurons])
+    for j in range(self.numHidden1):
+      hSums[j] += self.hBiases[j]
+	  
+    print("\n pre-tanh activation hidden node values: ")
+    showVector(hSums, 4)
 
-  count = property(lambda self: sum([n.count for n in self.neurons]))
+    for j in range(self.numHidden1):
+      self.hNodes[j] = self.sigmoid(hSums[j])
+	  
+    print("\n after activation hidden node values: ")
+    showVector(self.hNodes, 4)
 
+    for k in range(self.numOutput):
+      for j in range(self.numHidden1):
+        oSums[k] += self.hNodes[j] * self.hoWeights[j][k]
 
+    for k in range(self.numOutput):
+      oSums[k] += self.oBiases[k]
+	  
+    print("\n pre-softmax output values: ")
+    showVector(oSums, 4)
 
-class FeedForwardNetwork:
-  """
-  This class represents a feed forward network.
-  - The first element is where the inputs are initially fed into.
-  - The last element is a layer that has a single output neuron.
-  - It's important that the first layer has a number of weights
-    equal to the number of inputs.
-  - Similarly, the second layer needs a number of weights equal
-    to the number of neurons in layer 1, and so on.
+    if np.prod(oSums.shape) > 1:
+      softOut = self.softmax(oSums)
+      for k in range(self.numOutput):
+        self.oNodes[k] = softOut[k]
+  	  
+      result = np.zeros(shape=self.numOutput, dtype=np.float32)
+      for k in range(self.numOutput):
+        result[k] = self.oNodes[k]
+  	  
+      return result
+    else:
+      return oSums
 
-  """
+  # Evaluates Board
+  def evaluateBoard(self, BoardState):
+    xValues = np.array(BoardState, dtype=np.float32)
+  
+    # print("\n ihWeights: ")
+    # showMatrix(self.ihWeights, 2)
+  
+    # print("\n hBiases: ")
+    # showVector(self.hBiases, 2)
+  
+    # print("\n hoWeights: ")
+    # showMatrix(self.hoWeights, 2)
+  
+    # print("\n oBiases: ")
+    # showVector(self.oBiases, 2)  
+  
+    hSums = np.zeros(shape=[self.numHidden1], dtype=np.float32)
+    oSums = np.zeros(shape=[self.numOutput], dtype=np.float32)
 
-  def __init__(self, layers):
-    """
-    Here we create a new feed-forward network.
-    The layers parameter is a list of layers.
+    for i in range(self.numInputs):
+      self.iNodes[i] = xValues[i]
 
-    Arguments:
-      layers:
-        a list of layers, where the last layer must consist of a 
-        single neuron.
-    """
-    self.layers = layers
+    for j in range(self.numHidden1):
+      for i in range(self.numInputs):
+        hSums[j] += self.iNodes[i] * self.ihWeights[i][j]
 
+    for j in range(self.numHidden1):
+      hSums[j] += self.hBiases[j]
+    
+    # print("\n pre-tanh activation hidden node values: ")
+    # showVector(hSums, 4)
 
-  def evaluate(self, inputs):
-    """
-    Evaluate a list of inputs and returns a float.
-    """
-    for i in self.layers:
-      outputs = i.evaluate(inputs)
-    return outputs[0]
+    for j in range(self.numHidden1):
+      self.hNodes[j] = self.sigmoid(hSums[j])
+    
+    # print("\n after activation hidden node values: ")
+    # showVector(self.hNodes, 4)
 
-  def combine(self, network, f):
-    """
-    This takes another network, and a function f, and creates
-    another layer where all the weight have been combined
-    according to the rules of f.
-    The network must have the same topology as self.
+    for k in range(self.numOutput):
+      for j in range(self.numHidden1):
+        oSums[k] += self.hNodes[j] * self.hoWeights[j][k]
 
-    Arguments:
-      layer:
-        a layer to combine with self.
-      f:
-        a binary function that takes two weights (floats)
-        and returns a new weight.
-    Return:
-      a new network where the weights have been changed according
-      to f, self, and network.
-    """
-    zipped = zip(self.layers, network.layers)
-    layers = [a.combine(b,f) for a, b in zipped]
-  return FeedForwardNetwork(layers)
+    for k in range(self.numOutput):
+      oSums[k] += self.oBiases[k]
+    
+    # print("\n pre-softmax output values: ")
+    # showVector(oSums, 4)
 
-  def map(self, f):
-    """
-    Creates a new network where the weights have been changed 
-    according to f.
-
-    Arguments:
-      f:
-        an unary operator that returns a new float, given
-        a double.
-    Return:
-      a new network where its weights have been altered by f.
-    """
-
-    return FeedForwardNetwork([layer.map(f) for layer in self.layers])
-
-  count = property(lambda self: sum([a.count for a in self.layers]))
-
-class BlondieNetwork:
-  """
-  This represents a network inspired by Blondie24.
-  """
-
-  def __init__(self):
-    self._net = self._create_network(lambda: random.uniform(-.2, .2))
-    self._sigma = self._create_network(lambda: .5)
-    self._score = 0
-    self.table = {}
-
-  def add_win(self):
-    """
-    adds a win to the score.
-    """
-    self._score += 1
-
-  def add_loss(self):
-    """
-    adds a loss to the score.
-    """
-    self._score -= 2
-
-  def reset(self):
-    self._score = 0
-    self._table = {}
+    if np.prod(oSums.shape) > 1:
+      softOut = self.softmax(oSums)
+      for k in range(self.numOutput):
+        self.oNodes[k] = softOut[k]
+      
+      result = np.zeros(shape=self.numOutput, dtype=np.float32)
+      for k in range(self.numOutput):
+        result[k] = self.oNodes[k]
+      
+      return result
+    else:
+      # One item weight, just return that one number.
+      return oSums.item(0)
 
   @staticmethod
-  def _create_network(f):
-    def create_layer(neurons, weights):
-      weights = [[f() for i in range(weights)] for j in range(neurons)]
-      return Layer([Neuron(w, f()) for w in weights])
-    layers = [create_layer(40,32)]
-    layers.append(create_layer(10, 40))
-    layers.append(create_layer(1, 10))
-    return FeedForwardNetwork(layers)
+  def sigmoid(val):
+    # tanh function with the range of [-1,1]
+    raw = math.tanh(val)
+    if raw >= 0:
+      return min(raw, 1)
+    else:
+      return max(raw, -1)
 
-  def _evaluation_function(self):
-    """
-    This method returns a method that takes a checkers board
-    as a parameter, and returns the network's evaluation of
-    the board.
-    """    
-
-    def eval_board(board, colour):
-      return self._net.evaluate(board.hash)
-    return eval_board
-
-  def save(self, file):
-    f = open(file, 'wb')
-    pickle.dump(self, f)
-    f.close()
-
+  @staticmethod	  
+  def softmax(oSums):
+    result = np.zeros(shape=[len(oSums)], dtype=np.float32)
+    m = max(oSums)
+    divisor = 0.0
+    for k in range(len(oSums)):
+       divisor += math.exp(oSums[k] - m)
+    for k in range(len(result)):
+      result[k] =  math.exp(oSums[k] - m) / divisor
+    return result
+	
   @staticmethod
-  def load(file):
-    f = open(file, 'rb')
-    b = pickle.load(f)
-    f.close()
-    return b
+  def totalWeights(nInput, nHidden, nOutput):
+   tw = (nInput * nHidden) + (nHidden * nOutput) + nHidden + nOutput
+   return tw
 
-  def breed(self):
-    """
-    Returns a new BlondieNetwork according to the Blondie
-    algorithm 
-    """
-    tau = 1 / math.sqrt(2 * math.sqrt(self._net.count))
-
-    def sigma_map(weight):
-      return weight * math.e ** (tau * random.gauss(0, 1))
-    def neuron_map(a, b):
-      return a + b * random.gauss(0, 1)
-
-    new = BlondieNetwork()
-    new._sigma = self._sigma.map(sigma_map)
-    new._net = self._net.combine(new._sigma, neuron_map)
-    return new
-
-  score = property(lambda self: self._score)
-  evaluator = property(_evaluation_function)
+# -----------------------------------------------------------
 
 class Slowpoke:
   """
-  Slowpoke AI
+  Machine Learning Agent Class
   """
-  
-  def __init__(self,colour,evaluator,depth,table):
+  def __init__(self):
     """
-    Creates a new Slowpoke
+    Initialise the Machine Learning Agent
+    Note that we keep the weights since it is
+    essential for the bot to evaluate the board.
+    """
+    self.weights = []
+    self.kingWeight = 1.5
+    self.nn = False
+    self.ply = 4
+    self.currentColour = None
 
-    Arguments:
-      evaluator:
-        A function that takes a board and colour as an argument;
-        and returns a value from [-1,1] where -1 means that the player
-        has lost and 1 means the player has won.
-      Depth:
-        The depth of the alpha-beta seatch.
     """
-    self._evaluator = evaluator
-    self._depth = depth
-    self._board = Board()
-    # initiate the board.
-    self._board.start()
-    self._colour = colour
-    self._jumper = None
-    self._table = Table
+    Custom Weights:
+    These weights are considered on the board.
+    """
+    self.customWeights = {
+      "Black" : -1,
+      "White" : 1,
+      "empty" : 0,
+      "blackKing" : -1.5,
+      "whiteKing" : 1.5
+    }
 
-  def oppoment_move(self, move):
-    """
-    This method acknowledges a move played by the oppoment.
-    """
-    self._board = move
+    # Once we have everything we are ready to initiate
+    # the board.
+    self.initiateNeuralNetwork(self.weights)
 
-  def choose_move(self,screen):
+  def initiateNeuralNetwork(self,weights):
     """
-    Chooses and returns a move.
+    This function initiates the neural network and adds it
+    to the AI class.
+    """
+    self.nnNodes = {
+      'input' : 32,
+      'hidden1' : 40,
+      'hidden2' : 10,
+      'output' : 1
+    }
+    # Now we can initialise the neural network.
+    self.nn = NeuralNetwork(self.nnNodes['input'], self.nnNodes['hidden1'], 
+                           self.nnNodes['hidden2'], self.nnNodes['output'])
+    # make it initialise random weights.
+    self.nn.initialiseRandomWeights()
 
-    Arguments:
-      screen:
-        where to send the move to.
+  def evaluateBoard(self,board):
+    """
+    We throw in the board into the neural network here, and
+    then the neural network evaluates the position of the
+    board.
+    """
+
+    # Get the current status of the board.
+    colour = self.currentColour
+    boardStatus = board.getBoardPosWeighted(self.currentColour, self.customWeights)
+    # Get an array of the board.
+    boardArray = np.array(board,dtype=np.float32)
+    # Evaluate the board array using our CNN.
+    result = nn.evaluateBoard(boardArray)
+    showVector(result, 4)
+    # Return the results.
+    return result
+
+  def miniMax(self, B, ply):
+    def minPlay(B, ply):
+      if B.is_over():
+        return 1
+      moves = B.get_moves()
+      best_score = float('inf')
+      for move in moves:
+        HB = B.copy()
+        HB.MakeMove(move)
+        if ply == 0:
+          score = self.evaluateBoard(HB)
+        else:
+          score = maxPlay(HB, ply-1)
+        if score < best_score:
+          best_move = move
+          best_score = score
+        return best_score
+    def maxPlay(B, ply):
+      if B.is_over():
+        return -1
+      moves = B.get_moves()
+      best_score = float('-inf')
+      for move in moves:
+        HB = B.copy()
+        HB.MakeMove(move)
+        if ply == 0:
+          score = self.evaluateBoard(HB)
+        else:
+          score = minPlay(HB, ply-1)
+        if score > best_score:
+          best_move = move
+          best_score = score
+        return best_score
+
+    moves = B.get_moves()
+    best_move = moves[0]
+    best_score = float('-inf')
+
+    # iterate through the current possible moves.
+    for move in moves:
+      HB = B.copy()
+      HB.MakeMove(move)
+      if ply == 0:
+        score = self.evaluateBoard(HB)
+      else:
+        score = minPlay(HB, ply-1)
+      if rating > best_score:
+        best_move = move
+        best_score = score
+      return best_move
+
+  def miniMaxAB(self, B, ply):
+    def minPlayAB(B, ply, alpha, beta):
+      if B.is_over():
+        return 1
+
+      # get the moves
+      moves = B.get_moves()
+
+      # iterate through moves
+      for move in moves:
+        HB = B.copy()
+        HB.MakeMove(move)
+
+        if ply == 0:
+          score = self.evaluateBoard(HB)
+        else:
+          score = maxPlayAB(HB, ply-1, alpha, beta)
+
+        if score < beta:
+          beta = score
+        if beta <= alpha:
+          return beta
+      return beta
+
+    def maxPlayAB(B, ply, alpha, beta):
+      if B.is_over():
+        return -1
+
+      # get the moves
+      moves = B.get_moves()
+
+      # iterate through moves
+      for move in moves:
+        HB = B.copy()
+        HB.MakeMove(move)
+
+        if ply == 0:
+          score = self.evaluateBoard(HB)
+        else:
+          score = minPlayAB(HB, ply-1, alpha, beta)
+
+        if score > alpha:
+          alpha = score
+        if alpha >= beta:
+          return alpha  
+      return alpha
+
+    # ---------------------------------------------
+    moves = B.get_moves()
+    best_move = moves[0]
+    best_score = float('-inf')
+
+    alpha = float('-inf')
+    beta = float('inf')
+
+    # iterate through the current possible moves.
+    for move in moves:
+      HB = B.copy()
+      HB.MakeMove(move)
+      if ply == 0:
+        score = self.evaluateBoard(HB)
+      else:
+        score = minPlayAB(HB, ply-1, alpha, beta)
+      if rating > best_score:
+        best_move = move
+        best_score = score
+    return best_move
+
+  def chooseMove(self,board):
+    # call minimax algorithm
+    move = self.miniMaxAB(board, self.ply)
+    # return that move.
+    return move
+
+  def move_function(self, board):
+    # # first we need to establish whether we're white or black.
+    # self.checkColour(col)
+
+    # # This function deals with getting the colour that the bot represents.
+    # self.getColourString()
+
+    # now that we have our colour, we can now proceed to generate the 
+    # possible moves the bot can make. For each one, we'll shove it in our
+    # neural network and generate an outcome based on that.
+
+    # we'll need to get the current pieces of the board, manipulated 
+    # in a way so that it can be shoved into the NN.
+    # boardStatus = board.getBoardPosWeighted(self.currentColour, self.customWeights)
+    # stage = self.checkGameStage(boardStatus)
+
+    # Now we can shove boardStatus in the neural network!
+    move = self.chooseMove(board)
+    # Now we choose appropiately which outcome we want. From here, we add
+    # that current board choice and the probability of it doing damage.
+    # chance = chooseGameStage(chances, stage)
+
+
+    return move
+
+  """
+  Checks the current stage of the board.
+  """
+  @staticmethod
+  def checkGameStage(board):
+    """
+    There are three stages of Checkers:
+      Beginning: Both players have at least three pieces on the board. No kings.
+      Kings: Both players have at least three pieces on the board. At least one king.
+      Ending: one player has less than three pieces on the board.
+
     Returns:
-      a board object that represents selfs last move.
+      A value that is either 0,1, or 2.
+      0: beginning
+      1: kings
+      2: ending
     """
-    return False
+    b = 0
+    w = 0
+    kb = 0
+    kw = 0
+    for i in range(len(board)):
+      if pieceWeights['empty'] != board[i]:
+        if board[i] == pieceWeights['Black']:
+          b += 1
+        elif board[i] == pieceWeights['White']:
+          w += 1
+        elif board[i] == pieceWeights['blackKing']:
+          kb += 1
+        elif board[i] == pieceWeights['whiteKing']:
+          kw += 1
+    if b >= 3 and w >= 3:
+      # we're either at Kings or Beginning.
+      if kb > 1 or kw > 1:
+        # we're at intermediate.
+        return 1
+      else:
+        # we're at beginning.
+        return 0
+    else:
+      # we've reached the ending.
+      return 2
 
-  def _select_move(self):
-    """
-    Internal logic to find available moves.
-    """
-    # check if we're jumping or that the board has jumps
-      # then you gotta select those jumps.
-    # see the list of possible moves
-      # iterate through the list of moves
-        # if this move is a winning move, choose it
-    # iteratively_search those moves.
-    # get the index of those moves.
-    # assign the moves somewhere.
+  @staticmethod
+  def chooseGameStage(nn_results, stage):
+    if stage == 0:
+      return nn_results[0]
+    elif stage == 1:
+      return nn_results[1]
+    else:
+      return nn_results[2]
 
-  def _select_jumps(self):
-    """
-    Chooses the best jump available to the current board.
-    """
+  # """
+  # Checks the board's colour choice; this is needed so we can
+  # determine whether we need to rotate the board and manipulate
+  # the inputs for the NN.
+  # """
+  # @staticmethod
+  # def checkColour(colour):
+  #   if config['colourCheck'] == False:
+  #     if colour == pieceWeights['Black']:
+  #       config['colour'] = pieceWeights['Black']
+  #     else:
+  #       config['colour'] = pieceWeights['White']
+  #     return config['colour']
 
-    def assign_jump(inp):
-      """
-      Assigns a new board, and possibly a forced jump position
-      """
-      (jump,pos) = inp
-      
+  """
+  Prints the colour string.
+  """
+  @staticmethod
+  def getColourString():
+    if config['colour'] == pieceWeights['Black']:
+      return "Black"
+    elif config['colour'] == pieceWeights['White']:
+      return "White"
+    else:
+      return "NAN"
+
+
+
+if __name__ == "__main__":
+  # np.random.seed(0)  # does not affect the NN
+  numInput = 32
+  numHidden1 = 40
+  numHidden2 = 10
+  numOutput = 1
+  # print("Creating a %d-%d-%d-%d neural network " % (numInput, numHidden1, numHidden2, numOutput) )
+  nn = NeuralNetwork(numInput, numHidden1, numHidden2, numOutput)
+  # make it initialise random weights.
+  nn.initialiseRandomWeights()
+  
+  # Insert checkerboard.
+  xValues = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1.1, 1.1, 0, 0], dtype=np.float32)
+  # Run Neural Network
+  yValues = nn.computeOutputs(xValues)
+  print("\nOutput values are: ")
+  showVector(yValues, 4)
+
+  print("\nEnd demo \n")
+
+# end script
