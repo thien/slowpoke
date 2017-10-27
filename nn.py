@@ -1,9 +1,18 @@
-# nn_io.py
-# Python 3.x
-
 import numpy as np
 import random
 import math
+
+"""
+Piece Weights
+"""
+pieceWeights = {
+  "Black" : 0,
+  "White" : 1,
+  "empty" : -1,
+  "blackKing" : -2,
+  "whiteKing" : -3
+}
+
 
 # helper functions
 
@@ -179,6 +188,68 @@ class NeuralNetwork:
     else:
       return oSums
 
+  # Evaluates Board
+  def evaluateBoard(self, BoardState):
+    xValues = np.array(BoardState, dtype=np.float32)
+  
+    # print("\n ihWeights: ")
+    # showMatrix(self.ihWeights, 2)
+  
+    # print("\n hBiases: ")
+    # showVector(self.hBiases, 2)
+  
+    # print("\n hoWeights: ")
+    # showMatrix(self.hoWeights, 2)
+  
+    # print("\n oBiases: ")
+    # showVector(self.oBiases, 2)  
+  
+    hSums = np.zeros(shape=[self.numHidden1], dtype=np.float32)
+    oSums = np.zeros(shape=[self.numOutput], dtype=np.float32)
+
+    for i in range(self.numInputs):
+      self.iNodes[i] = xValues[i]
+
+    for j in range(self.numHidden1):
+      for i in range(self.numInputs):
+        hSums[j] += self.iNodes[i] * self.ihWeights[i][j]
+
+    for j in range(self.numHidden1):
+      hSums[j] += self.hBiases[j]
+    
+    # print("\n pre-tanh activation hidden node values: ")
+    # showVector(hSums, 4)
+
+    for j in range(self.numHidden1):
+      self.hNodes[j] = self.sigmoid(hSums[j])
+    
+    # print("\n after activation hidden node values: ")
+    # showVector(self.hNodes, 4)
+
+    for k in range(self.numOutput):
+      for j in range(self.numHidden1):
+        oSums[k] += self.hNodes[j] * self.hoWeights[j][k]
+
+    for k in range(self.numOutput):
+      oSums[k] += self.oBiases[k]
+    
+    # print("\n pre-softmax output values: ")
+    # showVector(oSums, 4)
+
+    if np.prod(oSums.shape) > 1:
+      softOut = self.softmax(oSums)
+      for k in range(self.numOutput):
+        self.oNodes[k] = softOut[k]
+      
+      result = np.zeros(shape=self.numOutput, dtype=np.float32)
+      for k in range(self.numOutput):
+        result[k] = self.oNodes[k]
+      
+      return result
+    else:
+      # One item weight, just return that one number.
+      return oSums.item(0)
+
   @staticmethod
   def sigmoid(val):
     # tanh function with the range of [-1,1]
@@ -203,6 +274,9 @@ class NeuralNetwork:
   def totalWeights(nInput, nHidden, nOutput):
    tw = (nInput * nHidden) + (nHidden * nOutput) + nHidden + nOutput
    return tw
+
+# -----------------------------------------------------------
+
 class Alakazam:
   """
   Machine Learning Agent Class
@@ -215,78 +289,129 @@ class Alakazam:
     """
     self.weights = []
     self.kingWeight = 1.5
-    self.ELO = 1600
     self.nn = False
     self.ply = 4
+    self.currentColour = None
+    """
+    Configuration 
+    don't change this unless you know what you're doing!
+    """
+    self.config = {
+      "colour": None,
+      "colourCheck" : False
+    }
+    """
+    Custom Weights:
+    These weights are considered on the board.
+    """
+    self.customWeights = {
+      "Black" : -1,
+      "White" : 1,
+      "empty" : 0,
+      "blackKing" : -1.5,
+      "whiteKing" : 1.5
+    }
 
     # Once we have everything we are ready to initiate
     # the board.
-    self.initiate(self.weights)
+    self.initiateNeuralNetwork(self.weights)
 
-  def initiate(self,weights):
-    numInput = 32
-    numHidden1 = 40
-    numHidden2 = 10
-    numOutput = 1
+  def initiateNeuralNetwork(self,weights):
+    """
+    This function initiates the neural network and adds it
+    to the AI class.
+    """
+    self.nnNodes = {
+      'input' : 32,
+      'hidden1' : 40,
+      'hidden2' : 10,
+      'output' : 1
+    }
     # Now we can initialise the neural network.
-    self.nn = NeuralNetwork(numInput, numHidden1, numHidden2, numOutput)
+    self.nn = NeuralNetwork(self.nnNodes['input'], self.nnNodes['hidden1'], 
+                           self.nnNodes['hidden2'], self.nnNodes['output'])
     # make it initialise random weights.
     self.nn.initialiseRandomWeights()
 
+  def initiateGame(self, colour):
+    """
+    This helper function is called when this player is called.
+    """
+    self.currentColour = colour
+
   def evaluateBoard(self,board):
     """
-    We throw in the board into the neural network here.
+    We throw in the board into the neural network here, and
+    then the neural network evaluates the position of the
+    board.
     """
-    boardArray = np.array(board,dtype=np.float32)
-    result = nn.computeOutputs(boardArray)
-    print("\nOutput values are: ")
-    showVector(result, 4)
 
-  def minimax(self, B):
+    # Get the current status of the board.
+    colour = self.currentColour
+    boardStatus = board.getBoardPosWeighted(colour, self.customWeights)
+    # Get an array of the board.
+    boardArray = np.array(board,dtype=np.float32)
+    # Evaluate the board array using our CNN.
+    result = nn.evaluateBoard(boardArray)
+    showVector(result, 4)
+    # Return the results.
+    return result
+
+  def miniMax(self, B, ply):
+    moves = B.get_moves()
+    best_move = moves[0]
+    best_score = float('-inf')
+    for move in moves:
+      HB = B.copy()
+      HB.MakeMove(move)
+      if ply == 0:
+        score = self.evaluateBoard(HB)
+      else:
+        score = minPlay(HB, ply-1)
+      if rating > best_score:
+        best_move = move
+        best_score = score
+      return best_move
+
+  def minPlay(self, B, ply):
+    if B.is_over():
+      return 1
+    moves = B.get_moves()
+    best_score = float('inf')
+    for move in moves:
+      HB = B.copy()
+      HB.MakeMove(move)
+      if ply == 0:
+        score = self.evaluateBoard(HB)
+      else:
+        score = maxPlay(HB, ply-1)
+      if score < best_score:
+        best_move = move
+        best_score = score
+      return best_score
+
+  def maxPlay(self, B, ply):
     if B.is_over():
       return -1
-    # do actual magic.
-    scores = []
-    moves = []
-
-    possibleMoves = B.get_moves()
-    for i in possibleMoves:
-      # HB represents a hypothetical game position.
+    moves = B.get_moves()
+    best_score = float('-inf')
+    for move in moves:
       HB = B.copy()
-      HB.MakeMove(i)
-      # Evaluate the board at this current stage.
-
-    # def minimax(game)
-    #   return score(game) if game.over?
-    #   scores = [] # an array of scores
-    #   moves = []  # an array of moves
-
-    #   # Populate the scores array, recursing as needed
-    #   game.get_available_moves.each do |move|
-    #       possible_game = game.get_new_state(move)
-    #       scores.push minimax(possible_game)
-    #       moves.push move
-    #   end
-
-    #   # Do the min or the max calculation
-    #   if game.active_turn == @player
-    #       # This is the max calculation
-    #       max_score_index = scores.each_with_index.max[1]
-    #       @choice = moves[max_score_index]
-    #       return scores[max_score_index]
-    #   else
-    #       # This is the min calculation
-    #       min_score_index = scores.each_with_index.min[1]
-    #       @choice = moves[min_score_index]
-    #       return scores[min_score_index]
-    #   end
-    # end
+      HB.MakeMove(move)
+      if ply == 0:
+        score = self.evaluateBoard(HB)
+      else:
+        score = minPlay(HB, ply-1)
+      if score > best_score:
+        best_move = move
+        best_score = score
+      return best_score
 
   def chooseMove(self,board):
-    # Look at all the moves,
-    # choose the best one.
+    # call minimax algorithm
+    move = self.miniMax(board, self.currentColour, self.ply)
     # return that move.
-    return False
+    return move
   
 
 def main():
