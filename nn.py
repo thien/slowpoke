@@ -358,9 +358,44 @@ class Alakazam:
     return result
 
   def miniMax(self, B, ply):
+    def minPlay(B, ply):
+      if B.is_over():
+        return 1
+      moves = B.get_moves()
+      best_score = float('inf')
+      for move in moves:
+        HB = B.copy()
+        HB.MakeMove(move)
+        if ply == 0:
+          score = self.evaluateBoard(HB)
+        else:
+          score = maxPlay(HB, ply-1)
+        if score < best_score:
+          best_move = move
+          best_score = score
+        return best_score
+    def maxPlay(B, ply):
+      if B.is_over():
+        return -1
+      moves = B.get_moves()
+      best_score = float('-inf')
+      for move in moves:
+        HB = B.copy()
+        HB.MakeMove(move)
+        if ply == 0:
+          score = self.evaluateBoard(HB)
+        else:
+          score = minPlay(HB, ply-1)
+        if score > best_score:
+          best_move = move
+          best_score = score
+        return best_score
+
     moves = B.get_moves()
     best_move = moves[0]
     best_score = float('-inf')
+
+    # iterate through the current possible moves.
     for move in moves:
       HB = B.copy()
       HB.MakeMove(move)
@@ -373,43 +408,77 @@ class Alakazam:
         best_score = score
       return best_move
 
-  def minPlay(self, B, ply):
-    if B.is_over():
-      return 1
-    moves = B.get_moves()
-    best_score = float('inf')
-    for move in moves:
-      HB = B.copy()
-      HB.MakeMove(move)
-      if ply == 0:
-        score = self.evaluateBoard(HB)
-      else:
-        score = maxPlay(HB, ply-1)
-      if score < best_score:
-        best_move = move
-        best_score = score
-      return best_score
+  def miniMaxAB(self, B, ply):
+    def minPlayAB(B, ply, alpha, beta):
+      if B.is_over():
+        return 1
 
-  def maxPlay(self, B, ply):
-    if B.is_over():
-      return -1
+      # get the moves
+      moves = B.get_moves()
+
+      # iterate through moves
+      for move in moves:
+        HB = B.copy()
+        HB.MakeMove(move)
+
+        if ply == 0:
+          score = self.evaluateBoard(HB)
+        else:
+          score = maxPlayAB(HB, ply-1, alpha, beta)
+
+        if score < beta:
+          beta = score
+        if beta <= alpha:
+          return beta
+      return beta
+
+    def maxPlayAB(B, ply, alpha, beta):
+      if B.is_over():
+        return -1
+
+      # get the moves
+      moves = B.get_moves()
+
+      # iterate through moves
+      for move in moves:
+        HB = B.copy()
+        HB.MakeMove(move)
+
+        if ply == 0:
+          score = self.evaluateBoard(HB)
+        else:
+          score = minPlayAB(HB, ply-1, alpha, beta)
+
+        if score > alpha:
+          alpha = score
+        if alpha >= beta:
+          return alpha  
+      return alpha
+
+    # ---------------------------------------------
     moves = B.get_moves()
+    best_move = moves[0]
     best_score = float('-inf')
+
+    alpha = float('-inf')
+    beta = float('inf')
+
+    # iterate through the current possible moves.
     for move in moves:
       HB = B.copy()
       HB.MakeMove(move)
       if ply == 0:
         score = self.evaluateBoard(HB)
       else:
-        score = minPlay(HB, ply-1)
-      if score > best_score:
+        score = minPlayAB(HB, ply-1, alpha, beta)
+      if rating > best_score:
         best_move = move
         best_score = score
-      return best_score
+    return best_move
 
   def chooseMove(self,board):
     # call minimax algorithm
-    move = self.miniMax(board, self.currentColour, self.ply)
+    move = self.miniMaxAB(board, self.currentColour, self.ply)
     # return that move.
     return move
   
