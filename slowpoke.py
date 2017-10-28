@@ -378,10 +378,10 @@ class Slowpoke:
     colour = self.currentColour
     boardStatus = board.getBoardPosWeighted(self.currentColour, self.customWeights)
     # Get an array of the board.
-    boardArray = np.array(board,dtype=np.float32)
+    boardArray = np.array(boardStatus,dtype=np.float32)
     # Evaluate the board array using our CNN.
-    result = nn.evaluateBoard(boardArray)
-    showVector(result, 4)
+    result = self.nn.evaluateBoard(boardArray)
+
     # Return the results.
     return result
 
@@ -393,7 +393,7 @@ class Slowpoke:
       best_score = float('inf')
       for move in moves:
         HB = B.copy()
-        HB.MakeMove(move)
+        HB.make_move(move)
         if ply == 0:
           score = self.evaluateBoard(HB)
         else:
@@ -409,7 +409,7 @@ class Slowpoke:
       best_score = float('-inf')
       for move in moves:
         HB = B.copy()
-        HB.MakeMove(move)
+        HB.make_move(move)
         if ply == 0:
           score = self.evaluateBoard(HB)
         else:
@@ -426,7 +426,7 @@ class Slowpoke:
     # iterate through the current possible moves.
     for move in moves:
       HB = B.copy()
-      HB.MakeMove(move)
+      HB.make_move(move)
       if ply == 0:
         score = self.evaluateBoard(HB)
       else:
@@ -447,7 +447,7 @@ class Slowpoke:
       # iterate through moves
       for move in moves:
         HB = B.copy()
-        HB.MakeMove(move)
+        HB.make_move(move)
 
         if ply == 0:
           score = self.evaluateBoard(HB)
@@ -470,7 +470,7 @@ class Slowpoke:
       # iterate through moves
       for move in moves:
         HB = B.copy()
-        HB.MakeMove(move)
+        HB.make_move(move)
 
         if ply == 0:
           score = self.evaluateBoard(HB)
@@ -494,12 +494,12 @@ class Slowpoke:
     # iterate through the current possible moves.
     for move in moves:
       HB = B.copy()
-      HB.MakeMove(move)
+      HB.make_move(move)
       if ply == 0:
         score = self.evaluateBoard(HB)
       else:
         score = minPlayAB(HB, ply-1, alpha, beta)
-      if rating > best_score:
+      if score > best_score:
         best_move = move
         best_score = score
     return best_move
