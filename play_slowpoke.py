@@ -75,6 +75,7 @@ def playSlowpoke():
     B = checkers.CheckerBoard()
     current_player = B.active
     print ("Black moves first.")
+    # Start the game loop.
     while not B.is_over():
         print (B)
         if  B.turnCount % 2 != choice:
