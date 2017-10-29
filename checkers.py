@@ -12,7 +12,7 @@ Black, White = 0, 1
 empty = -1
 blackKing = 2
 whiteKing = 3
-
+boringNoEatLimit = 50
 
 # The IBM704 had 36-bit words. Arthur Samuel used the extra bits to
 # ensure that every normal move could be performed by flipping the
@@ -52,7 +52,7 @@ class CheckerBoard:
     Prints the PGN of the game.
     """
     def print_pgn(self):
-        return self.pgn
+        return self.pdn
     
     """
     Resets current state to new game.
@@ -75,11 +75,12 @@ class CheckerBoard:
         self.jump = 0
         self.mandatoryJumps = []
 
-        self.pgn = self.init_pgn()
+        self.pdn = self.init_pgn()
         self.turnCount = 0
         self.multipleJumpStack = []
         self.state = []
         self.winner = None
+        self.noEatCount = 0
 
     """
     Updates the game state to reflect the effects of the input
@@ -122,6 +123,7 @@ class CheckerBoard:
 
         # if theres a jump, see if the user needs to make more jumps.
         if self.jump:
+            self.noEatCount = 0
             self.mandatoryJumps = self.jumps_from(destination)
             # now put the previous position on cache.
             positions = moveString.split("x")
@@ -129,6 +131,8 @@ class CheckerBoard:
             self.multipleJumpStack.append(positions[1])
             if self.mandatoryJumps:
                 return
+        else:
+            self.noEatCount += 1
 
         if active == Black and (destination & 0x780000000) != 0:
             self.backward[Black] |= destination
@@ -138,10 +142,10 @@ class CheckerBoard:
         # need to add the move to the list of moves.
         if len(self.multipleJumpStack) > 0:
             # concatenate the move attack into one string.
-            self.pgn["Moves"].append("x".join(self.multipleJumpStack))
+            self.pdn["Moves"].append("x".join(self.multipleJumpStack))
             self.multipleJumpStack = []
         else:
-            self.pgn["Moves"].append(moveString)
+            self.pdn["Moves"].append(moveString)
         # reset the number of jumps, switch players and continue.
         self.jump = 0
         self.active, self.passive = self.passive, self.active
@@ -323,12 +327,18 @@ class CheckerBoard:
     Returns true if there are no more possible moves to make.
     """
     def is_over(self):
-        # probably the smallest function here.
-        if len(self.get_moves()) == 0:
+        # If there's enough moves where nobody is being jumped on, 
+        # then call it a draw.
+        if self.noEatCount == boringNoEatLimit:
             self.checkWinner()
             return True
         else:
-            return False
+            # someone has actually lost.
+            if len(self.get_moves()) == 0:
+                self.checkWinner()
+                return True
+            else:
+                return False
 
     """
     Returns a new board with the exact same state as the calling object.
@@ -343,6 +353,7 @@ class CheckerBoard:
         B.mandatoryJumps = [x for x in self.mandatoryJumps]
         B.passive = self.passive
         B.pieces = [x for x in self.pieces]
+        B.noEatCount = self.noEatCount
         return B
 
     """
@@ -404,16 +415,24 @@ class CheckerBoard:
     Checks for a winner.
     """
     def checkWinner(self):
-        if self.active == White:
+        if self.noEatCount == boringNoEatLimit:
+            self.winner = empty
+            self.pdn["Winner"] = empty
+            self.pdn["Result"] = "1/2-1/2"
+        elif self.active == White:
             self.winner = Black
-            self.pgn["Result"] = "1-0"
+            self.pdn["Winner"] = Black
+            self.pdn["Result"] = "1-0"
         else:
             self.winner = White
-            self.pgn["Result"] = "0-1"
+            self.pdn["Winner"] = White
+            self.pdn["Result"] = "0-1"
 
     def getWinnerMessage(self):
         if self.winner == Black:
             print ("Congrats Black, you win!")
+        elif self.winner == empty:
+            print ("It's a draw!")
         else:
             print ("Congrats White, you win!")
 
@@ -431,7 +450,7 @@ class CheckerBoard:
             if self.active == White:
                 current = "W"
             li = current + ":W" + White_list + ":" + "B" + Black_list
-            self.pgn["FEN"] = li
+            self.pdn["FEN"] = li
 
         # shorthand code for calculating the cell position.
         def cellPos(i,j):

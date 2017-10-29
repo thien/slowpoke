@@ -12,6 +12,7 @@ class Agent:
   def __init__(self, bot):
     self.bot = bot
     self.elo = 1600
+    self.points = 0
     self.move_function = bot.move_function
     self.colour = None
 
