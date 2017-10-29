@@ -1,13 +1,25 @@
-# Andrew Edwards -- almostimplemented.com
-# =======================================
-# A checkers agent class.
-#
-# Last updated: July 21, 2014
+"""
+Agent
 
+This represents a computer player;
+It'll contain information about its ranking,
+and its move function.
 
-class CheckersAgent:
-    def __init__(self, move_function):
-        self.move_function = move_function
+It also has a default ELO.
+"""
 
-    def make_move(self, board):
-        return self.move_function(board)
+class Agent:
+  def __init__(self, bot):
+    self.bot = bot
+    self.elo = 1600
+    self.points = 0
+    self.move_function = bot.move_function
+    self.colour = None
+
+  def assignColour(self,colID):
+    # black is 0, white is 1
+    self.colour = colID
+    self.bot.currentColour = colID
+
+  def make_move(self, board):
+    return self.bot.move_function(board)

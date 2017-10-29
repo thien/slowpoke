@@ -27,6 +27,7 @@ def printStatus(B):
     print("--------")
     print (B)
     print(B.pgn)
+    print(B.AIBoardPos)
     # print(B.moves())
     print("--------")
 
@@ -73,7 +74,7 @@ def play2Player():
             current_player = B.active
     # print for the last time before showing the winner.
     print(B)
-    B.checkWinner()
+    B.getWinnerMessage()
 
     return 0
 
@@ -112,20 +113,22 @@ def playCPU():
             else:
                 current_player = B.active
     print (B)
-    B.checkWinner()
+    B.getWinnerMessage()
     return 0
 
-def BotGame():
-    agent_module = input("Enter name of first agent module: ");
+def slowpokeGame():
+    agent_module = "alakazam";
     __import__(agent_module)
     agent_module = sys.modules[agent_module]
     cpu_1 = agent.CheckersAgent(agent_module.move_function)
-    agent_module = input("Enter name of second agent module: ");
-    __import__(agent_module)
+    # agent_module = input("Enter name of second agent module: ");
+    # __import__(agent_module)
     agent_module = sys.modules[agent_module]
     cpu_2 = agent.CheckersAgent(agent_module.move_function)
-    debug = input("Would you like to step through game play? [Y/N]: ")
-    debug = 1 if debug.lower()[0] == 'y' else 0
+    # debug = input("Would you like to step through game play? [Y/N]: ")
+    # debug = 1 if debug.lower()[0] == 'y' else 0
+        
+    # start game.
     B = checkers.CheckerBoard()
     current_player = B.active
     if debug:
@@ -140,13 +143,44 @@ def BotGame():
             while B.active == current_player and not B.is_over():
                 B.make_move(cpu_2.make_move(B))
             current_player = B.active
-        B.checkWinner()
+        B.getWinnerMessage()
+        print(B.pgn)
+        return 0
+
+def BotGame():
+    agent_module = input("Enter name of first agent module: ");
+    __import__(agent_module)
+    agent_module = sys.modules[agent_module]
+    cpu_1 = agent.CheckersAgent(agent_module.move_function)
+    agent_module = input("Enter name of second agent module: ");
+    __import__(agent_module)
+    agent_module = sys.modules[agent_module]
+    cpu_2 = agent.CheckersAgent(agent_module.move_function)
+    debug = input("Would you like to step through game play? [Y/N]: ")
+    debug = 1 if debug.lower()[0] == 'y' else 0
+        
+    # start game.
+    B = checkers.CheckerBoard()
+    current_player = B.active
+    if debug:
+        print ("sorry not ready")
+        return 0
+    else:
+        while not B.is_over():
+            B.make_move(cpu_1.make_move(B))
+            if B.active == current_player:
+                continue
+            current_player = B.active
+            while B.active == current_player and not B.is_over():
+                B.make_move(cpu_2.make_move(B))
+            current_player = B.active
+        B.getWinnerMessage()
         print(B.pgn)
         return 0
 
 def main():
-    handlePlayerOption()
-    # play2Player()
+    # handlePlayerOption()
+    play2Player()
 
 if __name__ == '__main__':
     try:
