@@ -5,6 +5,9 @@ import operator
 from random import randint
 
 
+# TODO: Consider Multithreading
+# TODO: Store results and player information into db
+
 Black, White, empty = 0, 1, -1
 
 def botGame(blackCPU, whiteCPU):
@@ -40,17 +43,18 @@ def botGame(blackCPU, whiteCPU):
     # once game is done, return the pgn
     return B.pdn
 
-# bot1 = sp.Slowpoke()
-# # initiate agent for Slowpoke (we'll need this so we can make competitions.)
-# cpu1 = agent.Agent(bot1)
+def sampleGame():
+    # initiate agent for Slowpoke (we'll need this so we can make competitions.)
+    bot1 = sp.Slowpoke()
+    cpu1 = agent.Agent(bot1)
 
-# bot2 = sp.Slowpoke()
-# # initiate agent for Slowpoke (we'll need this so we can make competitions.)
-# cpu2 = agent.Agent(bot2)
+    bot2 = sp.Slowpoke()
+    cpu2 = agent.Agent(bot2)
 
-# results = botGame(cpu1, cpu2)
-# print(results)
-
+    # make them play a game.
+    results = botGame(cpu1, cpu2)
+    # print results.
+    print(results)
 
 def Tournament(tournamentSize, gameRounds):
     # initiate bots.
@@ -90,7 +94,7 @@ def Tournament(tournamentSize, gameRounds):
         print(players_ranking[i].points)
 
 
-def crossOver(cpu1, cpu2):
-    
+# def crossOver(cpu1, cpu2):
+
 
 Tournament(6,5)
