@@ -1,9 +1,12 @@
 import agent
 import checkers
+import random
 import slowpoke as sp
 import operator
+import numpy as np
 from random import randint
-
+from multiprocessing import Pool
+pool = Pool()
 
 # TODO: Consider Multithreading
 # TODO: Store results and player information into db
@@ -56,14 +59,24 @@ def sampleGame():
     # print results.
     print(results)
 
-def Tournament(tournamentSize, gameRounds):
-    # initiate bots.
+def generatePlayers(tournamentSize=5):
+    """
+    Generates Players to participate in the tournament.
+    This is only called at the beginning of the genetic algorithm.
+    """
     participants = []
     for i in range(tournamentSize):
         bot = sp.Slowpoke()
         cpu = agent.Agent(bot)
         # add it to the list.
         participants.append(cpu)
+    return participants
+
+def Tournament(participants, gameRounds):
+    """
+    Tournament; this determines the best players out of them all.
+    returns the players in order of how good they are.
+    """
 
     # make bots play each other.
     for i in range(len(participants)):
@@ -77,6 +90,7 @@ def Tournament(tournamentSize, gameRounds):
             # cpu1 is black, cpu2 is white
             cpu1 = participants[i]
             cpu2 = participants[rand]
+            # make the bots play a game.
             results = botGame(cpu1, cpu2)
             # allocate points for each player.
             if results["Winner"] == Black:
@@ -89,12 +103,77 @@ def Tournament(tournamentSize, gameRounds):
     # order the players by how good they are.
     players_ranking = sorted(participants, key=operator.attrgetter('points'))
 
-    # return top 3
-    for i in range(len(players_ranking)):
-        print(players_ranking[i].points)
+    # # return r
+    # for i in range(len(players_ranking)):
+    #     print(players_ranking[i].points)
+    return players_ranking
 
+def crossOver(cpu1, cpu2):
+    """
+    Basic Crossover Algorithm for the GA.
+    """
 
-# def crossOver(cpu1, cpu2):
+    mother = cpu1.bot.nn.getWeights()
+    father = cpu2.bot.nn.getWeights()
 
+    # generate random indexes to cut off for crossover
+    index1 = random.randint(0, len(mother))
+    index2 = random.randint(0, len(mother))
 
-Tournament(6,5)
+    # check the order of the indexes to make sure they make sense.
+    if index1 > index2: 
+        index1, index2 = index2, index1
+
+    # pythonic crossover
+    child1W = np.append(np.append(father[:index1], mother[index1:index2]), father[index2:])
+    child2W = np.append(np.append(mother[:index1], father[index1:index2]), mother[index2:])
+    
+    # create new children with it
+    child1 = cpu1
+    child1.bot.nn.setWeights(child1W)
+    child2 = cpu2
+    child2.bot.nn.setWeights(child2W)
+
+    # return the pair of children
+    return (child1,child2)  
+
+def mutate(cpu):
+    return cpu
+
+def generateNewPopulation(players, populationCount):
+    # we half it and get the ceiling to put a cap on offspring
+    player_choice_threshold = math.ceil(populationCount/2)
+
+    offsprings = []
+
+    for i in range(len(player_choice_threshold)):
+        mother = players.pop(0)
+        father = players.pop(0)
+        # perform crossover
+        children = crossOver(mother, father)
+        # mutate new species and then add it to the offspring
+        # list, ready to run on the next generation.
+        for i in children:
+            children[i] = mutate(children[i])
+            offsprings.append(children[i])
+
+    return offsprings[:populationCount]
+
+def GeneticAlgorithm(populationCount=5, generations):
+    # generate players
+    participants = generatePlayers(populationCount)
+
+    # loop through tournament
+    for i in range(generations):
+        print("Playing on Generation:", i)
+        # make bots play each other.
+        players = Tournament(participants, 5) 
+        # get the best players
+        participants = generateNewPopulation(players, populationCount)
+    return False
+
+# Tournament(6,5)
+
+players = generatePlayers(2)
+cpu1, cpu2 = players[0], players[1]
+crossOver(cpu1,cpu2)
