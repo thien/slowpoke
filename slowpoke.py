@@ -71,7 +71,7 @@ class Slowpoke:
     self.weights = []
     self.kingWeight = 1.5
     self.nn = False
-    self.ply = 4
+    self.ply = 1
     self.currentColour = None
 
     """
@@ -120,7 +120,7 @@ class Slowpoke:
     # Get an array of the board.
     boardArray = np.array(boardStatus,dtype=np.float32)
     # Evaluate the board array using our CNN.
-    result = self.nn.evaluateBoard(boardArray)
+    result = self.nn.computeOutputs(boardStatus)
 
     # Return the results.
     return result

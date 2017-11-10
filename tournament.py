@@ -4,6 +4,7 @@ import random
 import slowpoke as sp
 import operator
 import numpy as np
+import math
 from random import randint
 from multiprocessing import Pool
 pool = Pool()
@@ -146,7 +147,7 @@ def generateNewPopulation(players, populationCount):
 
     offsprings = []
 
-    for i in range(len(player_choice_threshold)):
+    for i in range(player_choice_threshold):
         mother = players.pop(0)
         father = players.pop(0)
         # perform crossover
@@ -159,7 +160,7 @@ def generateNewPopulation(players, populationCount):
 
     return offsprings[:populationCount]
 
-def GeneticAlgorithm(populationCount=5, generations):
+def GeneticAlgorithm(generations, populationCount=5):
     # generate players
     participants = generatePlayers(populationCount)
 
@@ -173,7 +174,5 @@ def GeneticAlgorithm(populationCount=5, generations):
     return False
 
 # Tournament(6,5)
-
-players = generatePlayers(2)
-cpu1, cpu2 = players[0], players[1]
-crossOver(cpu1,cpu2)
+if __name__ == "__main__":
+    GeneticAlgorithm(4, 2)
