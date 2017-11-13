@@ -5,16 +5,31 @@ import slowpoke as sp
 import operator
 import numpy as np
 import math
+import json
 from random import randint
 from multiprocessing import Pool
 pool = Pool()
 
+# TODO: CREATE JSON FOR GENERATION
+# TODO: CREATE JSON FOR TOURNAMENT
 # TODO: Consider Multithreading
 # TODO: Store results and player information into db
 
 Black, White, empty = 0, 1, -1
 
-def botGame(blackCPU, whiteCPU):
+
+def loadJSONConfigs(file_directory):
+    json_data = open(file_directory).read()
+    data = json.loads(json_data)
+    return data
+
+def storePlayer():
+    return False
+
+def storeTournamentGame():
+    return False
+
+def botGame(blackCPU, whiteCPU, storeToMongo=False):
     # assign colours
     blackCPU.assignColour(Black)
     whiteCPU.assignColour(White)
@@ -44,6 +59,7 @@ def botGame(blackCPU, whiteCPU):
             else:
                 current_player = B.active
         print(B)
+        # store the game to MongoDB.
     # once game is done, return the pgn
     return B.pdn
 
@@ -73,12 +89,12 @@ def generatePlayers(tournamentSize=5):
         participants.append(cpu)
     return participants
 
-def Tournament(participants, gameRounds):
+def Tournament(participants, gameRounds, storeToMongo=False):
     """
     Tournament; this determines the best players out of them all.
     returns the players in order of how good they are.
     """
-
+    # TODO: CREATE JSON FOR TOURNAMENT
     # make bots play each other.
     for i in range(len(participants)):
         for j in range(gameRounds):
@@ -166,6 +182,7 @@ def GeneticAlgorithm(generations, populationCount=5):
 
     # loop through tournament
     for i in range(generations):
+        # TODO: CREATE JSON FOR GENERATION
         print("Playing on Generation:", i)
         # make bots play each other.
         players = Tournament(participants, 5) 
