@@ -8,6 +8,8 @@ and its move function.
 It also has a default ELO.
 """
 
+import hashlib
+
 class Agent:
   def __init__(self, bot):
     self.bot = bot
@@ -15,6 +17,9 @@ class Agent:
     self.points = 0
     self.move_function = bot.move_function
     self.colour = None
+
+  def generateID(self):
+    self._id = hashlib.md5(bot.nn.weights).hexdigest()
 
   def assignColour(self,colID):
     # black is 0, white is 1
