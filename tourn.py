@@ -16,14 +16,17 @@ from pymongo import MongoClient
 from multiprocessing import Pool
 pool = Pool()
 
+# TODO: Consider Multithreading
+# TODO: Store results and player information into db
+
+Black, White, empty = 0, 1, -1
 
 class Generator:
-# -------------------------------------------------------------------------
     """
-        Configuration Functions
+    Configuration Functions
     """
 
-    def __init__(self, generationCount=100, population=15, configpath):
+    def __init__(self, configpath, generationCount=100, population=15):
         # Declare base information
         self.generations = generationCount
         self.population = population
@@ -39,8 +42,8 @@ class Generator:
         """
         Loads config.json
         """
-        json_data = open(filepath).read()
-        data = json.loads(filepath)
+        with open(filepath) as json_file:
+            data = json.load(json_file)
         return data
 
 # -------------------------------------------------------------------------
@@ -58,6 +61,7 @@ class Generator:
         try:
             mongo = MongoClient(self.config['MongoURI'])
             self.db = mongo.zephyr
+            print(self.db)
             print("Successfully connected to Mongo.")
         except Exception as e:
             print(e)
@@ -68,49 +72,30 @@ class Generator:
     # Helper Functions - here to make the code cleaner.
     # ----------------------------
     def mongoWrite(self, collection, entry):
-        mongo_id = self.db['generation'].insert(generation)
+        mongo_id = self.db[collection].insert(entry)
         return mongo_id
     
     def mongoUpdate(self, collection, mid, entry):
         self.db[collection].update_one({'_id':mid}, {"$set": entry}, upsert=False)
 
-    # # ----------------------------
-    # # Generations
-    # # ----------------------------
-    # def writeGenerationStats(self, generation):
-    #     return mongoWrite('generation', generation)
-    
-    # def updateGenerationStats(self, mongo_id, generation):
-    #     return mongoUpdate('generation', mongo_id, generation)
-
-    # # ----------------------------
-    # # Tournaments
-    # # ----------------------------
-    # def writeTournamentStats(self, tournament):
-    #     return mongoWrite('tournament', tournament)
-
-    # def updateTournamentStats(self, mongo_id, tournament):
-    #     return mongoUpdate('tournament', mongo_id, tournament)
-
-    # # ----------------------------
-    # # Players
-    # # ----------------------------
-    # def writePlayerStats(self, player):
-    #     mongo_id = self.db['players'].insert(player)
-    #     return mongo_id
-
-    # def updatePlayerStats(self, mongo_id, player):
-    #     self.db['players'].update_one({'_id':mongo_id}, {"$set": player}, upsert=False)
 # -------------------------------------------------------------------------
 
-    def playGame(self, blackCPU, whiteCPU):
+    def playGame(self, blackCPU, whiteCPU, gameID="NULL", generationID="NULL"):
         # assign colours
         blackCPU.assignColour(Black)
         whiteCPU.assignColour(White)
 
         B = checkers.CheckerBoard()
-        current_player = B.active
+        # set the ID for this game.
+        B.setID(gameID)
+        B.pdn['Black'] : blackCPU.id
+        B.pdn['White'] : whiteCPU.id
 
+        # add the game to mongo.
+        mongoGame_id = self.db['generation']['games'].insert(B.pdn)
+
+        # set game settings
+        current_player = B.active
         choice = 0
         # Start the game loop.
         while not B.is_over():
@@ -134,7 +119,9 @@ class Generator:
                     current_player = B.active
             print(B)
             # store the game to MongoDB.
-        # once game is done, return the pgn
+            self.mongoUpdate('generation.games', mongoGame_id, B.pdn)
+        # once game is done, update the pdn with the results and return it.
+        self.mongoUpdate('generation.games', mongoGame_id, B.pdn)
         return B.pdn
 
     def sampleGame(self):
@@ -150,7 +137,7 @@ class Generator:
         cpu2 = agent.Agent(bot2)
 
         # make them play a game.
-        results = botGame(cpu1, cpu2)
+        results = self.playGame(cpu1, cpu2)
         # print results.
         print(results)
 
@@ -159,45 +146,47 @@ class Generator:
         Generates Players to participate in the tournament.
         This is only called at the beginning of the genetic algorithm.
         """
-        participants = []
+        population = []
         for i in range(self.population):
             bot = sp.Slowpoke()
             cpu = agent.Agent(bot)
             # add it to the list.
-            participants.append(cpu)
-        return participants
+            population.append(cpu)
+        return population
 
-    def Tournament(self, participants, generationID):
+    def Tournament(self, population, generationID):
         """
         Tournament; this determines the best players out of them all.
         returns the players in order of how good they are.
         """
-        participants = generation['participants']
         # TODO: CREATE JSON FOR TOURNAMENT
         # make bots play each other.
-        for i in range(len(participants)):
+        for i in range(len(population)):
             for j in range(self.tournamentRounds):
-
-                # choose a random number between 1 and participants.
-                rand = randint(0, len(participants)-1)
+                # choose a random number between 1 and population.
+                rand = randint(0, len(population)-1)
                 while (rand == i):
-                    rand = randint(0, len(participants)-1)
+                    rand = randint(0, len(population)-1)
 
                 # cpu1 is black, cpu2 is white
-                cpu1 = participants[i]
-                cpu2 = participants[rand]
+                cpu1 = population[i]
+                cpu2 = population[rand]
+                # generate ID for the game (so we can store it on Mongo)
+                IDPadding = str(generationID) +"_"+ str(i) +"_"+ str(j)
+                game_id = str(IDPadding) + cpu1.id + cpu2.id
+
                 # make the bots play a game.
-                results = self.botGame(cpu1, cpu2)
+                results = self.playGame(cpu1, cpu2, game_id, generationID)
                 # allocate points for each player.
                 if results["Winner"] == Black:
-                    participants[i].points += 1
-                    participants[rand].points -= 2
+                    population[i].points += 1
+                    population[rand].points -= 2
                 elif results["Winner"] == White:
-                    participants[i].points -= 2
-                    participants[rand].points += 1
+                    population[i].points -= 2
+                    population[rand].points += 1
                     
         # order the players by how good they are.
-        players_ranking = sorted(participants, key=operator.attrgetter('points'))
+        players_ranking = sorted(population, key=operator.attrgetter('points'))
 
         # # return r
         # for i in range(len(players_ranking)):
@@ -253,39 +242,50 @@ class Generator:
             mother = players.pop(0)
             father = players.pop(0)
             # perform crossover
-            children = crossOver(mother, father)
+            children = self.crossOver(mother, father)
             # mutate new species and then add it to the offspring
             # list, ready to run on the next generation.
             for i in children:
-                children[i] = mutate(children[i])
+                children[i] = self.mutate(children[i])
                 offsprings.append(children[i])
 
         return offsprings[:self.population]
     
+    def writePopulationToDB(self, population):
+        """
+        Stores the population into Mongo. 
+        """
+        keys = []
+        for i in population:
+            keys.append(self.mongoWrite('players', i.getDict()))
+        return keys
+
     def runGenerations(self):
         # generate the initial population.
-        participants = self.generatePlayers()
+        population = self.generatePlayers()
+
         # loop through the generations.
         for i in range(self.generations):
-            for i in participants:
-                participant_id = mongoWrite('players', i)
-            # initiate generation dict
+            # store the population into mongo
+            population_IDs = self.writePopulationToDB(population)
+            # initiate generation dict so that we can store it on mongo.
             generation = {
                 'count' : i,
-                'participants' : participants
+                'population' : population_IDs,
+                'games' : []
             }
-            # write to mongo.
-            generation_id = mongoWrite('generation', generation)
+            # write generation info to mongo.
+            generation_id = self.mongoWrite('generation', generation)
             # print debug.
             print("Playing on Generation:", i)
             # make bots play each other.
-            players = self.Tournament(participants, generation_id)
+            players = self.Tournament(population, generation_id)
             # get the best players and generate a new population from them.
-            participants = self.generateNewPopulation(players)
+            population = self.generateNewPopulation(players)
 
 def run():
     configpath = "config.json"
-    ga = Generator(10, 5, configpath)
+    ga = Generator(configpath,10, 5)
     ga.runGenerations()
 
 if __name__ == "__main__":

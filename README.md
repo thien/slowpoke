@@ -5,31 +5,23 @@ Zephyr is a checkboard playing program for my 3rd year dissertation.
 ### Mongo Setup
 
     Generations
-        Count:
+        Count: ✔️
             An integer representing the gen count.
-        Population:
+        Population: ✔️
             A list of Player ID's
-
-    Tournaments
-        generationID
-        Scores
-            {
-                PlayerID
-                Score
-            }
+        Players:
+            PlayerID
+            Score
         Games:
-            A list of Game ID's
+            Black
+            White
+            Date
+            Time
+            FEN
+            Result
+            Moves
 
-    Games
-        Black
-        White
-        Date
-        Time
-        FEN
-        Result
-        Moves
-
-    Players
+    Players ✔️
         ID
         ELO
         Weights

@@ -55,6 +55,13 @@ class CheckerBoard:
         return self.pdn
     
     """
+    Prints the PGN of the game.
+    """
+    def setID(self, game_id):
+        self.pdn['_id'] = game_id
+    
+
+    """
     Resets current state to new game.
     """
     def new_game(self):
