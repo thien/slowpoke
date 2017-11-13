@@ -63,35 +63,44 @@ class Generator:
             print(e)
             print("Warning: Slowpoke is not currently connected to a mongo instance.")
 
+
     # ----------------------------
-    # Generations
+    # Helper Functions - here to make the code cleaner.
     # ----------------------------
-    def writeGenerationStats(self, generation):
+    def mongoWrite(self, collection, entry):
         mongo_id = self.db['generation'].insert(generation)
         return mongo_id
     
-    def writeGenerationStats(self, mongo_id, generation):
-        self.db['generation'].update_one({'_id':mongo_id}, {"$set": generation}, upsert=False)
+    def mongoUpdate(self, collection, mid, entry):
+        self.db[collection].update_one({'_id':mid}, {"$set": entry}, upsert=False)
 
-    # ----------------------------
-    # Tournaments
-    # ----------------------------
-    def writeTournamentStats(self, tournament):
-        mongo_id = self.db['tournament'].insert(tournament)
-        return mongo_id
+    # # ----------------------------
+    # # Generations
+    # # ----------------------------
+    # def writeGenerationStats(self, generation):
+    #     return mongoWrite('generation', generation)
+    
+    # def updateGenerationStats(self, mongo_id, generation):
+    #     return mongoUpdate('generation', mongo_id, generation)
 
-    def updateTournamentStats(self, mongo_id, tournament):
-        self.db['tournament'].update_one({'_id':mongo_id}, {"$set": tournament}, upsert=False)
+    # # ----------------------------
+    # # Tournaments
+    # # ----------------------------
+    # def writeTournamentStats(self, tournament):
+    #     return mongoWrite('tournament', tournament)
 
-    # ----------------------------
-    # Players
-    # ----------------------------
-    def writePlayerStats(self, player):
-        mongo_id = self.db['players'].insert(player)
-        return mongo_id
+    # def updateTournamentStats(self, mongo_id, tournament):
+    #     return mongoUpdate('tournament', mongo_id, tournament)
 
-    def updatePlayerStats(self, mongo_id, player):
-        self.db['players'].update_one({'_id':mongo_id}, {"$set": player}, upsert=False)
+    # # ----------------------------
+    # # Players
+    # # ----------------------------
+    # def writePlayerStats(self, player):
+    #     mongo_id = self.db['players'].insert(player)
+    #     return mongo_id
+
+    # def updatePlayerStats(self, mongo_id, player):
+    #     self.db['players'].update_one({'_id':mongo_id}, {"$set": player}, upsert=False)
 # -------------------------------------------------------------------------
 
     def playGame(self, blackCPU, whiteCPU):
@@ -158,11 +167,12 @@ class Generator:
             participants.append(cpu)
         return participants
 
-    def Tournament(self, participants):
+    def Tournament(self, participants, generationID):
         """
         Tournament; this determines the best players out of them all.
         returns the players in order of how good they are.
         """
+        participants = generation['participants']
         # TODO: CREATE JSON FOR TOURNAMENT
         # make bots play each other.
         for i in range(len(participants)):
@@ -177,7 +187,7 @@ class Generator:
                 cpu1 = participants[i]
                 cpu2 = participants[rand]
                 # make the bots play a game.
-                results = botGame(cpu1, cpu2)
+                results = self.botGame(cpu1, cpu2)
                 # allocate points for each player.
                 if results["Winner"] == Black:
                     participants[i].points += 1
@@ -224,9 +234,16 @@ class Generator:
         return (child1,child2)  
 
     def mutate(self, cpu):
+        """
+        Mutate the weights of the neural network.
+        """
         return cpu
 
     def generateNewPopulation(self, players):
+        """
+        Input: list of players.
+        Output: a new list of players.
+        """
         # we half it and get the ceiling to put a cap on offspring
         player_choice_threshold = math.ceil(self.population/2)
 
@@ -246,15 +263,25 @@ class Generator:
         return offsprings[:self.population]
     
     def runGenerations(self):
+        # generate the initial population.
         participants = self.generatePlayers()
+        # loop through the generations.
         for i in range(self.generations):
-            # TODO: CREATE JSON FOR GENERATION
+            for i in participants:
+                participant_id = mongoWrite('players', i)
+            # initiate generation dict
+            generation = {
+                'count' : i,
+                'participants' : participants
+            }
+            # write to mongo.
+            generation_id = mongoWrite('generation', generation)
+            # print debug.
             print("Playing on Generation:", i)
             # make bots play each other.
-            players = self.Tournament(participants, 5) 
+            players = self.Tournament(participants, generation_id)
             # get the best players and generate a new population from them.
             participants = self.generateNewPopulation(players)
-        return false
 
 def run():
     configpath = "config.json"
