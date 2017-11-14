@@ -199,6 +199,17 @@ def sampleGame(self):
 
 Black, White, empty = 0, 1, -1
 
+def debugPrint(check, msg):
+    if check:
+        print(msg)
+
+def generateDebugMsg(debug, moveCount, B):
+    moveMsg = "Move: " + str(moveCount)
+    GenerationMsg = "Generation: " + str(debug['genCount']) + " | "
+    PlayersMsg = "Black: " + str(B.pdn['Black']) + " | White: " + str(B.pdn['White']) + " | "
+    msg = GenerationMsg + PlayersMsg + moveMsg
+    debugPrint(debug['printDebug'], msg)
+
 def tournamentMatch(blackCPU, whiteCPU, gameID="NULL", db=False, debug=False):
     # assign colours
     blackCPU.assignColour(Black)
@@ -218,7 +229,9 @@ def tournamentMatch(blackCPU, whiteCPU, gameID="NULL", db=False, debug=False):
     choice = 0
     # Start the game loop.
     while not B.is_over():
-        print("Game is currently on move:", B.turnCount)
+        # print move status.
+        generateDebugMsg(debug, str(B.turnCount), B)
+
         # game loop!
         if  B.turnCount % 2 != choice:
             botMove = blackCPU.make_move(B)
@@ -236,7 +249,8 @@ def tournamentMatch(blackCPU, whiteCPU, gameID="NULL", db=False, debug=False):
                 continue
             else:
                 current_player = B.active
-        print(B)
+        # print board.
+        debugPrint(debug['printBoard'], B)
         # store the game to MongoDB.
         db.update('games', mongoGame_id, B.pdn)
     # once game is done, update the pdn with the results and return it.

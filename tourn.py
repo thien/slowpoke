@@ -69,7 +69,6 @@ class Generator:
         Tournament; this determines the best players out of them all.
         returns the players in order of how good they are.
         """
-        # TODO: CREATE JSON FOR TOURNAMENT
         # make bots play each other.
         for i in range(len(population)):
             for j in range(self.tournamentRounds):
@@ -88,8 +87,16 @@ class Generator:
                 # update generations entry to include the game.
                 self.db.update('generation', generation['_id'], generation)
 
+                # set up debug file.
+                debug = {
+                    'genCount' : generation['count'],
+                    'printDebug' : True,
+                    'printBoard' : False,
+                    'genID' : generation['_id']
+                }
+
                 # make the bots play a game.
-                results = game.tournamentMatch(cpu1, cpu2, game_id, self.db)
+                results = game.tournamentMatch(cpu1, cpu2, game_id, self.db, debug)
                 # allocate points for each player.
                 if results["Winner"] == Black:
                     population[i].points += 1
