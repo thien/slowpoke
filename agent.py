@@ -17,6 +17,9 @@ class Agent:
     self.points = 0
     self.move_function = bot.move_function
     self.colour = None
+    self.genID()
+
+  def genID(self):
     self.id = hashlib.md5(self.bot.nn.weights).hexdigest()
 
   def getDict(self):
