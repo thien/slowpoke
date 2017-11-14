@@ -1,6 +1,7 @@
 import checkers
 import agent
 import sys
+import slowpoke as sp
 
 """
 Allows the user to decide what gameplay they want to play on.
@@ -177,6 +178,86 @@ def BotGame():
         B.getWinnerMessage()
         print(B.pgn)
         return 0
+
+# -----------
+
+def sampleGame(self):
+    """
+    Generates a sample game for testing purposes.
+    """
+    # initiate agent for Slowpoke (we'll need this so we can make competitions.)
+    bot1 = sp.Slowpoke()
+    cpu1 = agent.Agent(bot1)
+
+    bot2 = sp.Slowpoke()
+    cpu2 = agent.Agent(bot2)
+
+    # make them play a game.
+    results = self.playGame(cpu1, cpu2)
+    # print results.
+    print(results)
+
+Black, White, empty = 0, 1, -1
+
+def debugPrint(check, msg):
+    if check:
+        print(msg)
+
+def generateDebugMsg(debug, moveCount, B):
+    moveMsg = "Move: " + str(moveCount).zfill(3) 
+    GenerationMsg = "Gen: " + str(debug['genCount']) + " | "
+    PlayersMsg = "B: " + str(B.pdn['Black']) + " | W: " + str(B.pdn['White']) + " | "
+    msg = GenerationMsg + PlayersMsg + moveMsg
+    debugPrint(debug['printDebug'], msg)
+
+def tournamentMatch(blackCPU, whiteCPU, gameID="NULL", db=False, debug=False):
+    # assign colours
+    blackCPU.assignColour(Black)
+    whiteCPU.assignColour(White)
+
+    # initiate checkerboard.
+    B = checkers.CheckerBoard()
+    # set the ID for this game.
+    B.setID(gameID)
+    B.setColours(blackCPU.id, whiteCPU.id)
+
+    # add the game to mongo.
+    mongoGame_id = db.write('games', B.pdn)
+
+    # set game settings
+    current_player = B.active
+    choice = 0
+    # Start the game loop.
+    while not B.is_over():
+        # print move status.
+        generateDebugMsg(debug, str(B.turnCount), B)
+
+        # game loop!
+        if  B.turnCount % 2 != choice:
+            botMove = blackCPU.make_move(B)
+            B.make_move(botMove)
+            if B.active == current_player:
+                # Jumps must be taken; don't assign the next player.
+                continue
+            else:
+                current_player = B.active
+        else:
+            botMove = whiteCPU.make_move(B)
+            B.make_move(botMove)
+            if B.active == current_player:
+                # Jumps must be taken; don't assign the next player.
+                continue
+            else:
+                current_player = B.active
+        # print board.
+        debugPrint(debug['printBoard'], B)
+        # store the game to MongoDB.
+        db.update('games', mongoGame_id, B.pdn)
+    # once game is done, update the pdn with the results and return it.
+    db.update('games', mongoGame_id, B.pdn)
+    return B.pdn
+
+# -----------
 
 def main():
     # handlePlayerOption()

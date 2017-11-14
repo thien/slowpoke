@@ -1,42 +1,42 @@
 """
   Slowpoke
-                                    _.---"'----"'`--.._
-                               _,.-'                   `-._
-                           _,."                            -.
-                       .-""   ___...---------.._             `.
-                       `---'""                  `-.            `.
-                                                   `.            \
-                                                     `.           \
-                                                       \           \
-                                                        .           \
-                                                        |            .
-                                                        |            |
-                                  _________             |            |
-                            _,.-'"         `"'-.._      :            |
-                        _,-'                      `-._.'             |
-                     _.'                              `.             '
-          _.-.    _,+......__                           `.          .
-        .'    `-"'           `"-.,-""--._                 \        /
-       /    ,'                  |    __  \                 \      /
-      `   ..                       +"  )  \                 \    /
-       `.'  \          ,-"`-..    |       |                  \  /
-        / " |        .'       \   '.    _.'                   .'
-       |,.."--"-"--..|    "    |    `""`.                     |
-     ,"               `-._     |        |                     |
-   .'                     `-._+         |                     |
-  /                           `.                        /     |
-  |    `     '                  |                      /      |
-  `-.....--.__                  |              |      /       |
-     `./ "| / `-.........--.-   '              |    ,'        '
-       /| ||        `.'  ,'   .'               |_,-+         /
-      / ' '.`.        _,'   ,'     `.          |   '   _,.. /
-     /   `.  `"'"'""'"   _,^--------"`.        |    `.'_  _/
-    /... _.`:.________,.'              `._,.-..|        "'
-   `.__.'                                 `._  /
-                                             "' 
+                                      _.---"'----"'`--.._
+                                _,.-'                   `-._
+                            _,."                            -.
+                        .-""   ___...---------.._             `.
+                        `---'""                  `-.            `.
+                                                    `.            \
+                                                      `.           \
+                                                        \           \
+                                                          .           \
+                                                          |            .
+                                                          |            |
+                                    _________             |            |
+                              _,.-'"         `"'-.._      :            |
+                          _,-'                      `-._.'             |
+                      _.'                              `.             '
+            _.-.    _,+......__                           `.          .
+          .'    `-"'           `"-.,-""--._                 \        /
+        /    ,'                  |    __  \                 \      /
+        `   ..                       +"  )  \                 \    /
+        `.'  \          ,-"`-..    |       |                  \  /
+          / " |        .'       \   '.    _.'                   .'
+        |,.."--"-"--..|    "    |    `""`.                     |
+      ,"               `-._     |        |                     |
+    .'                     `-._+         |                     |
+    /                           `.                        /     |
+    |    `     '                  |                      /      |
+    `-.....--.__                  |              |      /       |
+      `./ "| / `-.........--.-   '              |    ,'        '
+        /| ||        `.'  ,'   .'               |_,-+         /
+        / ' '.`.        _,'   ,'     `.          |   '   _,.. /
+      /   `.  `"'"'""'"   _,^--------"`.        |    `.'_  _/
+      /... _.`:.________,.'              `._,.-..|        "'
+    `.__.'                                 `._  /
+                                              "' 
 
-Slowpoke is a draughts AI based on a convolutional neural network.
-It's been trained using genetic algorithms :)
+  Slowpoke is a draughts AI based on a convolutional neural network.
+  It's been trained using genetic algorithms :)
 """
 
 import numpy as np
@@ -71,7 +71,7 @@ class Slowpoke:
     self.weights = []
     self.kingWeight = 1.5
     self.nn = False
-    self.ply = 2
+    self.ply = 1
     self.currentColour = None
 
     """
@@ -120,7 +120,7 @@ class Slowpoke:
     # Get an array of the board.
     boardArray = np.array(boardStatus,dtype=np.float32)
     # Evaluate the board array using our CNN.
-    result = self.nn.evaluateBoard(boardArray)
+    result = self.nn.computeOutputs(boardStatus)
 
     # Return the results.
     return result
