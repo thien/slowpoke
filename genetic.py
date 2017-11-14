@@ -7,7 +7,6 @@ import math
 import random
 import numpy as np
 
-
 def generateNewPopulation(players, populationCount):
     """
     Input: list of players.
@@ -19,15 +18,24 @@ def generateNewPopulation(players, populationCount):
     offsprings = []
 
     for i in range(player_choice_threshold):
-        mother = players.pop(0)
-        father = players.pop(0)
-        # perform crossover
-        children = crossOver(mother, father)
-        # mutate new species and then add it to the offspring
-        # list, ready to run on the next generation.
-        for i in children:
-            offspring = mutate(i)
+        if len(players) > 1:
+            mother = players.pop(0)
+            father = players.pop(0)
+            # perform crossover
+            children = crossOver(mother, father)
+            # mutate new species and then add it to the offspring
+            # list, ready to run on the next generation.
+            for i in children:
+                offspring = mutate(i)
+                offsprings.append(offspring)
+        else:
+            parent = roulette(players)
+            offspring = mutate(parent)
             offsprings.append(offspring)
+
+    # now we need to generate new ID's for each player.
+    for i in offsprings:
+        i.genID()
 
     return offsprings[:populationCount]
 
@@ -59,9 +67,59 @@ def crossOver(cpu1, cpu2):
     # return the pair of children
     return (child1,child2)  
 
+def roulette(players):
+    """
+    Roulette algorithm for parent selection.
+    """
+    chosen = None
+    overallFitness = 0
+
+    # calculate the overall fitness
+    for i in players:
+        overallFitness += i.points
+    
+    # randomly shuffle the players around.
+    random.shuffle(players)
+
+    # initiate a list of probablities
+    probabilities = []
+
+    # calculate probabllities for each player.
+    for i in players:
+        probability = i.points / overallFitness
+        if len(probabilities) > 1:
+            probability = probability + probabilities[-1]
+        probabilities.append(probability)
+
+    # generate a random number
+    number = random.random()
+
+    # find a player.
+    for i in range(len(probabilities)):
+        if number < probabilities[i]:
+            # we have chosen a player.
+            chosen = players[i]
+            break
+    return chosen
+
 def mutate(cpu):
     """
     Mutate the weights of the neural network.
     """
+
+    mutationRate = 0.9
+
+    # generate a random number
+    chance = random.random()
+    if chance >= (1-mutationRate):
+        # mutate the weights.
+        weights = cpu.bot.nn.getWeights()
+        length = weights.size
+        base1 = weights[random.randint(0,length-1)]
+        base2 = weights[random.randint(0,length-1)]
+        temp = base1
+        np.place(weights, weights==base1, temp)
+        np.place(weights, weights==base2, base1)
+        np.place(weights, weights==temp, base2)
     return cpu
 
