@@ -64,22 +64,22 @@ class Generator:
             population.append(cpu)
         return population
 
-    def Tournament(self, population, generation):
+    def Tournament(self, players, generation):
         """
         Tournament; this determines the best players out of them all.
         returns the players in order of how good they are.
         """
         # make bots play each other.
-        for i in range(len(population)):
+        for i in range(len(players)):
             for j in range(self.tournamentRounds):
-                # choose a random number between 1 and population.
-                rand = randint(0, len(population)-1)
+                # choose a random number between 1 and the number of players.
+                rand = randint(0, len(players)-1)
                 while (rand == i):
-                    rand = randint(0, len(population)-1)
+                    rand = randint(0, len(players)-1)
 
                 # cpu1 is black, cpu2 is white
-                cpu1 = population[i]
-                cpu2 = population[rand]
+                cpu1 = players[i]
+                cpu2 = players[rand]
                 # generate ID for the game (so we can store it on Mongo)
                 IDPadding = generation['_id'] +"_"+ str(i) +"_"+ str(j)
                 game_id = IDPadding + cpu1.id + cpu2.id
@@ -99,19 +99,19 @@ class Generator:
                 results = game.tournamentMatch(cpu1, cpu2, game_id, self.db, debug)
                 # allocate points for each player.
                 if results["Winner"] == Black:
-                    population[i].points += 1
-                    population[rand].points -= 2
+                    players[i].points += 1
+                    players[rand].points -= 2
                 elif results["Winner"] == White:
-                    population[i].points -= 2
-                    population[rand].points += 1
+                    players[i].points -= 2
+                    players[rand].points += 1
                     
         # order the players by how good they are.
-        players_ranking = sorted(population, key=operator.attrgetter('points'))
+        players_ranked = sorted(players, key=operator.attrgetter('points'))
 
         # # return r
         # for i in range(len(players_ranking)):
         #     print(players_ranking[i].points)
-        return players_ranking
+        return players_ranked
         
     def writePopulationToDB(self, population):
         """
