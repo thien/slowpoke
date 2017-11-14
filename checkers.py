@@ -59,6 +59,10 @@ class CheckerBoard:
     """
     def setID(self, game_id):
         self.pdn['_id'] = game_id
+
+    def setColours(self, blackID, whiteID):
+        self.pdn['Black'] = blackID
+        self.pdn['White'] = whiteID
     
 
     """
