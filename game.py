@@ -204,9 +204,9 @@ def debugPrint(check, msg):
         print(msg)
 
 def generateDebugMsg(debug, moveCount, B):
-    moveMsg = "Move: " + str(moveCount)
-    GenerationMsg = "Generation: " + str(debug['genCount']) + " | "
-    PlayersMsg = "Black: " + str(B.pdn['Black']) + " | White: " + str(B.pdn['White']) + " | "
+    moveMsg = "Move: " + str(moveCount).zfill(3) 
+    GenerationMsg = "Gen: " + str(debug['genCount']) + " | "
+    PlayersMsg = "B: " + str(B.pdn['Black']) + " | W: " + str(B.pdn['White']) + " | "
     msg = GenerationMsg + PlayersMsg + moveMsg
     debugPrint(debug['printDebug'], msg)
 
