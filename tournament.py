@@ -1,6 +1,5 @@
 # import self packages
 import agent
-import checkers
 import random
 import slowpoke as sp
 import mongo
@@ -14,8 +13,7 @@ import json
 from random import randint
 
 # import multiprocessor
-from multiprocessing import Pool
-pool = Pool()
+from multiprocessing import Process, Queue
 
 # TODO: Consider Multithreading
 
@@ -69,15 +67,26 @@ class Generator:
         returns the players in order of how good they are.
         """
     
+        # create list of games that need to be executed
+        gamePool = []
+        # create game queue
+        queue = Queue()
+
+        # create game count statistics
+        gameCount, totalGames = 0, (len(players) * self.tournamentRounds)
         # make bots play each other.
         for i in range(len(players)):
             for j in range(self.tournamentRounds):
+                # increment game count.
+                gameCount+= 1
                 # set up debug file.
                 debug = {
                     'genCount' : generation['count'],
                     'printDebug' : True,
                     'printBoard' : False,
-                    'genID' : generation['_id']
+                    'genID' : generation['_id'],
+                    'gameCount' : gameCount,
+                    'totalGames' : totalGames
                 }
     
                 # choose a random number between 1 and the number of players.
@@ -91,15 +100,49 @@ class Generator:
                 game_id = self.generateGameID(generation['_id'], i, j, cpu1, cpu2)
                 generation['games'].append(game_id)
                 
-                # update generations entry to include the game.
+                # update generations entry in mongo to include the game.
                 self.db.update('generation', generation['_id'], generation)
 
-                # make the bots play a game.
-                results = game.tournamentMatch(cpu1, cpu2, game_id, self.db, debug)
+                # add the game to the list.
+                game = {
+                    'game_id' : game_id,
+                    'cpu1' : cpu1,
+                    'cpu2' : cpu2,
+                    'dbURI' : self.config['MongoURI'],
+                    'debug' : debug,
+                    'i' : i,
+                    'rand' : rand,
+                    'queue' : queue
+                }
+                
+                # add it to the list of games that need to be played.
+                p = Process(target=self.gameWorker, args=(game,))
+                poolEntry = {
+                    'pool' : p,
+                    'game' : game
+                }
+                
+                gamePool.append(poolEntry)
+                p.start()
+        
+        # make blockers for all the embarassingly parallel processes.
+        for j in gamePool:
+            j['pool'].join()
 
-                # allocate points for each player.
-                players[i], players[rand] = self.allocatePoints(results, players[i], players[rand])
-                    
+        # when the pool is done with processing, process the results.
+
+        counter = 0
+        for job in iter(queue.get, None):
+            counter += 1
+            # do stuff with job
+            print(job['black'])
+            if counter == totalGames:
+                break
+
+        # allocate scores at the end of the tournament round.
+        # for r in results:
+        #     players[i], players[rand] = self.allocatePoints(r, players[i], players[rand])
+
         # order the players by how good they are.
         players_ranked = sorted(players, key=operator.attrgetter('points'))
 
@@ -146,6 +189,16 @@ class Generator:
             population = ga.generateNewPopulation(players, self.population)
 
     @staticmethod
+    def gameWorker(i):
+        results = game.tournamentMatch(i['cpu1'], i['cpu2'], i['game_id'], i['dbURI'], i['debug'])
+        data = {
+            'game' : results,
+            'black' : i['i'],
+            'white':  i['rand']
+        }
+        i['queue'].put(data)
+
+    @staticmethod
     def randomPlayerRange(val, numberOfPlayers):
         # choose a random number between 1 and the number of players.
         rand = randint(0, numberOfPlayers-1)
@@ -173,7 +226,7 @@ class Generator:
 
 def run():
     configpath = "config.json"
-    ga = Generator(configpath,10, 5)
+    ga = Generator(configpath,4, 2)
     ga.runGenerations()
 
 if __name__ == "__main__":
