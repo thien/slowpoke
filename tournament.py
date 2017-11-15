@@ -15,7 +15,6 @@ from random import randint
 # import multiprocessor
 from multiprocessing import Process, Queue
 
-# TODO: Consider Multithreading
 
 Black, White, empty = 0, 1, -1
 
@@ -157,7 +156,11 @@ class Generator:
         """
         keys = []
         for i in population:
-            keys.append(self.db.write('players', i.getDict()))
+            if self.db.checkPlayerExists(i.id) == False:
+                entry = self.db.write('players', i.getDict())
+                keys.append(entry)
+            else:
+                keys.append(i.id)
         return keys
 
     def runGenerations(self):

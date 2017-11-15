@@ -39,3 +39,9 @@ class Mongo:
     def update(self, collection, mongo_id, entry):
         if self.connected:
             self.db[collection].update_one({'_id':mongo_id}, {"$set": entry}, upsert=False)
+
+    def checkPlayerExists(self, player_id):
+        if self.db['players'].find({'_id': player_id}).count() > 0:
+            return True
+        else:
+            return False
