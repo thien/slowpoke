@@ -18,7 +18,6 @@ from multiprocessing import Pool
 pool = Pool()
 
 # TODO: Consider Multithreading
-# TODO: Store results and player information into db
 
 Black, White, empty = 0, 1, -1
 
@@ -69,24 +68,10 @@ class Generator:
         Tournament; this determines the best players out of them all.
         returns the players in order of how good they are.
         """
+    
         # make bots play each other.
         for i in range(len(players)):
             for j in range(self.tournamentRounds):
-                # choose a random number between 1 and the number of players.
-                rand = randint(0, len(players)-1)
-                while (rand == i):
-                    rand = randint(0, len(players)-1)
-
-                # cpu1 is black, cpu2 is white
-                cpu1 = players[i]
-                cpu2 = players[rand]
-                # generate ID for the game (so we can store it on Mongo)
-                IDPadding = generation['_id'] +"_"+ str(i) +"_"+ str(j)
-                game_id = IDPadding + cpu1.id + cpu2.id
-                generation['games'].append(game_id)
-                # update generations entry to include the game.
-                self.db.update('generation', generation['_id'], generation)
-
                 # set up debug file.
                 debug = {
                     'genCount' : generation['count'],
@@ -94,16 +79,26 @@ class Generator:
                     'printBoard' : False,
                     'genID' : generation['_id']
                 }
+    
+                # choose a random number between 1 and the number of players.
+                rand = self.randomPlayerRange(i, len(players))
+
+                # cpu1 is black, cpu2 is white
+                cpu1 = players[i]
+                cpu2 = players[rand]
+
+                # generate ID for the game (so we can store it on Mongo)
+                game_id = self.generateGameID(generation['_id'], i, j, cpu1, cpu2)
+                generation['games'].append(game_id)
+                
+                # update generations entry to include the game.
+                self.db.update('generation', generation['_id'], generation)
 
                 # make the bots play a game.
                 results = game.tournamentMatch(cpu1, cpu2, game_id, self.db, debug)
+
                 # allocate points for each player.
-                if results["Winner"] == Black:
-                    players[i].points += 1
-                    players[rand].points -= 2
-                elif results["Winner"] == White:
-                    players[i].points -= 2
-                    players[rand].points += 1
+                players[i], players[rand] = self.allocatePoints(results, players[i], players[rand])
                     
         # order the players by how good they are.
         players_ranked = sorted(players, key=operator.attrgetter('points'))
@@ -149,6 +144,32 @@ class Generator:
             players = self.Tournament(population, generation)
             # get the best players and generate a new population from them.
             population = ga.generateNewPopulation(players, self.population)
+
+    @staticmethod
+    def randomPlayerRange(val, numberOfPlayers):
+        # choose a random number between 1 and the number of players.
+        rand = randint(0, numberOfPlayers-1)
+        while (rand == val):
+            rand = randint(0, numberOfPlayers-1)
+        return rand
+    
+    @staticmethod
+    def allocatePoints(results, blackPlayer, whitePlayer):
+        # allocates points to players dependent on the game results.
+        if results["Winner"] == Black:
+            blackPlayer.points += 1
+            whitePlayer.points -= 2
+        elif results["Winner"] == White:
+            blackPlayer.points -= 2
+            whitePlayer.points += 1
+        return (blackPlayer, whitePlayer)
+    
+    @staticmethod
+    def generateGameID(generationID, i,j, cpu1, cpu2):
+        # choose a random number between 1 and the number of players.
+        IDPadding = generationID +"_"+ str(i) +"_"+ str(j)
+        game_id = IDPadding + cpu1.id + cpu2.id
+        return game_id
 
 def run():
     configpath = "config.json"
