@@ -28,3 +28,11 @@ Zephyr is a checkboard playing program for my 3rd year dissertation.
         ID
         ELO
         Weights
+
+
+### Champion Algorithm
+
+- for champion:
+    play other champions
+    compute score difference
+- compute elo difference between last champion and current champion

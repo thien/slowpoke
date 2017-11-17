@@ -15,6 +15,7 @@ from random import randint
 # import multiprocessor
 from multiprocessing import Process, Queue
 
+# TODO: need to make the champion play previous champions and get scores
 
 Black, White, empty = 0, 1, -1
 
@@ -65,7 +66,7 @@ class Generator:
         Tournament; this determines the best players out of them all.
         returns the players in order of how good they are.
         """
-    
+        print(chr(27) + "[2J") # clear screen
         # create list of games that need to be executed
         gamePool = []
         # create game queue
@@ -123,31 +124,36 @@ class Generator:
                 
                 gamePool.append(poolEntry)
                 p.start()
-        
+
         # make blockers for all the embarassingly parallel processes.
         for j in gamePool:
             j['pool'].join()
-
-        # when the pool is done with processing, process the results.
-
+        
         counter = 0
+        # when the pool is done with processing, process the results.
         for job in iter(queue.get, None):
             counter += 1
             # do stuff with job
-            print(job['black'])
+            blackP = job['black']
+            whiteP = job['white']
+            # allocate scores at the end of the match
+            players[blackP], players[whiteP] = self.allocatePoints(job['game'], players[blackP], players[whiteP])
             if counter == totalGames:
                 break
 
-        # allocate scores at the end of the tournament round.
-        # for r in results:
-        #     players[i], players[rand] = self.allocatePoints(r, players[i], players[rand])
-
         # order the players by how good they are.
-        players_ranked = sorted(players, key=operator.attrgetter('points'))
+        players_ranked = sorted(players, key=operator.attrgetter('points'),reverse=True)
+
+        # iterate through the players and add their results to the generation store.
+        for i in players_ranked:
+            generation['results'][i.id] = i.points
+        
+        self.db.update('generation', generation['_id'], generation)
+        
 
         # # return r
-        # for i in range(len(players_ranking)):
-        #     print(players_ranking[i].points)
+        for i in range(len(players_ranked)):
+            print(players_ranked[i].id, players_ranked[i].points)
         return players_ranked
         
     def writePopulationToDB(self, population):
@@ -179,7 +185,8 @@ class Generator:
                 'timestamp' : timestamp,
                 'count' : i,
                 'population' : population_IDs,
-                'games' : []
+                'games' : [],
+                'results' : {}
             }
             # write generation info to mongo.
             self.db.write('generation', generation)
@@ -229,7 +236,7 @@ class Generator:
 
 def run():
     configpath = "config.json"
-    ga = Generator(configpath,4, 2)
+    ga = Generator(configpath,4, 5)
     ga.runGenerations()
 
 if __name__ == "__main__":
