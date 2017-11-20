@@ -236,7 +236,7 @@ class Generator:
 
 def run():
     configpath = "config.json"
-    ga = Generator(configpath,4, 5)
+    ga = Generator(configpath,40, 10)
     ga.runGenerations()
 
 if __name__ == "__main__":

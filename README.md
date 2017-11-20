@@ -33,6 +33,12 @@ Zephyr is a checkboard playing program for my 3rd year dissertation.
 ### Champion Algorithm
 
 - for champion:
-    play other champions
-    compute score difference
-- compute elo difference between last champion and current champion
+    if its the 1st generation:
+        default at 1000 elo
+    else:
+        with its elo score, play other champions; compute score difference:
+        - 2 games for each champion (black and white)
+
+- compute elo difference between last champion and current champion to measure relative performance increase.
+
+- each champion needs to store generation count on it.
