@@ -40,13 +40,19 @@ class Generator:
         """
         Loads config.json
         """
-        with open(filepath) as json_file:
-            data = json.load(json_file)
-        return data
+        try:
+            with open(filepath) as json_file:
+                data = json.load(json_file)
+            return data
+        except:
+            return False
 
     def initiateMongoConnection(self):
         self.db = mongo.Mongo()
-        self.db.initiate(self.config['MongoURI'])
+        try:
+            self.db.initiate(self.config['MongoURI'])
+        except:
+            continue
 
     def generatePlayers(self):
         """
