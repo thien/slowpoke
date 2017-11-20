@@ -52,7 +52,7 @@ class Generator:
         try:
             self.db.initiate(self.config['MongoURI'])
         except:
-            continue
+            pass
 
     def generatePlayers(self):
         """
