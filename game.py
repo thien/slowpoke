@@ -2,6 +2,7 @@ import checkers
 import agent
 import sys
 import slowpoke as sp
+import mongo
 
 """
 Allows the user to decide what gameplay they want to play on.
@@ -204,13 +205,20 @@ def debugPrint(check, msg):
         print(msg)
 
 def generateDebugMsg(debug, moveCount, B):
+    gameCountMsg = "Game: " + str(debug['gameCount']).zfill(2) + "/" + str(debug['totalGames']).zfill(2)
     moveMsg = "Move: " + str(moveCount).zfill(3) 
-    GenerationMsg = "Gen: " + str(debug['genCount']) + " | "
-    PlayersMsg = "B: " + str(B.pdn['Black']) + " | W: " + str(B.pdn['White']) + " | "
-    msg = GenerationMsg + PlayersMsg + moveMsg
+    GenerationMsg = "Gen: " + str(debug['genCount']).zfill(3) 
+    PlayersMsg = "B: " + str(B.pdn['Black']) + " | W: " + str(B.pdn['White'])
+    msg = [GenerationMsg, gameCountMsg, moveMsg, PlayersMsg]
+    msg = ' | '.join(msg)
     debugPrint(debug['printDebug'], msg)
 
-def tournamentMatch(blackCPU, whiteCPU, gameID="NULL", db=False, debug=False):
+def tournamentMatch(blackCPU, whiteCPU, gameID="NULL", dbURI=False, debug=False, multiProcessing=False):
+    # initiate connection to mongoDB
+    # this is needed because pymongo screams if you init prior fork.
+    db = mongo.Mongo()
+    db.initiate(dbURI)
+
     # assign colours
     blackCPU.assignColour(Black)
     whiteCPU.assignColour(White)
