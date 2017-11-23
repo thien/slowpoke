@@ -1,6 +1,12 @@
-# Zephyr
+# Slowpoke
 
-Zephyr is a checkboard playing program for my 3rd year dissertation.
+Slowpoke is a checkboard playing program for my 3rd year dissertation.
+
+### Running
+
+To run the program, all that is needed to run is the following line in the terminal:
+
+    python3 tournament.py
 
 ### Mongo Setup
 
