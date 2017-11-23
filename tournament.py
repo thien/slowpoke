@@ -45,7 +45,8 @@ class Generator:
                 data = json.load(json_file)
             return data
         except:
-            return False
+            data = {'MongoURI' : ""}
+            return data
 
     def initiateMongoConnection(self):
         self.db = mongo.Mongo()
@@ -167,12 +168,13 @@ class Generator:
         Stores the population into Mongo. 
         """
         keys = []
-        for i in population:
-            if self.db.checkPlayerExists(i.id) == False:
-                entry = self.db.write('players', i.getDict())
-                keys.append(entry)
-            else:
-                keys.append(i.id)
+        if self.db.connected:
+            for i in population:
+                if self.db.checkPlayerExists(i.id) == False:
+                    entry = self.db.write('players', i.getDict())
+                    keys.append(entry)
+                else:
+                    keys.append(i.id)
         return keys
 
     def runGenerations(self):

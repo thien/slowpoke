@@ -26,6 +26,7 @@ class Mongo:
             self.connected = True
             print("Successfully connected to Mongo.")
         except Exception as e:
+            self.connected = False
             print(e)
             print("Warning: Slowpoke is not currently connected to a mongo instance.")
 
