@@ -11,7 +11,7 @@ import datetime
 import operator
 import json
 from random import randint
-
+import elo
 
 import multiprocessing
 
@@ -29,8 +29,10 @@ class Generator:
         # Declare base information
         self.generations = generationCount
         self.population = population
-        self.processors = multiprocessing.cpu_count()-1
         self.champions = {}
+        self.progress = []
+        self.processors = multiprocessing.cpu_count()-1
+        self.pool = multiprocessing.Pool(processes=self.processors)
         # Initiate other information
         self.config = self.loadJSONConfig(configpath)
         # once we have the config file we can proceed and initiate our
@@ -82,6 +84,86 @@ class Generator:
                 else:
                     keys.append(i.id)
         return keys
+
+    def ELOShift(self, winner, black, white):
+        b_exp = elo.expected(black.elo, white.elo)
+        w_exp = elo.expected(white.elo, black.elo)
+        # initiate score outcomes
+        b_result = 0
+        w_result = 0
+        if winner == Black:
+            # black wins
+            b_result = 1
+            pass
+        elif winner == White:
+            # white wins
+            w_result = 1
+        else:
+            # draw
+            b_result = 0.5
+            w_result = 0.5
+        # calculate elo outcomes
+        black.elo = elo.elo(black.elo, b_exp, b_result, k=32)
+        white.elo = elo.elo(white.elo, w_exp, w_result, k=32)
+        return black, white
+
+    def poolChampGame(self, info):
+
+        bwgame = game.tournamentMatch(info['Black'], info['White'])
+        results = {
+            "Winner" : bwgame['Winner'],
+            "i" : info['i'],
+            "j" : info['j']
+        }
+        return results
+        # black, white = self.ELOShift(bwgame, black, white)
+
+    def runChampions(self):
+        print("RUNNING CHAMPION SIMULATION")
+        # load champs.
+        champs = self.champions
+        # check how many champs there are.
+        lenChamps = len(list(champs.keys()))
+        # if theres more than 2:
+        if lenChamps > 1:
+            champGames = []
+            i, j = lenChamps-2, lenChamps-1
+
+            info = {
+                'Black' : champs[i],
+                'White' : champs[j],
+                'i' : i,
+                'j' : j
+            }
+            champGames.append(info)
+            champGames.append(info)
+            champGames.append(info)
+            info = {
+                'Black' : champs[j],
+                'White' : champs[i],
+                'i' : j,
+                'j' : i
+            }
+            champGames.append(info)
+            champGames.append(info)
+
+            results = self.pool.map(self.poolChampGame, champGames)
+
+            for r in results:
+                champs[r['i']], champs[r['j']] = self.ELOShift(r['Winner'], champs[r['i']], champs[r['j']])
+
+            i, j = lenChamps-2, lenChamps-1
+            elo_difference = champs[j].elo - champs[i].elo
+            print("ELO DIFFERENCE:", elo_difference)
+            # store elo difference.
+            self.progress.append(champs[j].elo)
+            self.db.update('performance', self.performanceID, {"progress":self.progress})
+        else:
+            # theres only one champion, it defaults at 1200 anyway.
+            self.progress.append(champs[0].elo)
+            self.performanceID = self.db.write('performance', {"progress":self.progress})
+        # update champion stats on mongo.
+        return False
 
     def Tournament(self, players, generation):
         """
@@ -138,12 +220,9 @@ class Generator:
                     
                     # add it to the list of games that need to be played.
                     gamePool.append(game)
-        
-        # initiate game pool.
-        pool = multiprocessing.Pool(processes=self.processors)
 
         # run game simulations.
-        results = pool.map(self.gameWorker, gamePool)
+        results = self.pool.map(self.gameWorker, gamePool)
 
         # when the pool is done with processing, process the results.
         for game in results:
@@ -168,7 +247,9 @@ class Generator:
             print(players_ranked[i].id, players_ranked[i].points)
 
         # add champion to the list.
-        champions[generation['count']] = players_ranked[0]
+        self.champions[generation['count']] = players_ranked[0]
+
+        # return list of players sorted by ranking.
         return players_ranked
 
     def runGenerations(self):
@@ -199,7 +280,14 @@ class Generator:
             players = self.Tournament(population, generation)
             # get the best players and generate a new population from them.
             population = ga.generateNewPopulation(players, self.population)
-            # compute champion games asyncronously.
+            # compute champion games
+            self.runChampions()
+            # default new population values.
+            for i in population:
+                # default to new default elo value.
+                i.elo = int(self.progress[-1])
+                i.points = 0
+
 
     @staticmethod
     def gameWorker(i):
