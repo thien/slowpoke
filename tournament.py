@@ -12,8 +12,9 @@ import operator
 import json
 from random import randint
 
-# import multiprocessor
-from multiprocessing import Process, Queue
+
+import multiprocessing
+
 
 # TODO: need to make the champion play previous champions and get scores
 
@@ -28,8 +29,8 @@ class Generator:
         # Declare base information
         self.generations = generationCount
         self.population = population
-        self.tournamentRounds = 5
-
+        self.processors = multiprocessing.cpu_count()-1
+        self.champions = {}
         # Initiate other information
         self.config = self.loadJSONConfig(configpath)
         # once we have the config file we can proceed and initiate our
@@ -68,101 +69,6 @@ class Generator:
             population.append(cpu)
         return population
 
-    def Tournament(self, players, generation):
-        """
-        Tournament; this determines the best players out of them all.
-        returns the players in order of how good they are.
-        """
-        print(chr(27) + "[2J") # clear screen
-        # create list of games that need to be executed
-        gamePool = []
-        # create game queue
-        queue = Queue()
-
-        # create game count statistics
-        gameCount, totalGames = 0, (len(players) * self.tournamentRounds)
-        # make bots play each other.
-        for i in range(len(players)):
-            for j in range(self.tournamentRounds):
-                # increment game count.
-                gameCount+= 1
-                # set up debug file.
-                debug = {
-                    'genCount' : generation['count'],
-                    'printDebug' : True,
-                    'printBoard' : False,
-                    'genID' : generation['_id'],
-                    'gameCount' : gameCount,
-                    'totalGames' : totalGames
-                }
-    
-                # choose a random number between 1 and the number of players.
-                rand = self.randomPlayerRange(i, len(players))
-
-                # cpu1 is black, cpu2 is white
-                cpu1 = players[i]
-                cpu2 = players[rand]
-
-                # generate ID for the game (so we can store it on Mongo)
-                game_id = self.generateGameID(generation['_id'], i, j, cpu1, cpu2)
-                generation['games'].append(game_id)
-                
-                # update generations entry in mongo to include the game.
-                self.db.update('generation', generation['_id'], generation)
-
-                # add the game to the list.
-                game = {
-                    'game_id' : game_id,
-                    'cpu1' : cpu1,
-                    'cpu2' : cpu2,
-                    'dbURI' : self.config['MongoURI'],
-                    'debug' : debug,
-                    'i' : i,
-                    'rand' : rand,
-                    'queue' : queue
-                }
-                
-                # add it to the list of games that need to be played.
-                p = Process(target=self.gameWorker, args=(game,))
-                poolEntry = {
-                    'pool' : p,
-                    'game' : game
-                }
-                
-                gamePool.append(poolEntry)
-                p.start()
-
-        # make blockers for all the embarassingly parallel processes.
-        for j in gamePool:
-            j['pool'].join()
-        
-        counter = 0
-        # when the pool is done with processing, process the results.
-        for job in iter(queue.get, None):
-            counter += 1
-            # do stuff with job
-            blackP = job['black']
-            whiteP = job['white']
-            # allocate scores at the end of the match
-            players[blackP], players[whiteP] = self.allocatePoints(job['game'], players[blackP], players[whiteP])
-            if counter == totalGames:
-                break
-
-        # order the players by how good they are.
-        players_ranked = sorted(players, key=operator.attrgetter('points'),reverse=True)
-
-        # iterate through the players and add their results to the generation store.
-        for i in players_ranked:
-            generation['results'][i.id] = i.points
-        
-        self.db.update('generation', generation['_id'], generation)
-        
-
-        # # return r
-        for i in range(len(players_ranked)):
-            print(players_ranked[i].id, players_ranked[i].points)
-        return players_ranked
-        
     def writePopulationToDB(self, population):
         """
         Stores the population into Mongo. 
@@ -176,6 +82,94 @@ class Generator:
                 else:
                     keys.append(i.id)
         return keys
+
+    def Tournament(self, players, generation):
+        """
+        Tournament; this determines the best players out of them all.
+        returns the players in order of how good they are.
+        """
+        print(chr(27) + "[2J") # clear screen
+
+        gamePool = []
+
+        # create game count statistics
+        gameCount, totalGames = 0, ((len(players) ^ 2) - len(players))
+        
+        # initiate game results
+        for i in range(len(players)):
+            for j in range(len(players)):
+                if i != j:
+                    # increment game count.
+                    gameCount+= 1
+                    # set up debug file.
+                    debug = {
+                        'genCount' : generation['count'],
+                        'printDebug' : True,
+                        'printBoard' : False,
+                        'genID' : generation['_id'],
+                        'gameCount' : gameCount,
+                        'totalGames' : totalGames
+                    }
+        
+                    # choose a random number between 1 and the number of players.
+                    rand = self.randomPlayerRange(i, len(players))
+
+                    # cpu1 is black, cpu2 is white
+                    cpu1 = players[i]
+                    cpu2 = players[rand]
+
+                    # generate ID for the game (so we can store it on Mongo)
+                    game_id = self.generateGameID(generation['_id'], i, j, cpu1, cpu2)
+                    generation['games'].append(game_id)
+                    
+                    # update generations entry in mongo to include the game.
+                    self.db.update('generation', generation['_id'], generation)
+
+                    # add the game to the list.
+                    game = {
+                        'game_id' : game_id,
+                        'cpu1' : cpu1,
+                        'cpu2' : cpu2,
+                        'dbURI' : self.config['MongoURI'],
+                        'debug' : debug,
+                        'i' : i,
+                        'rand' : rand
+                    }
+                    
+                    # add it to the list of games that need to be played.
+                    gamePool.append(game)
+        
+        # initiate game pool.
+        pool = multiprocessing.Pool(processes=self.processors)
+
+        # run game simulations.
+        results = pool.map(self.gameWorker, gamePool)
+
+        # when the pool is done with processing, process the results.
+        for game in results:
+            # do stuff with job
+            blackP = game['black']
+            whiteP = game['white']
+            # allocate scores at the end of the match
+            players[blackP], players[whiteP] = self.allocatePoints(game['game'], players[blackP], players[whiteP])
+
+        # order the players by how good they are.
+        players_ranked = sorted(players, key=operator.attrgetter('points'),reverse=True)
+
+        # iterate through the players and add their results to the generation store.
+        for i in players_ranked:
+            generation['results'][i.id] = i.points
+        
+        # update results in database.
+        self.db.update('generation', generation['_id'], generation)
+        
+        # print results
+        for i in range(len(players_ranked)):
+            print(players_ranked[i].id, players_ranked[i].points)
+
+        # add champion to the list.
+        champions[generation['count']] = players_ranked[0]
+        return players_ranked
 
     def runGenerations(self):
         # generate the initial population.
@@ -205,6 +199,7 @@ class Generator:
             players = self.Tournament(population, generation)
             # get the best players and generate a new population from them.
             population = ga.generateNewPopulation(players, self.population)
+            # compute champion games asyncronously.
 
     @staticmethod
     def gameWorker(i):
@@ -214,7 +209,7 @@ class Generator:
             'black' : i['i'],
             'white':  i['rand']
         }
-        i['queue'].put(data)
+        return data
 
     @staticmethod
     def randomPlayerRange(val, numberOfPlayers):
@@ -244,7 +239,7 @@ class Generator:
 
 def run():
     configpath = "config.json"
-    ga = Generator(configpath,40, 10)
+    ga = Generator(configpath,20, 3)
     ga.runGenerations()
 
 if __name__ == "__main__":
