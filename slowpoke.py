@@ -71,7 +71,7 @@ class Slowpoke:
     self.weights = []
     self.kingWeight = 1.5
     self.nn = False
-    self.ply = 4
+    self.ply = 1
     self.currentColour = None
 
     """
