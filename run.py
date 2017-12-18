@@ -1,8 +1,13 @@
 import tournament as t
 
 def run():
+    #config variables
     configpath = "config.json"
-    ga = t.Generator(configpath,100, 15)
+    numberOfGenerations = 100
+    population = 15
+
+    # run tournament
+    ga = t.Generator(configpath, numberOfGenerations, population)
     ga.runGenerations()
 
 if __name__ == "__main__":
