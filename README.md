@@ -44,6 +44,9 @@ To run the program, all that is needed to run is the following line in the termi
     else:
         with its elo score, play other champions; compute score difference:
         - 2 games for each champion (black and white)
+        
+    make it play the last 5 bots. 6 games each. (3 as black, 3 as white.)
+    calculate elo.
 
 - compute elo difference between last champion and current champion to measure relative performance increase.
 

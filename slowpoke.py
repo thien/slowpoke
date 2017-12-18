@@ -62,7 +62,7 @@ class Slowpoke:
   """
   Machine Learning Agent Class
   """
-  def __init__(self):
+  def __init__(self, plyDepth=4):
     """
     Initialise the Machine Learning Agent
     Note that we keep the weights since it is
@@ -71,7 +71,7 @@ class Slowpoke:
     self.weights = []
     self.kingWeight = 1.5
     self.nn = False
-    self.ply = 4
+    self.ply = plyDepth
     self.currentColour = None
 
     """
