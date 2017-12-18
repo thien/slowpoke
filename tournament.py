@@ -22,7 +22,7 @@ def optionDefaults(options):
     defaultOptions = {
         'mongoConfigPath' : 'config.json',
         'plyDepth' : 4,
-        'NumberOfGenerations' : 100,
+        'NumberOfGenerations' : 200,
         'Population' : 15,
         'loadRemoteMongo' : True
     }

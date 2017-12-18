@@ -4,9 +4,9 @@ def run():
   #config variables
   options = {
     'mongoConfigPath':'confige.json',
-    'plyDepth' : 1,
-    'NumberOfGenerations' : 20,
-    'Population' : 2,
+    'plyDepth' : 4,
+    'NumberOfGenerations' : 200,
+    'Population' : 15,
     'loadRemoteMongo' : False
   }
 
