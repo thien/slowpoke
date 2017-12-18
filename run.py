@@ -3,7 +3,7 @@ import tournament
 def run():
   #config variables
   options = {
-    'mongoConfigPath':'confige.json',
+    'mongoConfigPath':'config.json',
     'plyDepth' : 4,
     'NumberOfGenerations' : 200,
     'Population' : 15,
