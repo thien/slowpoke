@@ -26,7 +26,7 @@ def optionDefaults(options):
         'NumberOfGenerations' : 200,
         'Population' : 15,
         'printStatus' : True,
-        'loadRemoteMongo' : True
+        'connectMongo' : False
     }
     for i in defaultOptions.keys():
         if i not in options:
@@ -70,7 +70,7 @@ class Generator:
         # Initiate other information
         self.processors = multiprocessing.cpu_count()-1
         self.config = self.loadJSONConfig(options['mongoConfigPath'])
-
+        self.mongoConnected = options['connectMongo']
         # placeholder values
         self.gameIDCounter = 0
         # once we have the config file we can proceed and initiate our MongoDB connection.
@@ -91,7 +91,8 @@ class Generator:
     def initiateMongoConnection(self):
         self.db = mongo.Mongo()
         try:
-            self.db.initiate(self.config['MongoURI'])
+            if self.mongoConnected:
+                self.db.initiate(self.config['MongoURI'])
         except:
             pass
 
@@ -172,8 +173,10 @@ class Generator:
                     gamePool.append(game)
                     
         # run game simulations.
-        pool = multiprocessing.Pool(processes=self.processors)
-        results = pool.map(self.gameWorker, gamePool)
+        results = []
+        # close number of processes when map is done.
+        with multiprocessing.Pool(processes=self.processors) as pool:
+            results = pool.map(self.gameWorker, gamePool)
         self.displayDebugInfo(self.debugInfo())
 
         # when the pool is done with processing, process the results.
@@ -317,8 +320,10 @@ class Generator:
             champGames = self.createChampGames()
             # compute the games.
 
-            pool = multiprocessing.Pool(processes=self.processors)
-            results = pool.map(self.poolChampGame, champGames)
+            # close number of processes when map is done.
+            results = []
+            with multiprocessing.Pool(processes=self.processors) as pool:
+                results = pool.map(self.poolChampGame, champGames)
             # compute new champ points compared to previous champ
             newChampPoints = sum(results)
             self.cummulativeScore += newChampPoints
@@ -346,7 +351,7 @@ class Generator:
 
     def debugInfo(self):
         currentTime = datetime.datetime.now().timestamp()
-        recent_scores = self.progress[-7:]
+        recent_scores = self.progress[-10:]
         averageGenTimeLength = np.mean(self.GenerationTimeLengths)
 
         PercentageEst = 0
@@ -364,6 +369,8 @@ class Generator:
         debugList.append(["Generation", str(numGens)+"/"+str(self.generations)])
         debugList.append(["Population", self.population])
         debugList.append(["Ply Depth", self.plyDepth])
+        debugList.append(["Connected To Mongo", self.mongoConnected])
+        debugList.append(["Cores Utilised", self.processors])
         # start and end dates
         debugList.append([" ", " "])
         debugList.append(["Test Start Date", self.cleanDate(self.StartTime, True)])
@@ -384,7 +391,7 @@ class Generator:
         debugList.append(["Previous Score", self.LastChampionScore])
         debugList.append(["Cummulative Score", self.cummulativeScore])
         debugList.append(["Average Growth", np.mean(recent_scores)])
-        debugList.append(["Historical Scores", recent_scores])
+        debugList.append(["Recent Scores", recent_scores])
         return debugList
 
     def displayDebugInfo(self, debugList):
