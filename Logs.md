@@ -94,3 +94,8 @@
 - This will need to be worked on tomorrow or sometime.
 - will need to tackle the mongo no connection print.
 - fixed pipe issue
+- Should update to mongo periodically instead of per process..
+- will also need to read the blondie24 paper to see their implementations.
+- fixed mongo printing error
+- initial file commit for heavy load (for testing)
+- There's an issue with printing dates on windows. Mean gen time and remaining gen time are absent for some reason.

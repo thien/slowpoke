@@ -169,6 +169,8 @@ class Generator:
                         'i' : i,
                         'rand' : rand
                     }
+                    if self.mongoConnected == False:
+                        game['dbURI'] = False
                     # add it to the list of games that need to be played.
                     gamePool.append(game)
                     
