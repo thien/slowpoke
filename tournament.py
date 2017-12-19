@@ -10,6 +10,7 @@ import genetic as ga
 import datetime
 import operator
 import json
+import numpy as np
 from random import randint
 import elo
 
@@ -24,6 +25,7 @@ def optionDefaults(options):
         'plyDepth' : 4,
         'NumberOfGenerations' : 200,
         'Population' : 15,
+        'printStatus' : True,
         'loadRemoteMongo' : True
     }
     for i in defaultOptions.keys():
@@ -33,19 +35,45 @@ def optionDefaults(options):
 
 class Generator:
     def __init__(self, options):
+        # initialise default variables when needed.
         options = optionDefaults(options)
+
         # Declare base information
         self.plyDepth = options['plyDepth']
         self.generations = options['NumberOfGenerations']
-        self.population = options['Population']
+        self.population = options['Population'] #number of players
+
+        # time handlers
+        self.StartTime = datetime.datetime.now().timestamp()
+        self.AverageGameTime = 0
+        self.AverageGenrationLength = 0
+        self.RemainingTime = 0
+        self.EstDateFinished = 0
+        self.GenerationTimeLengths = np.array([])
+        self.currentGenStartTime = datetime.datetime.now().timestamp()
+
+        # current generation game counts
+        self.GamesFinished = 0
+        self.GamesQueued = 0
+        self.CurrentGeneration = 0
+
+        # champions
+        self.AreChampionsPlaying = False
+        self.LastChampionScore = 0
+        self.cummulativeScore = 0
+        self.AverageChampionGrowth = 0
+        self.RecentChampionScores = 0
+
         self.champions = {}
         self.progress = []
-        self.processors = multiprocessing.cpu_count()-1
-        self.cummulativeScore = 0
+        
         # Initiate other information
+        self.processors = multiprocessing.cpu_count()-1
         self.config = self.loadJSONConfig(options['mongoConfigPath'])
-        # once we have the config file we can proceed and initiate our
-        # MongoDB connection.
+
+        # placeholder values
+        self.gameIDCounter = 0
+        # once we have the config file we can proceed and initiate our MongoDB connection.
         self.initiateMongoConnection()
 
     def loadJSONConfig(self, filepath):
@@ -99,26 +127,24 @@ class Generator:
         Tournament; this determines the best players out of them all.
         returns the players in order of how good they are.
         """
-        print(chr(27) + "[2J") # clear screen
-
         gamePool = []
-
-        # create game count statistics
-        gameCount, totalGames = 0, ((len(players) ^ 2) - len(players))
         
+        # create game count statistics
+        totalGames = ((len(players) ^ 2) - len(players))
+
         # initiate game results round robin style (where each player plays as b and w)
         for i in range(len(players)):
             for j in range(len(players)):
                 if i != j:
                     # increment game count.
-                    gameCount+= 1
+                    self.GamesQueued += 1
                     # set up debug file.
                     debug = {
                         'genCount' : generation['count'],
-                        'printDebug' : True,
+                        'printDebug' : False,
                         'printBoard' : False,
                         'genID' : generation['_id'],
-                        'gameCount' : gameCount,
+                        'gameCount' : self.GamesQueued,
                         'totalGames' : totalGames
                     }
                     # choose a random number between 1 and the number of players.
@@ -127,7 +153,8 @@ class Generator:
                     cpu1 = players[i]
                     cpu2 = players[rand]
                     # generate ID for the game (so we can store it on Mongo)
-                    game_id = self.generateGameID(generation['_id'], i, j, cpu1, cpu2)
+                    game_id = self.gameIDCounter
+                    self.gameIDCounter += 1
                     generation['games'].append(game_id)
                     # update generations entry in mongo to include the game.
                     self.db.update('generation', generation['_id'], generation)
@@ -147,6 +174,8 @@ class Generator:
         # run game simulations.
         pool = multiprocessing.Pool(processes=self.processors)
         results = pool.map(self.gameWorker, gamePool)
+        self.displayDebugInfo(self.debugInfo())
+
         # when the pool is done with processing, process the results.
         for game in results:
             # do stuff with job
@@ -154,6 +183,7 @@ class Generator:
             whiteP = game['white']
             # allocate scores at the end of the match
             players[blackP], players[whiteP] = self.allocatePoints(game['game'], players[blackP], players[whiteP])
+
         # order the players by how good they are.
         players_ranked = sorted(players, key=operator.attrgetter('points'),reverse=True)
         # iterate through the players and add their results to the generation store.
@@ -174,14 +204,18 @@ class Generator:
         population = self.generatePlayers()
         # loop through the generations.
         for i in range(self.generations):
-            self.currentGenerationCount = i
+            # increment generation count
+            self.currentGeneration = i
+            self.currentGenStartTime = datetime.datetime.now().timestamp()
+            # reset game count statistics prior to running
+            self.GamesFinished = 0
+            self.GamesQueued = 0
             # store the population into mongo
             population_IDs = self.writePopulationToDB(population)
             # initiate generation dict so that we can store it on mongo.
-            timestamp = str(datetime.datetime.utcnow())
             generation = {
-                '_id' : timestamp + str(i),
-                'timestamp' : timestamp,
+                '_id' : i,
+                'timestamp' : str(datetime.datetime.now()),
                 'count' : i,
                 'population' : population_IDs,
                 'games' : [],
@@ -189,19 +223,25 @@ class Generator:
             }
             # write generation info to mongo.
             self.db.write('generation', generation)
-            # print debug.
-            print("Playing on Generation:", i)
+            # initiate timestamp
+            startTime = datetime.datetime.now()
             # make bots play each other.
             players = self.Tournament(population, generation)
             # get the best players and generate a new population from them.
             population = ga.generateNewPopulation(players, self.population)
             # compute champion games
             self.runChampions()
-            # # default new population values.
-            for i in population:
-                # default to new default elo value.
-                i.elo = int(self.progress[-1])
-                i.points = 0
+            # default new population values.
+            for player in population:
+                player.elo = int(self.progress[-1])
+                player.points = 0
+            # initiate end timestamp and add time difference length to list.
+            endTime = datetime.datetime.now()
+            timeDifference = endTime - startTime
+           
+            # print(timeDifference)
+            timeDifference = timeDifference.total_seconds()
+            self.GenerationTimeLengths = np.hstack((self.GenerationTimeLengths, timeDifference))
 
     def ELOShift(self, winner, black, white):
         b_exp = elo.expected(black.elo, white.elo)
@@ -237,8 +277,8 @@ class Generator:
             return -1
 
     def createChampGames(self):
-        currentChampID = self.currentGenerationCount
-        previousChampID = self.currentGenerationCount - 1
+        currentChampID = self.currentGeneration
+        previousChampID = self.currentGeneration - 1
 
         champGames = []
         # set player colours
@@ -264,7 +304,8 @@ class Generator:
         These champion games are called at the end of every generation
         and are used to determine the progress of the bots.
         """
-        print("RUNNING CHAMPION SIMULATION")
+        self.AreChampionsPlaying = True
+        self.displayDebugInfo(self.debugInfo())
         # load champs.
         champs = self.champions
   
@@ -280,7 +321,6 @@ class Generator:
             results = pool.map(self.poolChampGame, champGames)
             # compute new champ points compared to previous champ
             newChampPoints = sum(results)
-            print("new Champ Points:", newChampPoints)
             self.cummulativeScore += newChampPoints
             # store points.
             self.progress.append(newChampPoints)
@@ -289,16 +329,87 @@ class Generator:
             # theres only one champion, it defaults at 1200 anyway.
             self.progress.append(0)
             self.performanceID = self.db.write('performance', {"progress":self.progress})
+        self.AreChampionsPlaying = False
+        self.displayDebugInfo(self.debugInfo())
 
-    @staticmethod
-    def gameWorker(i):
+    def gameWorker(self,i):
+        self.displayDebugInfo(self.debugInfo())
         results = game.tournamentMatch(i['cpu1'], i['cpu2'], i['game_id'], i['dbURI'], i['debug'])
         data = {
             'game' : results,
             'black' : i['i'],
             'white':  i['rand']
         }
+        self.GamesFinished += 1
+        self.displayDebugInfo(self.debugInfo())
         return data
+
+    def debugInfo(self):
+        currentTime = datetime.datetime.now().timestamp()
+        recent_scores = self.progress[-7:]
+        averageGenTimeLength = np.mean(self.GenerationTimeLengths)
+
+        PercentageEst = 0
+        if np.isnan(averageGenTimeLength) == False:
+            PercentageEst = (currentTime - self.currentGenStartTime) / averageGenTimeLength
+
+        numGens = np.size(self.progress)
+        remainingGenTime = averageGenTimeLength - (currentTime - self.currentGenStartTime)
+        RemainingGenCount = self.generations-numGens
+        EstRemainingTime = (RemainingGenCount * averageGenTimeLength) + np.sum(self.GenerationTimeLengths)
+        EstEndDate = EstRemainingTime + self.StartTime
+        currentRunTime = datetime.datetime.now() - datetime.datetime.fromtimestamp(self.StartTime)
+        debugList = []
+    
+        debugList.append(["Generation", str(numGens)+"/"+str(self.generations)])
+        debugList.append(["Population", self.population])
+        debugList.append(["Ply Depth", self.plyDepth])
+        # start and end dates
+        debugList.append([" ", " "])
+        debugList.append(["Test Start Date", self.cleanDate(self.StartTime, True)])
+        debugList.append(["Test End Date*", self.cleanDate(EstEndDate, True)])
+        debugList.append(["Current Runtime", currentRunTime])
+        # Time info
+        debugList.append([" ", " "])
+        debugList.append(["Mean Game Time", self.cleanDate(averageGenTimeLength)])
+
+        debugList.append(["Gen. Progress*", round(PercentageEst*100,2)])
+        debugList.append(["Remaining Gen. Time*", self.cleanDate(remainingGenTime)])
+        debugList.append(["Remaining Test Time*", self.cleanDate(EstRemainingTime)])
+        # current Generation Info
+        # debugList.append([" ", " "])
+        # debugList.append(["No. of games computed", str(self.GamesFinished)+"/"+str(self.GamesQueued)])
+        # champion info
+        debugList.append([" ", " "])
+        debugList.append(["Champions Currently Playing?", self.AreChampionsPlaying])
+        debugList.append(["Previous Score", self.LastChampionScore])
+        debugList.append(["Cummulative Score", self.cummulativeScore])
+        debugList.append(["Average Growth", np.mean(recent_scores)])
+        debugList.append(["Historical Scores", recent_scores])
+        return debugList
+
+    def displayDebugInfo(self, debugList):
+        # # clear screen
+        print(chr(27) + "[2J")
+        print("SLOWPOKE")
+        print("----------------------")
+        for i in debugList:
+            print("{0:30} {1}".format(str(i[0]), str(i[1])))
+        print("----------------------")
+
+    @staticmethod
+    def cleanDate(timestamp, unixDefault=False):
+        try:
+            if unixDefault == True:
+                k = datetime.datetime.fromtimestamp(timestamp)
+                return k.strftime('%Y-%m-%d %H:%M:%S')
+            else:   
+                start = datetime.datetime.fromtimestamp(0)
+                k = datetime.datetime.fromtimestamp(timestamp)
+                magic = k - start
+                return magic
+        except Exception as e:
+            return 0
 
     @staticmethod
     def randomPlayerRange(val, numberOfPlayers):
