@@ -8,7 +8,7 @@ def run():
     'NumberOfGenerations' : 200,
     'Population' : 15,
     'printStatus' : True,
-    'loadRemoteMongo' : False
+    'connectMongo' : True
   }
 
   # run tournament

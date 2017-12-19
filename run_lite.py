@@ -7,7 +7,8 @@ def run():
     'plyDepth' : 1,
     'NumberOfGenerations' : 200,
     'Population' : 3,
-    'printStatus' : True
+    'printStatus' : True,
+    'connectMongo' : False
   }
 
   # run tournament
