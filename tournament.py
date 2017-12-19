@@ -367,15 +367,14 @@ class Generator:
         # start and end dates
         debugList.append([" ", " "])
         debugList.append(["Test Start Date", self.cleanDate(self.StartTime, True)])
-        debugList.append(["Test End Date*", self.cleanDate(EstEndDate, True)])
         debugList.append(["Current Runtime", currentRunTime])
+        debugList.append(["Test End Date*", self.cleanDate(EstEndDate, True)])
+        debugList.append(["Remaining Test Time*", self.cleanDate(EstRemainingTime)])
         # Time info
         debugList.append([" ", " "])
         debugList.append(["Mean Game Time", self.cleanDate(averageGenTimeLength)])
-
         debugList.append(["Gen. Progress*", round(PercentageEst*100,2)])
         debugList.append(["Remaining Gen. Time*", self.cleanDate(remainingGenTime)])
-        debugList.append(["Remaining Test Time*", self.cleanDate(EstRemainingTime)])
         # current Generation Info
         # debugList.append([" ", " "])
         # debugList.append(["No. of games computed", str(self.GamesFinished)+"/"+str(self.GamesQueued)])
