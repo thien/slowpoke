@@ -38,3 +38,40 @@
 - currently made the champ games primitive to see relative immediate performance. should be improved using Dantchev's description of premier league
 - need to write up code for dashboard instead of dumping a bunch of random shit on the terminal
 - made ELO redundant for now
+
+19/12/2017
+
+- currently working on updating the status
+- could simplify the ID's of each agent with just a number; would shorten the amount of strings!
+- simplified ID strings
+- created initial status messages, will need to test this offline due to instabilities
+- will need to write champion coefficents to a json file.
+- debug console is completed now.
+- There seems to be an issue which may be the case for running it on a mac:
+ 
+    Traceback (most recent call last):
+        File "run_lite.py", line 18, in <module>
+            run()
+        File "run_lite.py", line 15, in run
+            t.runGenerations()
+        File "/Users/thien/Documents/GitHub/zephyr/tournament.py", line 233, in runGenerations
+            self.runChampions()
+        File "/Users/thien/Documents/GitHub/zephyr/tournament.py", line 320, in runChampions
+            pool = multiprocessing.Pool(processes=self.processors)
+        File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/context.py", line 119, in Pool
+            context=self.get_context())
+        File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/pool.py", line 174, in __init__
+            self._repopulate_pool()
+        File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/pool.py", line 239, in _repopulate_pool
+            w.start()
+        File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/process.py", line 105, in start
+            self._popen = self._Popen(self)
+        File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/context.py", line 277, in _Popen
+            return Popen(process_obj)
+        File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/popen_fork.py", line 20, in __init__
+            self._launch(process_obj)
+        File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/popen_fork.py", line 66, in _launch
+            parent_r, child_w = os.pipe()
+        OSError: [Errno 24] Too many open files 
+
+- This will need to be tested on a windows machine to make sure.
