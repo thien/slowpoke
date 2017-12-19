@@ -3,12 +3,11 @@ import tournament
 def run():
   #config variables
   options = {
-    'mongoConfigPath':'config.json',
-    'plyDepth' : 4,
+    'mongoConfigPath':'config2.json',
+    'plyDepth' : 1,
     'NumberOfGenerations' : 200,
-    'Population' : 15,
-    'printStatus' : True,
-    'loadRemoteMongo' : False
+    'Population' : 3,
+    'printStatus' : True
   }
 
   # run tournament
