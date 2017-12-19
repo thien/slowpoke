@@ -75,3 +75,20 @@
         OSError: [Errno 24] Too many open files 
 
 - This will need to be tested on a windows machine to make sure.
+- This has been verified to be only an issue on macs. This isn't really a priority since the gruntwork will be on the windows machine.
+- However, another error has been found:
+
+    Traceback (most recent call last):
+    File ".\run_lite.py", line 18, in <module>
+        run()
+    File ".\run_lite.py", line 15, in run
+        t.runGenerations()
+    File "C:\Users\Tnguy\Documents\GitHub\zephyr\tournament.py", line 231, in runGenerations
+        population = ga.generateNewPopulation(players, self.population)
+    File "C:\Users\Tnguy\Documents\GitHub\zephyr\genetic.py", line 32, in generateNewPopulation
+        parent = roulette(players)
+    File "C:\Users\Tnguy\Documents\GitHub\zephyr\genetic.py", line 89, in roulette
+        probability = i.points / overallFitness
+    ZeroDivisionError: division by zero
+
+- This will need to be worked on tomorrow or sometime.
