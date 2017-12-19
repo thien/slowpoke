@@ -73,27 +73,29 @@ def roulette(players):
     """
     chosen = None
     overallFitness = 0
-
+    superEqual = False
     # calculate the overall fitness
     for i in players:
         overallFitness += i.points
-    
+    # check if overall fitness is zer0
+    if overallFitness == 0:
+        overallFitness = len(players)
+        superEqual = True
     # randomly shuffle the players around.
     random.shuffle(players)
-
     # initiate a list of probablities
     probabilities = []
-
     # calculate probabllities for each player.
     for i in players:
-        probability = i.points / overallFitness
+        if not superEqual:
+            probability = i.points / overallFitness
+        else:
+            probability = 1 / overallFitness
         if len(probabilities) > 1:
             probability = probability + probabilities[-1]
         probabilities.append(probability)
-
     # generate a random number
     number = random.random()
-
     # find a player.
     for i in range(len(probabilities)):
         if number < probabilities[i]:
