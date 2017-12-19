@@ -93,3 +93,4 @@
 
 - This will need to be worked on tomorrow or sometime.
 - will need to tackle the mongo no connection print.
+- fixed pipe issue
