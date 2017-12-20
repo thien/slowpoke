@@ -1,6 +1,6 @@
 # Logs
 
-18/12/2017
+## 18/12/2017
 
 - Currently having a test run to detect mongo errors.
 - Implementing Default Options as a parameter for run.py
@@ -39,7 +39,7 @@
 - need to write up code for dashboard instead of dumping a bunch of random shit on the terminal
 - made ELO redundant for now
 
-19/12/2017
+## 19/12/2017
 
 - currently working on updating the status
 - could simplify the ID's of each agent with just a number; would shorten the amount of strings!
@@ -50,29 +50,29 @@
 - There seems to be an issue which may be the case for running it on a mac:
  
     Traceback (most recent call last):
-        File "run_lite.py", line 18, in <module>
-            run()
-        File "run_lite.py", line 15, in run
-            t.runGenerations()
-        File "/Users/thien/Documents/GitHub/zephyr/tournament.py", line 233, in runGenerations
-            self.runChampions()
-        File "/Users/thien/Documents/GitHub/zephyr/tournament.py", line 320, in runChampions
-            pool = multiprocessing.Pool(processes=self.processors)
-        File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/context.py", line 119, in Pool
-            context=self.get_context())
-        File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/pool.py", line 174, in __init__
-            self._repopulate_pool()
-        File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/pool.py", line 239, in _repopulate_pool
-            w.start()
-        File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/process.py", line 105, in start
-            self._popen = self._Popen(self)
-        File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/context.py", line 277, in _Popen
-            return Popen(process_obj)
-        File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/popen_fork.py", line 20, in __init__
-            self._launch(process_obj)
-        File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/popen_fork.py", line 66, in _launch
-            parent_r, child_w = os.pipe()
-        OSError: [Errno 24] Too many open files 
+    File "run_lite.py", line 18, in <module>
+        run()
+    File "run_lite.py", line 15, in run
+        t.runGenerations()
+    File "/Users/thien/Documents/GitHub/zephyr/tournament.py", line 233, in runGenerations
+        self.runChampions()
+    File "/Users/thien/Documents/GitHub/zephyr/tournament.py", line 320, in runChampions
+        pool = multiprocessing.Pool(processes=self.processors)
+    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/context.py", line 119, in Pool
+        context=self.get_context())
+    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/pool.py", line 174, in __init__
+        self._repopulate_pool()
+    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/pool.py", line 239, in _repopulate_pool
+        w.start()
+    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/process.py", line 105, in start
+        self._popen = self._Popen(self)
+    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/context.py", line 277, in _Popen
+        return Popen(process_obj)
+    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/popen_fork.py", line 20, in __init__
+        self._launch(process_obj)
+    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/popen_fork.py", line 66, in _launch
+        parent_r, child_w = os.pipe()
+    OSError: [Errno 24] Too many open files 
 
 - This will need to be tested on a windows machine to make sure.
 - This has been verified to be only an issue on macs. This isn't really a priority since the gruntwork will be on the windows machine.
@@ -99,3 +99,8 @@
 - fixed mongo printing error
 - initial file commit for heavy load (for testing)
 - There's an issue with printing dates on windows. Mean gen time and remaining gen time are absent for some reason.
+
+## 20/12/2017
+
+- need to save champion to a file
+- will also need to update the file every generation.
