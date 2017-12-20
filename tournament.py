@@ -232,10 +232,10 @@ class Generator:
             startTime = datetime.datetime.now()
             # make bots play each other.
             players = self.Tournament(population, generation)
-            # get the best players and generate a new population from them.
-            population = ga.generateNewPopulation(players, self.population)
             # compute champion games
             self.runChampions()
+            # get the best players and generate a new population from them.
+            population = ga.generateNewPopulation(players, self.population)
             # default new population values.
             for player in population:
                 player.elo = int(self.progress[-1])
