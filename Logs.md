@@ -116,7 +116,8 @@
 
 TODO:
 
-- optimise neural network
+- optimise neural network (done)
+- create ravel and unravel algorithms (flatten the coefficents of the neural network)
 - update mutation algorithm
 - write champs to a file
 - update mongo writing
