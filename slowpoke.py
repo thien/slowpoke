@@ -95,17 +95,10 @@ class Slowpoke:
     This function initiates the neural network and adds it
     to the AI class.
     """
-    self.nnNodes = {
-      'input' : 32,
-      'hidden1' : 40,
-      'hidden2' : 10,
-      'output' : 1
-    }
+    layers = [32,40,10,1]
     # Now we can initialise the neural network.
-    self.nn = NeuralNetwork(self.nnNodes['input'], self.nnNodes['hidden1'], 
-                           self.nnNodes['hidden2'], self.nnNodes['output'])
-    # make it initialise random weights.
-    self.nn.initialiseRandomWeights()
+    self.nn = NeuralNetwork(layers)
+  
 
   def evaluateBoard(self,board):
     """
