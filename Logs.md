@@ -129,10 +129,11 @@ TODO:
 
 ## 21/12/2017
 
-- integrate population class
-- update mutation algorithm
-- write champs to a file
-- update mongo writing
+- integrate population class (DONE)
+- update mutation algorithm (DONE)
 - update champion performance algorithm
+- write champs to a file
 - write current generation to file
 - load from file
+- update mongo writing
+- print player ID's in debug log
