@@ -129,6 +129,7 @@ TODO:
 
 ## 21/12/2017
 
+- integrate population class
 - update mutation algorithm
 - write champs to a file
 - update mongo writing
