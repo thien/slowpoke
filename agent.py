@@ -22,6 +22,9 @@ class Agent:
   def genID(self):
     self.id = hashlib.md5(self.bot.nn.weights).hexdigest()
 
+  def setID(self, value):
+    self.id = value
+
   def getDict(self):
     return {
       "_id" : self.id,
