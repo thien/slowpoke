@@ -2,6 +2,14 @@ import numpy as np
 import random
 import math
 
+def showVector(v, dec):
+  fmt = "%." + str(dec) + "f" # like %.4f
+  for i in range(len(v)):
+    x = v[i]
+    if x >= 0.0: print(' ', end='')
+    print(fmt % x + '  ', end='')
+  print('')
+
 class NeuralNetwork:
   def __init__(self, layer_list):
     self.layer_size = layer_list
@@ -11,7 +19,7 @@ class NeuralNetwork:
     self.weights = []
     self.biases = []
     self.lenCoefficents = 0
-    self.rnd = random.Random(0)
+    self.rnd = np.random.seed(1)
     # initiate layers
     self.initiateLayers()
     self.initiateWeights()
@@ -53,43 +61,21 @@ class NeuralNetwork:
     # assign input values to input layer
     self.layers[0] = xValues
 
-# ----------------------------
-
     # compute neural network propagation for hidden layers
-    # print(len(sums))
-    for i in range(len(sums)):
-      print("working on layer", i+1)
-
-      # !!!!!!!!!!!
+    for n in range(len(sums)):
       # compute weight addition
-      print(self.layers[i].size)
-      print(self.weights[i].size)
-      for j in range(self.layer_size[i+1]):
-        for k in range(self.layer_size[i]):
-          sums[i] = self.layers[i] * self.weights[i][k][j]
-
+      for j in range(self.layer_size[n+1]):
+        if n == 0:
+          sums[n] = np.array([self.layers[n]]).dot(self.weights[n])
+        else:
+          sums[n] = sums[n-1].dot(self.weights[n])
       # add biases
-      sums[i] += self.biases[i][j]
+      sums[n] += self.biases[n][j]
 
       # perform nonlinear_function if we're not computing the final layer
-      if len(sums) > i:
-        self.layers[i+1] = self.nonlinear_function(sums[i])
-      print("finished working on layer", i+1)
-# ----------------------------
+      self.layers[n+1] = self.nonlinear_function(sums[n])
 
-    # check if output layer size is greater than 1
-    outputLayerNum = self.NumberOfLayers-1
-    outputLayer = layers[outputLayerNum]
-    if np.prod(outputLayer.shape) > 1:
-      softOut = self.softmax(outputLayer)
-      for k in range(self.layer_size[outputLayerNum]):
-        self.layers[outputLayerNum] = softOut[k]
-        result = np.zeros(shape=outputLayerNum, dtype=np.float32)
-        for k in range(self.numOutput):
-          result[k] = outputLayer[k]
-      return result
-    else:
-      return layers[self.NumberOfLayers-1]
+    return self.layers[self.NumberOfLayers-1]
 
   @staticmethod
   def normaliseVectors(vector):
@@ -98,8 +84,7 @@ class NeuralNetwork:
 
   @staticmethod
   def nonlinear_function(val):
-    # tanh function with the range of [-1,1]
-    raw = np.tanh(val)
+    return np.tanh(val)
 
   @staticmethod   
   def softmax(oSums):
@@ -118,16 +103,21 @@ class NeuralNetwork:
 if __name__ == "__main__":
 
   inputs = [32,40,10,1]
-  # print("Creating a %d-%d-%d-%d neural network " % (numInput, numHidden1, numHidden2, numOutput) )
+
   nn = NeuralNetwork(inputs)
 
   # Insert checkerboard.
   xValues = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1.1, 1.1, 0, 0], dtype=np.float32)
+  # xValues = np.random.random_sample(32)
   # Run Neural Network
-  yValues = nn.compute(xValues)
-  print("\nOutput values are: ")
-  showVector(yValues, 4)
+  import datetime
+  startTime = datetime.datetime.now()
+  for i in range(0,10000):
+    yValues = nn.compute(xValues)
+  print(datetime.datetime.now() - startTime)
+  # print("\nOutput values are: ")
+  # showVector(yValues, 4)
 
-  print("\nEnd demo \n")
+  # print("\nEnd demo \n")
 
 # end script

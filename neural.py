@@ -66,7 +66,7 @@ class NeuralNetwork:
     self.weights = None
     self.numberOfWeights = 1741
     # self.rnd = random.Random(0) # this is a seed!
-    self.rnd = random.Random() # allows multiple instances
+    self.rnd = random.Random(1) # allows multiple instances
   
   def lenWeights(self):
     return self.numberOfWeights
@@ -188,7 +188,6 @@ class NeuralNetwork:
       self.iNodes[i] = xValues[i]
 
 # --------------
-    print(self.numInputs, self.numHidden1)
     # deal with hidden layer 1
     for j in range(self.numHidden1):
       for i in range(self.numInputs):
@@ -222,7 +221,7 @@ class NeuralNetwork:
 
     for k in range(self.numOutput):
       for j in range(self.numHidden2):
-        oSums[k] += self.h2Nodes[j] * self.hoWeights[j][k]
+        oSums[k] += h2Sums[j] * self.hoWeights[j][k]
 
     for k in range(self.numOutput):
       oSums[k] += self.oBiases[k]
@@ -348,10 +347,14 @@ if __name__ == "__main__":
   # Insert checkerboard.
   xValues = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1.1, 1.1, 0, 0], dtype=np.float32)
   # Run Neural Network
-  yValues = nn.computeOutputs(xValues)
-  print("\nOutput values are: ")
-  showVector(yValues, 4)
+  import datetime
+  startTime = datetime.datetime.now()
+  for i in range(0,10000):
+    yValues = nn.computeOutputs(xValues)
+  print(datetime.datetime.now() - startTime)
+  # print("\nOutput values are: ")
+  # showVector(yValues, 4)
 
-  print("\nEnd demo \n")
+  # print("\nEnd demo \n")
 
 # end script
