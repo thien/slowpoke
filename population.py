@@ -161,6 +161,7 @@ class Population:
   def saveChampionsToFile(self, filename="champions.json"):
     championJson = {}
     for i in range(len(self.champions)):
+      championJson[i] = {}
       championJson[i]['player'] = self.players[i]
       championJson[i]['scoreRange'] = self.players[i].champRange
       championJson[i]['score'] = self.players[i].champScore

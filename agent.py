@@ -15,7 +15,7 @@ class Agent:
     self.bot = bot
     self.elo = 1200
     self.points = 0
-    self.champPoints = 0
+    self.champRange = 0
     self.champScore = 0
     self.move_function = bot.move_function
     self.colour = None
