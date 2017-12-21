@@ -74,17 +74,10 @@ class NeuralNetwork:
     for i in range(len(self.weights)):
       # get the dimensions of i
       resolution = self.weights[i].shape[0] * self.weights[i].shape[1]
-      # print
-      # grab section
       sub_weight = weights[weight_inc:weight_inc+resolution]
-  
-      # assign to weights
       splitter = np.split(sub_weight, self.weights[i].shape[0])
-
       splitter = np.matrix(splitter)
       self.weights[i] = splitter
-
-      # increment
       weight_inc += resolution
 
     # rebuild biases
@@ -92,14 +85,11 @@ class NeuralNetwork:
 
     biases_inc = 0
     for i in range(len(self.biases)):
-      # get the dimensions of i
       resolution = self.biases[i].shape[0]
       sub_biases = biases[biases_inc:biases_inc+resolution]
       biases_inc += resolution
-      # fold first half of micro_split.
       self.biases[i] = sub_biases
 
-    # print(totalNumWeights+totalNumBiases)
     return True
 
   def compute(self, xValues):
