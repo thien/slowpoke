@@ -61,17 +61,47 @@ class NeuralNetwork:
       self.ravel = np.hstack((self.ravel,ting))
     return self.ravel
 
-  def loadCoefficents(self, ravelled=None):
+  def loadCoefficents(self, ravelled):
     # calculate number of weights to split array from
     totalNumWeights = 0
     for i in self.weights:
       totalNumWeights += i.shape[0] * i.shape[1]
+
+
     # split list
-    split = np.split(ravelled, 3)
-    weights = split[0]
-    biases = split[1]
-    print(totalNumWeights+totalNumBiases)
-    return False
+
+    # rebuild weights
+    weights = ravelled[:totalNumWeights]
+    print("WEIGHTS:", weights)
+    weight_inc = 0
+    for i in range(len(self.weights)):
+      # get the dimensions of i
+      resolution = self.weights[i].shape[0] * self.weights[i].shape[1]
+      print("Resolution Before", resolution)
+      sub_weight = ravelled[weight_inc:resolution]
+      weight_inc += resolution
+      # assign to weights
+      self.weights[i] = sub_weight
+      print("Resolution After", sub_weight.size)
+
+
+    print("---------------------------")
+    print("rebuilding biases..")
+
+    # rebuild biases
+    biases = ravelled[totalNumWeights:]
+    print(self.biases)
+    biases_inc = 0
+    for i in range(len(self.biases)):
+      # get the dimensions of i
+      resolution = self.biases[i].shape[0]
+      sub_biases = biases[biases_inc:resolution]
+      biases_inc += resolution
+      # fold first half of micro_split.
+      self.biases[i] = sub_biases
+
+    # print(totalNumWeights+totalNumBiases)
+    return True
 
   def compute(self, xValues):
     sums = []
@@ -135,10 +165,14 @@ if __name__ == "__main__":
   # import datetime
   # startTime = datetime.datetime.now()
   # for i in range(0,10000):
-  #   yValues = nn.compute(xValues)
+  yValues = nn.compute(xValues)
+  print("\nOutput values are: ")
+  showVector(yValues, 4)
+  print("-------------------")
   # print(datetime.datetime.now() - startTime)
-  print(nn.getAllCoefficents().shape[0])
-  print(nn.loadCoefficents())
+  cof = nn.getAllCoefficents()
+  print(nn.loadCoefficents(cof))
+  yValues = nn.compute(xValues)
   # print("\nOutput values are: ")
   # showVector(yValues, 4)
 
