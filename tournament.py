@@ -40,8 +40,9 @@ class Generator:
     # Declare base information
     self.plyDepth = options['plyDepth']
     self.generations = options['NumberOfGenerations']
-    self.population = options['Population'] #number of players
-
+    self.populationSize = options['Population'] #number of players
+    # generate the initial population.
+    self.population = pop.Population(self.populationSize, self.plyDepth)
     # time handlers
     self.StartTime = datetime.datetime.now().timestamp()
     self.AverageGameTime = 0
@@ -50,12 +51,10 @@ class Generator:
     self.EstDateFinished = 0
     self.GenerationTimeLengths = np.array([])
     self.currentGenStartTime = datetime.datetime.now().timestamp()
-
     # current generation game counts
     self.GamesFinished = 0
     self.GamesQueued = 0
     self.CurrentGeneration = 0
-
     # champions
     self.AreChampionsPlaying = False
     self.LastChampionScore = 0
@@ -97,18 +96,15 @@ class Generator:
     except:
       pass
 
-  def chooseOpponment(self, list):
-    return False
-
-  def Tournament(self, population):
+  def Tournament(self):
     """
     Tournament; this determines the best players out of them all.
     returns the players in order of how good they are.
     """
     gamePool = []
     # initiate game results round robin style (where each player plays as b and w)
-    for player_id in population.currentPopulation:
-      for oppoment_id in population.currentPopulation:
+    for player_id in self.population.currentPopulation:
+      for oppoment_id in self.population.currentPopulation:
         # make sure they're not playing themselves
         if player_id != oppoment_id:
           # generate ID for the game
@@ -119,8 +115,8 @@ class Generator:
           # create game variables
           game = {
             'game_id' : game_id,
-            'black' : population.players[player_id],   
-            'white' : population.players[oppoment_id],
+            'black' : self.population.players[player_id],   
+            'white' : self.population.players[oppoment_id],
             'dbURI' : False,
             'debug' : False,
           }
@@ -131,24 +127,17 @@ class Generator:
     # close number of processes when map is done.
     with multiprocessing.Pool(processes=self.processors) as pool:
       results = pool.map(self.gameWorker, gamePool)
-    self.displayDebugInfo(self.debugInfo())
+    self.displayDebugInfo()
 
     # when the pool is done with processing, process the results.
     for i in results:
-      # allocate scores at the end of the match
-      population.allocatePoints(i['game'], i['black'], i['white'])
+      self.population.allocatePoints(i['game'], i['black'], i['white'])
 
-    # order the players by how good they are.
-    print("TING DONE FAM")
-    population.sortCurrentPopulationByPoints()
-    # add champion to the list.
-    population.addChampion()
-    # return population object
-    return population
+    self.population.sortCurrentPopulationByPoints()
+    self.population.addChampion()
+    return self.population
 
   def runGenerations(self):
-    # generate the initial population.
-    population = pop.Population(self.population, self.plyDepth)
     # loop through the generations.
     for i in range(self.generations):
       # increment generation count
@@ -157,29 +146,15 @@ class Generator:
       # reset game count statistics prior to running
       self.GamesFinished = 0
       self.GamesQueued = 0
-      # store the population into mongo
-      # population_IDs = population.writePopulationToDB()
-      # initiate generation dict so that we can store it on mongo.
-      # generation_info = {
-      #   '_id' : i,
-      #   'timestamp' : str(datetime.datetime.now()),
-      #   'count' : i,
-      #   'population' : population_IDs,
-      #   'games' : [],
-      #   'results' : {}
-      # }
-      # # write generation info to mongo.
-      # self.db.write('generation', generation)
       # initiate timestamp
       startTime = datetime.datetime.now()
       # make bots play each other.
-      population = self.Tournament(population)
-      
-      population.printCurrentPopulationByPoints()
+      self.population = self.Tournament()
+      print(self.population.printCurrentPopulationByPoints())
       # compute champion games (runs independently of others)
       self.runChampions()
       # get the best players and generate a new population from them.
-      population.generateNextPopulation()
+      self.population.generateNextPopulation()
       # initiate end timestamp and add time difference length to list.
       timeDifference = (datetime.datetime.now() - startTime).total_seconds()
       self.GenerationTimeLengths = np.hstack((self.GenerationTimeLengths, timeDifference))
@@ -246,7 +221,7 @@ class Generator:
     and are used to determine the progress of the bots.
     """
     self.AreChampionsPlaying = True
-    self.displayDebugInfo(self.debugInfo())
+    self.displayDebugInfo()
     # load champs.
     champs = self.champions
   
@@ -273,10 +248,10 @@ class Generator:
       self.progress.append(0)
       self.performanceID = self.db.write('performance', {"progress":self.progress})
     self.AreChampionsPlaying = False
-    self.displayDebugInfo(self.debugInfo())
+    self.displayDebugInfo()
 
   def gameWorker(self,i):
-    self.displayDebugInfo(self.debugInfo())
+    self.displayDebugInfo()
     results = game.tournamentMatch(i['black'], i['white'], i['game_id'], i['dbURI'], i['debug'])
     data = {
       'game' : results,
@@ -284,7 +259,7 @@ class Generator:
       'white':  i['white'].id
     }
     self.GamesFinished += 1
-    self.displayDebugInfo(self.debugInfo())
+    self.displayDebugInfo()
     return data
 
   def debugInfo(self):
@@ -303,9 +278,11 @@ class Generator:
     EstEndDate = EstRemainingTime + self.StartTime
     currentRunTime = datetime.datetime.now() - datetime.datetime.fromtimestamp(self.StartTime)
     debugList = []
-  
+
+    # debuglist.append([self.population.ting,""])
+
     debugList.append(["Generation", str(numGens)+"/"+str(self.generations)])
-    debugList.append(["Population", self.population])
+    debugList.append(["Population", self.populationSize])
     debugList.append(["Ply Depth", self.plyDepth])
     debugList.append(["Connected To Mongo", self.mongoConnected])
     debugList.append(["Cores Utilised", self.processors])
@@ -332,7 +309,8 @@ class Generator:
     debugList.append(["Recent Scores", recent_scores])
     return debugList
 
-  def displayDebugInfo(self, debugList):
+  def displayDebugInfo(self):
+    debugList = self.debugInfo()
     # # clear screen
     print(chr(27) + "[2J")
     print("SLOWPOKE")
@@ -354,17 +332,6 @@ class Generator:
         return magic
     except Exception as e:
       return 0
-
-  # @staticmethod
-  # def allocatePoints(results, blackPlayer, whitePlayer):
-  #   # allocates points to players dependent on the game results.
-  #   if results["Winner"] == Black:
-  #     blackPlayer.points += 1
-  #     whitePlayer.points -= 2
-  #   elif results["Winner"] == White:
-  #     blackPlayer.points -= 2
-  #     whitePlayer.points += 1
-  #   return (blackPlayer, whitePlayer)
   
   @staticmethod
   def generateGameID(generationID, i,j, cpu1, cpu2):
