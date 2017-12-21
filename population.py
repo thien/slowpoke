@@ -158,6 +158,15 @@ class Population:
     weights=np.clip(weights, -1, 1)
     self.setWeights(cpu, weights)
 
+  def saveChampionsToFile(self, filename="champions.json"):
+    championJson = {}
+    for i in range(len(self.champions)):
+      championJson[i]['player'] = self.players[i]
+      championJson[i]['score'] = self.players[i]
+    # write to file
+    with open(filename, 'w') as outfile:
+      json.dump(championJson, outfile)
+
   def savePopulation(self):
     """
     Saves population to file, and also to database if needed.
