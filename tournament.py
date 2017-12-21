@@ -198,6 +198,7 @@ class Generator:
   def createChampGames(self):
     currentChampID = self.population.champions[-1]
     champGames = []
+    gameRound = int(self.champGamesRoundsCount/2)
     for i in range(self.playPreviousChampCount):
       previousChampID = self.population.champions[-i+1]
       # set player colours
@@ -205,14 +206,15 @@ class Generator:
         'Players' : (currentChampID,previousChampID),
         'champColour' : Black
       }
-      for j in range(self.champGamesRoundsCount/2):
+      
+      for j in range(gameRound):
         champGames.append(info)
       # reverse players
       info = {
         'Players' : (previousChampID,currentChampID),
         'champColour' : White
       }
-      for j in range(self.champGamesRoundsCount/2):
+      for j in range(gameRound):
         champGames.append(info)
     return champGames
 
@@ -244,8 +246,8 @@ class Generator:
         medians.append(np.mean(i))
 
       # compute new champ points compared to previous champ
-      newChampPoints = sum(results)
-      self.cummulativeScore += sum(results)
+      newChampPoints = sum(l)
+      self.cummulativeScore += newChampPoints
       # store points.
       self.progress.append(newChampPoints)
       self.population.players[self.population.champions[-1]].champScore = newChampPoints
@@ -318,7 +320,7 @@ class Generator:
   def displayDebugInfo(self):
     debugList = self.debugInfo()
     # # clear screen
-    print(chr(27) + "[2J")
+    # print(chr(27) + "[2J")
     print("SLOWPOKE")
     print("----------------------")
     for i in debugList:
