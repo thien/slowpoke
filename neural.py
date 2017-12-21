@@ -64,10 +64,13 @@ class NeuralNetwork:
     self.oBiases = np.zeros(shape=[self.numOutput], dtype=np.float32)
 
     self.weights = None
-  
+    self.numberOfWeights = 1741
     # self.rnd = random.Random(0) # this is a seed!
     self.rnd = random.Random() # allows multiple instances
   
+  def lenWeights(self):
+    return self.numberOfWeights
+
   def setWeights(self, weights):
     if len(weights) != self.totalWeights(self.numInputs, self.numHidden1,  self.numHidden2, self.numOutput):
       print("Warning: len(weights) error in setWeights()")  
