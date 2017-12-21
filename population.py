@@ -162,11 +162,12 @@ class Population:
     championJson = {}
     for i in range(len(self.champions)):
       championJson[i]['player'] = self.players[i]
-      championJson[i]['score'] = self.players[i]
+      championJson[i]['scoreRange'] = self.players[i].champRange
+      championJson[i]['score'] = self.players[i].champScore
     # write to file
     with open(filename, 'w') as outfile:
       json.dump(championJson, outfile)
-
+    print("saved champs to ", filename)
   def savePopulation(self):
     """
     Saves population to file, and also to database if needed.
