@@ -4,6 +4,7 @@ import math
 import random
 import numpy as np
 import mongo
+import operator
 
 Black, White, empty = 0, 1, -1
 
@@ -14,14 +15,13 @@ class Population:
     self.plyDepth = plyDepth  # plydepth
     self.mutationRate = 0.9   # rate for player mutation
     self.players = {}       # this is a list of players (all players)
-    self.population = {}    # here we refer to the current players
     self.champions = []     # here we list the champions
     self.playerCounter = 0    # used to create playerID's.
     # generate an initial population
     self.currentPopulation = self.generatePlayers(self.count)
-    # extra variables
-    self.numberOfWeights = self.players[0].bot.nn.self.lenWeights()
-    self.tau = 1 / math.sqrt( 2 * math.sqrt(numberOfWeights))
+
+    self.numberOfWeights = self.players[0].bot.nn.lenCoefficents
+    self.tau = 1 / math.sqrt( 2 * math.sqrt(self.numberOfWeights))
 
   # Done
   def generatePlayer(self):
@@ -43,23 +43,30 @@ class Population:
       # generate a new human
       human = self.generatePlayer()
       # add it to the list of players
-      self.population[human.id] = human
+      self.players[human.id] = human
       # add it to the current population.
       players.append(human.id)
     return players
 
   # Done
   def printCurrentPopulationByPoints(self):
-    for i in self.currentPopulation:
-      print(i.id, i.points)
+    points = list(map(lambda x: (x,self.players[x].points), self.currentPopulation))
+    # sort list of tuples
+    for i in points:
+      print("Player "+str(i[0])+ "\t" + str(i[1]))
 
   # Done
   def sortCurrentPopulationByPoints(self):
     """
     order the players by how good they are.
     """
-    self.currentPopulation = sorted(self.currentPopulation, key=operator.attrgetter('points'),reverse=True)
-  
+    # create tuple of players and their points
+    points = list(map(lambda x: (x,self.players[x].points), self.currentPopulation))
+    # sort list of tuples
+    points = sorted(points, key=operator.itemgetter(1), reverse=True)
+    # assign back the first half of the tuples to the list of players.
+    self.currentPopulation = [x[0] for x in points]
+
   def generateNextPopulation(self):
     """
     Generate new population based on the player performance.
@@ -83,10 +90,10 @@ class Population:
       if index1 > index2: 
         index1, index2 = index2, index1
       # crossover from parents
-      children[0], children[1] = crossOver(parent_a_ID, parent_b_ID, children[0], children[1], index1, index2)
+      children[0], children[1] = self.crossOver(parent_a_ID, parent_b_ID, children[0], children[1], index1, index2)
       # for the last 2 offsprings, they obtain the same weights as their parents.
-      children[2].bot.nn.setWeights(self.getWeights(parent_a_ID))
-      children[3].bot.nn.setWeights(self.getWeights(parent_b_ID))
+      self.setWeights(children[2],self.getWeights(parent_a_ID))
+      self.setWeights(children[3],self.getWeights(parent_b_ID))
       # mutate all offsprings
       for offspring in children:
         self.mutate(offspring)
@@ -156,7 +163,7 @@ class Population:
         break
     return chosen
 
-  def mutate(cpu):
+  def mutate(self,cpu):
     """
     Mutate the weights of the neural network.
     """
@@ -195,24 +202,23 @@ class Population:
           keys.append(i.id)
     return keys
 
-  def allocatePoints(self, results, black_pID, white_pID):
+  def allocatePoints(self, results, black, white):
     # allocates points to players dependent on the game results.
     if results["Winner"] == Black:
-      self.players[black_pID].points += 1
-      self.players[white_pID].points -= 2
+      self.players[black].points += 1
+      self.players[white].points -= 2
     elif results["Winner"] == White:
-      self.players[black_pID].points -= 2
-      self.players[white_pID].points += 1
+      self.players[black].points -= 2
+      self.players[white].points += 1
 
   def addChampion(self):
     self.champions.append(self.currentPopulation[0])
 
   def setWeights(self,botID, weights):
-    self.players[botID].bot.nn.setWeights(weights)
+    self.players[botID].bot.nn.loadCoefficents(weights)
 
-  @staticmethod
-  def getWeights(botID):
-    return self.players[botID].bot.nn.getWeights()
+  def getWeights(self,botID):
+    return self.players[botID].bot.nn.getAllCoefficents()
 
   @staticmethod
   def randomPlayerID(val):
