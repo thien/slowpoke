@@ -8,7 +8,6 @@ def showVector(v, dec):
     x = v[i]
     if x >= 0.0: print(' ', end='')
     print(fmt % x + '  ', end='')
-  print('')
 
 class NeuralNetwork:
   def __init__(self, layer_list=[32,40,10,1]):
@@ -118,7 +117,11 @@ class NeuralNetwork:
       # perform nonlinear_function if we're not computing the final layer
       self.layers[n+1] = self.nonlinear_function(sums[n])
 
-    return self.layers[self.NumberOfLayers-1]
+    flatten = self.layers[self.NumberOfLayers-1].flatten()
+    if flatten.size == 1:
+      return flatten[0]
+    else:
+      return self.layers[self.NumberOfLayers-1]
 
   @staticmethod
   def normaliseVectors(vector):
@@ -144,11 +147,8 @@ class NeuralNetwork:
     return result
 
 if __name__ == "__main__":
-
   inputs = [32,40,10,1]
-
   nn = NeuralNetwork(inputs)
-
   # Insert checkerboard.
   xValues = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1.1, 1.1, 0, 0], dtype=np.float32)
   # xValues = np.random.random_sample(32)
@@ -157,19 +157,6 @@ if __name__ == "__main__":
   # startTime = datetime.datetime.now()
   # for i in range(0,10000):
   yValues = nn.compute(xValues)
-  print("\nOutput values are: ")
-  showVector(yValues, 4)
-  print("-------------------")
-  # print(datetime.datetime.now() - startTime)
-  cof = nn.getAllCoefficents()
-  print(nn.loadCoefficents(cof))
-  yValues = nn.compute(xValues)
-  print("\nOutput values are: ")
-  showVector(yValues, 4)
-  print("-------------------")
+  print(yValues)
   # print("\nOutput values are: ")
   # showVector(yValues, 4)
-
-  # print("\nEnd demo \n")
-
-# end script
