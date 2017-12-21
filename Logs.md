@@ -131,8 +131,8 @@ TODO:
 
 - integrate population class (DONE)
 - update mutation algorithm (DONE)
-- update champion performance algorithm
-- write champs to a file
+- update champion performance algorithm (DONE)
+- write champs to a file (DONE)
 - write current generation to file
 - load from file
 - update mongo writing
