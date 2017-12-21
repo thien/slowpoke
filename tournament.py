@@ -61,8 +61,8 @@ class Generator:
     self.cummulativeScore = 0
     self.AverageChampionGrowth = 0
     self.RecentChampionScores = 0
-
-    self.champions = {}
+    self.playPreviousChampCount = 5
+    self.champGamesRoundsCount = 6 # should always be even and at least 2.
     self.progress = []
     
     # Initiate other information
@@ -153,6 +153,8 @@ class Generator:
       print(self.population.printCurrentPopulationByPoints())
       # compute champion games (runs independently of others)
       self.runChampions()
+      # save champions to file
+      self.population.saveChampionsToFile("champions.json")
       # get the best players and generate a new population from them.
       self.population.generateNextPopulation()
       # initiate end timestamp and add time difference length to list.
@@ -182,8 +184,9 @@ class Generator:
     return black, white
 
   def poolChampGame(self, info):
-    blackPlayer,whitePlayer = info['Players']
-    results = game.tournamentMatch(self.champions[blackPlayer],self.champions[whitePlayer])
+    blackPlayer = self.population.players[info['Players'][0]]
+    whitePlayer = self.population.players[info['Players'][1]]
+    results = game.tournamentMatch(blackPlayer,whitePlayer)
     if results['Winner'] == info['champColour']:
       # champion won.
       return 1
@@ -193,26 +196,24 @@ class Generator:
       return -1
 
   def createChampGames(self):
-    currentChampID = self.currentGeneration
-    previousChampID = self.currentGeneration - 1
-
+    currentChampID = self.population.champions[-1]
     champGames = []
-    # set player colours
-    info = {
-      'Players' : (currentChampID,previousChampID),
-      'champColour' : Black
-    }
-    champGames.append(info)
-    champGames.append(info)
-    champGames.append(info)
-    # reverse players
-    info = {
-      'Players' : (previousChampID,currentChampID),
-      'champColour' : White
-    }
-    champGames.append(info)
-    champGames.append(info)
-    champGames.append(info)
+    for i in range(self.playPreviousChampCount):
+      previousChampID = self.population.champions[-i+1]
+      # set player colours
+      info = {
+        'Players' : (currentChampID,previousChampID),
+        'champColour' : Black
+      }
+      for j in range(self.champGamesRoundsCount/2):
+        champGames.append(info)
+      # reverse players
+      info = {
+        'Players' : (previousChampID,currentChampID),
+        'champColour' : White
+      }
+      for j in range(self.champGamesRoundsCount/2):
+        champGames.append(info)
     return champGames
 
   def runChampions(self):
@@ -222,31 +223,36 @@ class Generator:
     """
     self.AreChampionsPlaying = True
     self.displayDebugInfo()
-    # load champs.
-    champs = self.champions
-  
-    # check how many champs there are.
-    lenChamps = len(list(champs.keys()))
-    # if theres more than 2:
-    if lenChamps > 1:
+
+    # check if theres more than 5 champions.
+    if len(self.population.champions) > self.playPreviousChampCount + 1:
       # create list of games to play
       champGames = self.createChampGames()
-      # compute the games.
-
       # close number of processes when map is done.
       results = []
       with multiprocessing.Pool(processes=self.processors) as pool:
         results = pool.map(self.poolChampGame, champGames)
+
+      # split results into equal segments
+      l = results
+      n = self.playPreviousChampCount
+      results = [l[i:i + n] for i in range(0, len(l), n)]
+      # calculate the gradient of the scores.
+
+      medians = []
+      for i in results:
+        medians.append(np.mean(i))
+
       # compute new champ points compared to previous champ
       newChampPoints = sum(results)
-      self.cummulativeScore += newChampPoints
+      self.cummulativeScore += sum(results)
       # store points.
       self.progress.append(newChampPoints)
-      self.db.update('performance', self.performanceID, {"progress":self.progress})
+      self.population.players[self.population.champions[-1]].champScore = newChampPoints
+      self.population.players[self.population.champions[-1]].champRange = results
     else:
-      # theres only one champion, it defaults at 1200 anyway.
+      # theres only one champion, don't play.
       self.progress.append(0)
-      self.performanceID = self.db.write('performance', {"progress":self.progress})
     self.AreChampionsPlaying = False
     self.displayDebugInfo()
 
