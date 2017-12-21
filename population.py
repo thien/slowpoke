@@ -17,6 +17,7 @@ class Population:
     self.players = {}       # this is a list of players (all players)
     self.champions = []     # here we list the champions
     self.playerCounter = 0    # used to create playerID's.
+    self.ting = "234234"
     # generate an initial population
     self.currentPopulation = self.generatePlayers(self.count)
 
@@ -52,8 +53,10 @@ class Population:
   def printCurrentPopulationByPoints(self):
     points = list(map(lambda x: (x,self.players[x].points), self.currentPopulation))
     # sort list of tuples
+    output = ""
     for i in points:
-      print("Player "+str(i[0])+ "\t" + str(i[1]))
+      output += "Player "+str(i[0])+ "\t" + str(i[1])+"\n"
+    return output
 
   # Done
   def sortCurrentPopulationByPoints(self):
@@ -67,6 +70,7 @@ class Population:
     # assign back the first half of the tuples to the list of players.
     self.currentPopulation = [x[0] for x in points]
 
+  # Done
   def generateNextPopulation(self):
     """
     Generate new population based on the player performance.
@@ -108,6 +112,7 @@ class Population:
     # add remainders to list of offsprings
     offsprings = offsprings + remainders
 
+  # Done
   def crossOver(self, cpu1, cpu2, child1, child2, index1, index2):
     """
     Basic Crossover Algorithm for the GA.
@@ -126,60 +131,32 @@ class Population:
     # return the pair of children
     return (child1,child2)  
 
-  def roulette(self, players):
-    """
-    Roulette algorithm for parent selection.
-    """
-    chosen = None
-    overallFitness = 0
-    superEqual = False
-    # calculate the overall fitness
-    for i in players:
-      overallFitness += i.points
-    # check if overall fitness is zer0
-    if overallFitness == 0:
-      overallFitness = len(players)
-      superEqual = True
-    # randomly shuffle the players around.
-    random.shuffle(players)
-    # initiate a list of probablities
-    probabilities = []
-    # calculate probabllities for each player.
-    for i in players:
-      if not superEqual:
-        probability = i.points / overallFitness
-      else:
-        probability = 1 / overallFitness
-      if len(probabilities) > 1:
-        probability = probability + probabilities[-1]
-      probabilities.append(probability)
-    # generate a random number
-    number = random.random()
-    # find a player.
-    for i in range(len(probabilities)):
-      if number < probabilities[i]:
-        # we have chosen a player.
-        chosen = players[i]
-        break
-    return chosen
-
+  # Done
   def mutate(self,cpu):
     """
     Mutate the weights of the neural network.
     """
-    # generate a random number
-    chance = random.random()
-    if chance >= (1-self.mutationRate):
-      # mutate the weights.
-      weights = self.getWeights(cpu)
-      length = weights.size
-      base1 = weights[random.randint(0,length-1)]
-      base2 = weights[random.randint(0,length-1)]
-      temp = base1
-      np.place(weights, weights==base1, temp)
-      np.place(weights, weights==base2, base1)
-      np.place(weights, weights==temp, base2)
-      self.setWeights(cpu, weights)
+    # # generate a random number
+    # chance = random.random()
+    # if chance >= (1-self.mutationRate):
+    #   # mutate the weights.
+    #   weights = self.getWeights(cpu)
+    #   length = weights.size
+    #   base1 = weights[random.randint(0,length-1)]
+    #   base2 = weights[random.randint(0,length-1)]
+    #   temp = base1
+    #   np.place(weights, weights==base1, temp)
+    #   np.place(weights, weights==base2, base1)
+    #   np.place(weights, weights==temp, base2)
+    #   self.setWeights(cpu, weights)
+    weights = self.getWeights(cpu)
+    # random mutation multipliers
+    multipliers = np.random.random_sample([self.numberOfWeights])
+    multipliers = tau * multipliers
+    multipliers = np.exp(multipliers)
+    weights=weights*multipliers
+    weights=np.clip(weights, -1, 1)
+    self.setWeights(cpu, weights)
 
   def savePopulation(self):
     """
@@ -202,6 +179,7 @@ class Population:
           keys.append(i.id)
     return keys
 
+  # Done
   def allocatePoints(self, results, black, white):
     # allocates points to players dependent on the game results.
     if results["Winner"] == Black:
@@ -211,15 +189,19 @@ class Population:
       self.players[black].points -= 2
       self.players[white].points += 1
 
+  # Done
   def addChampion(self):
     self.champions.append(self.currentPopulation[0])
 
+  # Done
   def setWeights(self,botID, weights):
     self.players[botID].bot.nn.loadCoefficents(weights)
 
+  # Done
   def getWeights(self,botID):
     return self.players[botID].bot.nn.getAllCoefficents()
 
+  # Done
   @staticmethod
   def randomPlayerID(val):
     # choose a random number between 1 and the number of players. checks that it isn't the same number as val.
@@ -227,3 +209,41 @@ class Population:
     while (rand == val):
       rand = randint(0, self.count-1)
     return rand
+
+
+  # def roulette(self, players):
+  #   """
+  #   Roulette algorithm for parent selection.
+  #   """
+  #   chosen = None
+  #   overallFitness = 0
+  #   superEqual = False
+  #   # calculate the overall fitness
+  #   for i in players:
+  #     overallFitness += i.points
+  #   # check if overall fitness is zer0
+  #   if overallFitness == 0:
+  #     overallFitness = len(players)
+  #     superEqual = True
+  #   # randomly shuffle the players around.
+  #   random.shuffle(players)
+  #   # initiate a list of probablities
+  #   probabilities = []
+  #   # calculate probabllities for each player.
+  #   for i in players:
+  #     if not superEqual:
+  #       probability = i.points / overallFitness
+  #     else:
+  #       probability = 1 / overallFitness
+  #     if len(probabilities) > 1:
+  #       probability = probability + probabilities[-1]
+  #     probabilities.append(probability)
+  #   # generate a random number
+  #   number = random.random()
+  #   # find a player.
+  #   for i in range(len(probabilities)):
+  #     if number < probabilities[i]:
+  #       # we have chosen a player.
+  #       chosen = players[i]
+  #       break
+  #   return chosen
