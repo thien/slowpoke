@@ -382,7 +382,7 @@ class Generator:
         # Time info
         debugList.append([" ", " "])
         debugList.append(["Mean Game Time", self.cleanDate(averageGenTimeLength)])
-        debugList.append(["Gen. Progress*", round(PercentageEst*100,2)])
+        debugList.append(["Gen. Progress*", str(round(PercentageEst*100,2)])+"%")
         debugList.append(["Remaining Gen. Time*", self.cleanDate(remainingGenTime)])
         # current Generation Info
         # debugList.append([" ", " "])
