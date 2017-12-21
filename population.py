@@ -52,10 +52,12 @@ class Population:
 
   # Done
   def printCurrentPopulationByPoints(self):
+    print("Current Population:",self.currentPopulation)
     points = list(map(lambda x: (x,self.players[x].points), self.currentPopulation))
     # sort list of tuples
     output = ""
     for i in points:
+      player_id = i[0]
       output += "Player "+str(i[0])+ "\t" + str(i[1])+"\n"
     return output
 
@@ -82,6 +84,9 @@ class Population:
     self.generation += 1
     # start with the top 5 players from the previous generation
     offsprings = self.currentPopulation[:5]
+    # reset scores for these current offsprings
+    for i in offsprings:
+      self.players[i].points = 0
     # create magic crossover from new parents
     for i in range(0,2):
       # get ID's of parents
@@ -112,6 +117,8 @@ class Population:
       self.mutate(offspring)
     # add remainders to list of offsprings
     offsprings = offsprings + remainders
+    # assign this set of offsprings as the new population.
+    self.currentPopulation = offsprings
 
   # Done
   def crossOver(self, cpu1, cpu2, child1, child2, index1, index2):
