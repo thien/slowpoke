@@ -113,7 +113,7 @@ class Slowpoke:
     # Get an array of the board.
     boardArray = np.array(boardStatus,dtype=np.float32)
     # Evaluate the board array using our CNN.
-    result = self.nn.computeOutputs(boardStatus)
+    result = self.nn.compute(boardStatus)
 
     # Return the results.
     return result

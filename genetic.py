@@ -43,8 +43,8 @@ def crossOver(cpu1, cpu2):
     """
     Basic Crossover Algorithm for the GA.
     """
-    mother = cpu1.bot.nn.getWeights()
-    father = cpu2.bot.nn.getWeights()
+    mother = cpu1.bot.nn.getAllCoefficents()
+    father = cpu2.bot.nn.getAllCoefficents()
 
     # generate random indexes to cut off for crossover
     index1 = random.randint(0, len(mother))
@@ -60,9 +60,9 @@ def crossOver(cpu1, cpu2):
     
     # create new children with it
     child1 = cpu1
-    child1.bot.nn.setWeights(child1W)
+    child1.bot.nn.loadCoefficents(child1W)
     child2 = cpu2
-    child2.bot.nn.setWeights(child2W)
+    child2.bot.nn.loadCoefficents(child2W)
 
     # return the pair of children
     return (child1,child2)  
@@ -115,7 +115,7 @@ def mutate(cpu):
     chance = random.random()
     if chance >= (1-mutationRate):
         # mutate the weights.
-        weights = cpu.bot.nn.getWeights()
+        weights = cpu.bot.nn.getAllCoefficents()
         length = weights.size
         base1 = weights[random.randint(0,length-1)]
         base2 = weights[random.randint(0,length-1)]

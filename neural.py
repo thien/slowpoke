@@ -62,6 +62,8 @@ class NeuralNetwork:
     return self.ravel
 
   def loadCoefficents(self, ravelled):
+    if len(ravelled) != self.lenCoefficents:
+      raise ValueError('The number of coefficents do not match.')
     # calculate number of weights to split array from
     totalNumWeights = 0
     for i in self.weights:
