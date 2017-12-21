@@ -120,3 +120,4 @@ TODO:
 - update mutation algorithm
 - write champs to a file
 - update mongo writing
+- update champion performance algorithm

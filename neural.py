@@ -187,6 +187,8 @@ class NeuralNetwork:
     for i in range(self.numInputs):
       self.iNodes[i] = xValues[i]
 
+# --------------
+    print(self.numInputs, self.numHidden1)
     # deal with hidden layer 1
     for j in range(self.numHidden1):
       for i in range(self.numInputs):
@@ -204,6 +206,7 @@ class NeuralNetwork:
     # print("\n after activation hidden node values: ")
     # showVector(self.h1Nodes, 4)
 
+# --------------
     # deal with hidden layer 2
     for j in range(self.numHidden2):
       for i in range(self.numHidden1):
@@ -214,6 +217,8 @@ class NeuralNetwork:
 
     for j in range(self.numHidden2):
       self.h2Nodes[j] = self.sigmoid(h2Sums[j])
+
+# --------------
 
     for k in range(self.numOutput):
       for j in range(self.numHidden2):
