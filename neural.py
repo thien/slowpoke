@@ -67,35 +67,34 @@ class NeuralNetwork:
     for i in self.weights:
       totalNumWeights += i.shape[0] * i.shape[1]
 
-
-    # split list
-
     # rebuild weights
     weights = ravelled[:totalNumWeights]
-    print("WEIGHTS:", weights)
+    
     weight_inc = 0
     for i in range(len(self.weights)):
       # get the dimensions of i
       resolution = self.weights[i].shape[0] * self.weights[i].shape[1]
-      print("Resolution Before", resolution)
-      sub_weight = ravelled[weight_inc:resolution]
-      weight_inc += resolution
+      # print
+      # grab section
+      sub_weight = weights[weight_inc:weight_inc+resolution]
+  
       # assign to weights
-      self.weights[i] = sub_weight
-      print("Resolution After", sub_weight.size)
+      splitter = np.split(sub_weight, self.weights[i].shape[0])
 
+      splitter = np.matrix(splitter)
+      self.weights[i] = splitter
 
-    print("---------------------------")
-    print("rebuilding biases..")
+      # increment
+      weight_inc += resolution
 
     # rebuild biases
     biases = ravelled[totalNumWeights:]
-    print(self.biases)
+
     biases_inc = 0
     for i in range(len(self.biases)):
       # get the dimensions of i
       resolution = self.biases[i].shape[0]
-      sub_biases = biases[biases_inc:resolution]
+      sub_biases = biases[biases_inc:biases_inc+resolution]
       biases_inc += resolution
       # fold first half of micro_split.
       self.biases[i] = sub_biases
@@ -173,6 +172,9 @@ if __name__ == "__main__":
   cof = nn.getAllCoefficents()
   print(nn.loadCoefficents(cof))
   yValues = nn.compute(xValues)
+  print("\nOutput values are: ")
+  showVector(yValues, 4)
+  print("-------------------")
   # print("\nOutput values are: ")
   # showVector(yValues, 4)
 
