@@ -114,6 +114,8 @@
         next 4 is the children of 2nd and 3rd place from previous gen
         last 2 is direct mutation of 4th and 5th place from previous gen.
 
+- currently, mira runs heavy loads with generations finishing every 30 minutes.
+
 TODO:
 
 - optimise neural network (done)
@@ -122,3 +124,14 @@ TODO:
 - write champs to a file
 - update mongo writing
 - update champion performance algorithm
+- write current generation to file
+- load from file
+
+## 21/12/2017
+
+- update mutation algorithm
+- write champs to a file
+- update mongo writing
+- update champion performance algorithm
+- write current generation to file
+- load from file

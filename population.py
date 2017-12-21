@@ -7,6 +7,7 @@ import numpy as np
 
 class Population:
     def __init__(self, numberOfPlayers, plyDepth):
+        self.generation = 0
         self.populationCount = numberOfPlayers
         self.plyDepth = plyDepth    # plydepth
         self.mutationRate = 0.9     # rate for player mutation
@@ -46,18 +47,25 @@ class Population:
         return players
 
     # Done
-    def sortCurrentPopulationByPoints(self,currentPopulation):
+    def printCurrentPopulationByPoints(self):
+        for i in self.currentPopulation:
+            print(i.id, i.points)
+
+    # Done
+    def sortCurrentPopulationByPoints(self):
         """
         order the players by how good they are.
         """
-        return sorted(currentPopulation, key=operator.attrgetter('points'),reverse=True)
-
+        self.currentPopulation = sorted(self.currentPopulation, key=operator.attrgetter('points'),reverse=True)
+    
     def generateNextPopulation(self):
         """
         Generate new population based on the player performance.
         Input: list of player ID's.
         Output: a new list of players.
         """
+        # increment generation count
+        self.generation += 1
         # start with the top 5 players from the previous generation
         offsprings = self.currentPopulation[:5]
         # create magic crossover from new parents
