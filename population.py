@@ -4,6 +4,7 @@ import math
 import random
 import numpy as np
 import mongo
+import json
 import operator
 
 Black, White, empty = 0, 1, -1
@@ -152,7 +153,7 @@ class Population:
     weights = self.getWeights(cpu)
     # random mutation multipliers
     multipliers = np.random.random_sample([self.numberOfWeights])
-    multipliers = tau * multipliers
+    multipliers = self.tau * multipliers
     multipliers = np.exp(multipliers)
     weights=weights*multipliers
     weights=np.clip(weights, -1, 1)
@@ -162,7 +163,9 @@ class Population:
     championJson = {}
     for i in range(len(self.champions)):
       championJson[i] = {}
-      championJson[i]['player'] = self.players[i]
+      # store player and its weights.
+      championJson[i]['playerID'] = self.players[i].id
+      championJson[i]['coefficents'] = self.players[i].bot.nn.getAllCoefficents().tolist()
       championJson[i]['scoreRange'] = self.players[i].champRange
       championJson[i]['score'] = self.players[i].champScore
     # write to file
