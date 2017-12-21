@@ -118,3 +118,5 @@ TODO:
 
 - optimise neural network
 - update mutation algorithm
+- write champs to a file
+- update mongo writing
