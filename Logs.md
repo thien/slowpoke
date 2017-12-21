@@ -104,3 +104,21 @@
 
 - need to save champion to a file
 - will also need to update the file every generation.
+- update the mutation algorithm
+- update the crossover algorithm
+ - should have multiple kids
+- next population generation method:
+    for a population of 15:
+        first 5 is the top 5 players of the previous gen
+        next 4 is the children of 1st and 2nd place from previous gen
+        next 4 is the children of 2nd and 3rd place from previous gen
+        last 2 is direct mutation of 4th and 5th place from previous gen.
+
+TODO:
+
+- optimise neural network (done)
+- create ravel and unravel algorithms (flatten the coefficents of the neural network) (DONE)
+- update mutation algorithm
+- write champs to a file
+- update mongo writing
+- update champion performance algorithm
