@@ -9,8 +9,6 @@ import genetic as ga
 
 # import libraries
 import datetime
-import operator
-import json
 import numpy as np
 from random import randint
 import elo
@@ -112,7 +110,7 @@ class Generator:
     for player_id in population.currentPopulation:
       for oppoment_id in population.currentPopulation:
         # make sure they're not playing themselves
-        if player_id != j:
+        if player_id != oppoment_id:
           # generate ID for the game
           game_id = self.gameIDCounter
           self.gameIDCounter += 1
@@ -121,8 +119,8 @@ class Generator:
           # create game variables
           game = {
             'game_id' : game_id,
-            'black_pID' : player_id,   
-            'white_pID' : oppoment_id,
+            'black' : population.players[player_id],   
+            'white' : population.players[oppoment_id],
             'dbURI' : False,
             'debug' : False,
           }
@@ -138,11 +136,11 @@ class Generator:
     # when the pool is done with processing, process the results.
     for i in results:
       # allocate scores at the end of the match
-      population.allocatePoints(i['game'], i['black_pID'], i['white_pID'])
+      population.allocatePoints(i['game'], i['black'], i['white'])
 
     # order the players by how good they are.
+    print("TING DONE FAM")
     population.sortCurrentPopulationByPoints()
-    population.printCurrentPopulationByPoints()
     # add champion to the list.
     population.addChampion()
     # return population object
@@ -160,7 +158,7 @@ class Generator:
       self.GamesFinished = 0
       self.GamesQueued = 0
       # store the population into mongo
-      population_IDs = population.writePopulationToDB()
+      # population_IDs = population.writePopulationToDB()
       # initiate generation dict so that we can store it on mongo.
       # generation_info = {
       #   '_id' : i,
@@ -176,6 +174,8 @@ class Generator:
       startTime = datetime.datetime.now()
       # make bots play each other.
       population = self.Tournament(population)
+      
+      population.printCurrentPopulationByPoints()
       # compute champion games (runs independently of others)
       self.runChampions()
       # get the best players and generate a new population from them.
@@ -277,13 +277,11 @@ class Generator:
 
   def gameWorker(self,i):
     self.displayDebugInfo(self.debugInfo())
-    black = population.players[i['black_pID']]
-    white = population.players[i['white_pID']]
-    results = game.tournamentMatch(black, white, i['game_id'], i['dbURI'], i['debug'])
+    results = game.tournamentMatch(i['black'], i['white'], i['game_id'], i['dbURI'], i['debug'])
     data = {
       'game' : results,
-      'black' : i['black_pID'],
-      'white':  i['white_pID']
+      'black' : i['black'].id,
+      'white':  i['white'].id
     }
     self.GamesFinished += 1
     self.displayDebugInfo(self.debugInfo())
