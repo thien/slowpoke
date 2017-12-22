@@ -133,6 +133,7 @@ TODO:
 - update mutation algorithm (DONE)
 - update champion performance algorithm (DONE)
 - write champs to a file (DONE)
+- play champions from 2nd gen to determine performance (DONE)
 - write current generation to file
 - load from file
 - update mongo writing

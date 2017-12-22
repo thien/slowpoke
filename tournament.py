@@ -199,7 +199,12 @@ class Generator:
     currentChampID = self.population.champions[-1]
     champGames = []
     gameRound = int(self.champGamesRoundsCount/2)
-    for i in range(self.playPreviousChampCount):
+    # playback counter
+    playcounter = np.size(self.progress)
+    if playcounter > self.playPreviousChampCount:
+      playcounter = self.playPreviousChampCount
+
+    for i in range(playcounter):
       previousChampID = self.population.champions[-i+1]
       # set player colours
       info = {
@@ -227,7 +232,7 @@ class Generator:
     self.displayDebugInfo()
 
     # check if theres more than 5 champions.
-    if len(self.population.champions) > self.playPreviousChampCount + 1:
+    if len(self.population.champions) > 2:
       # create list of games to play
       champGames = self.createChampGames()
       # close number of processes when map is done.
@@ -272,7 +277,7 @@ class Generator:
 
   def debugInfo(self):
     currentTime = datetime.datetime.now().timestamp()
-    recent_scores = self.progress[-10:]
+    recent_scores = self.progress[-7:]
     averageGenTimeLength = np.mean(self.GenerationTimeLengths)
 
     PercentageEst = 0
