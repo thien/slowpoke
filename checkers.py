@@ -554,6 +554,7 @@ class CheckerBoard:
     Prints out ASCII art representation of board.
     """
     def __str__(self):
+        print('\033c', end=None)
         # generate ASCII board frame
         board = [None] * 17
         for i in range(9):

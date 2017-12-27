@@ -326,6 +326,7 @@ class Generator:
     debugList = self.debugInfo()
     # # clear screen
     # print(chr(27) + "[2J")
+    print('\033c', end=None)
     print("SLOWPOKE")
     print("----------------------")
     for i in debugList:
