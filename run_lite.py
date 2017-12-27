@@ -5,8 +5,8 @@ def run():
   options = {
     'mongoConfigPath':'config2.json',
     'plyDepth' : 1,
-    'NumberOfGenerations' : 200,
-    'Population' : 3,
+    'NumberOfGenerations' : 100,
+    'Population' : 5,
     'printStatus' : True,
     'connectMongo' : False
   }
