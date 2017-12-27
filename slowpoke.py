@@ -99,7 +99,6 @@ class Slowpoke:
     # Now we can initialise the neural network.
     self.nn = NeuralNetwork(layers)
   
-
   def evaluateBoard(self,board):
     """
     We throw in the board into the neural network here, and
