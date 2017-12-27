@@ -138,3 +138,18 @@ TODO:
 - load from file
 - update mongo writing
 - print player ID's in debug log
+- build web interface
+
+https://arxiv.org/abs/1712.06567
+
+## 22/12/2017
+
+- improve neural network
+- improve champion algorithm
+- improve crossover
+- improve mutation
+- increase ply depth when moves are forced
+
+     "The neural network topology chosen for the evolutionary checkers experiments. The net- works have 32 input nodes (blue) that correspond to the 32 possible positions on the board. The two hidden layers (green) comprise 40 and 10 hidden nodes, respectively. All input nodes are connected directly to the output node (red) with a weight of 1.0. Bias terms affect each hidden and output node as a threshold term (not pictured)."
+
+- score should not consider previous champs weighting with the further previous champs.
