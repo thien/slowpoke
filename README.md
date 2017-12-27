@@ -8,6 +8,10 @@ To run the program, all that is needed to run is the following line in the termi
 
     python3 tournament.py
 
+### Playing a Champion
+
+    python3 test_slowpoke.py
+
 ### Mongo Setup
 
     generation
