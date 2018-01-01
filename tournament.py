@@ -157,9 +157,11 @@ class Generator:
       self.population.saveChampionsToFile("champions.json")
       # get the best players and generate a new population from them.
       self.population.generateNextPopulation()
+      self.populationSize = self.population.count
       # initiate end timestamp and add time difference length to list.
       timeDifference = (datetime.datetime.now() - startTime).total_seconds()
       self.GenerationTimeLengths = np.hstack((self.GenerationTimeLengths, timeDifference))
+
 
   def ELOShift(self, winner, black, white):
     b_exp = elo.expected(black.elo, white.elo)
@@ -251,7 +253,7 @@ class Generator:
         medians.append(np.mean(i))
 
       # compute new champ points compared to previous champ
-      newChampPoints = sum(l)
+      newChampPoints = np.mean(medians)
       self.cummulativeScore += newChampPoints
       # store points.
       self.progress.append(newChampPoints)
