@@ -111,6 +111,12 @@ class NeuralNetwork:
           sums[n] = np.array([self.layers[n]]).dot(self.weights[n])
         else:
           sums[n] = sums[n-1].dot(self.weights[n])
+
+      # check if output layer so we can feed the sum of the input layer directly
+      if n == len(sums)-1:
+        # on output layer
+        sums[n] = sums[n] + np.sum(self.layers[0])
+    
       # add biases
       sums[n] += self.biases[n][j]
 
@@ -150,7 +156,7 @@ if __name__ == "__main__":
   inputs = [32,40,10,1]
   nn = NeuralNetwork(inputs)
   # Insert checkerboard.
-  xValues = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1.1, 1.1, 0, 0], dtype=np.float32)
+  xValues = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1.5, 1.5, 0, 0], dtype=np.float32)
   # xValues = np.random.random_sample(32)
   # Run Neural Network
   # import datetime
