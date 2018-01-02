@@ -17,6 +17,8 @@ import multiprocessing
 
 Black, White, empty = 0, 1, -1
 
+WinPt, DrawPt, LosePt = 2, 0, -1
+
 def optionDefaults(options):
   # adds default options if they are absent from options.
   defaultOptions = {
@@ -64,7 +66,7 @@ class Generator:
     self.playPreviousChampCount = 5
     self.champGamesRoundsCount = 6 # should always be even and at least 2.
     self.progress = []
-    
+    self.previousGenerationRankings = None
     # Initiate other information
     self.processors = multiprocessing.cpu_count()-1
     self.config = self.loadJSONConfig(options['mongoConfigPath'])
@@ -104,7 +106,10 @@ class Generator:
     gamePool = []
     # initiate game results round robin style (where each player plays as b and w)
     for player_id in self.population.currentPopulation:
-      for oppoment_id in self.population.currentPopulation:
+      for x in range(0,5):
+        oppoment_id = player_id
+        while oppoment_id == player_id:
+          oppoment_id = random.choice(self.population.currentPopulation)
         # make sure they're not playing themselves
         if player_id != oppoment_id:
           # generate ID for the game
@@ -150,7 +155,8 @@ class Generator:
       startTime = datetime.datetime.now()
       # make bots play each other.
       self.population = self.Tournament()
-      print(self.population.printCurrentPopulationByPoints())
+      self.previousGenerationRankings = self.population.printCurrentPopulationByPoints()
+      # print(self.population.printCurrentPopulationByPoints())
       # compute champion games (runs independently of others)
       self.runChampions()
       # save champions to file
@@ -162,40 +168,17 @@ class Generator:
       timeDifference = (datetime.datetime.now() - startTime).total_seconds()
       self.GenerationTimeLengths = np.hstack((self.GenerationTimeLengths, timeDifference))
 
-
-  def ELOShift(self, winner, black, white):
-    b_exp = elo.expected(black.elo, white.elo)
-    w_exp = elo.expected(white.elo, black.elo)
-    # initiate score outcomes
-    b_result = 0
-    w_result = 0
-    if winner == Black:
-      # black wins
-      b_result = 1
-      pass
-    elif winner == White:
-      # white wins
-      w_result = 1
-    else:
-      # draw
-      b_result = 0.5
-      w_result = 0.5
-    # calculate elo outcomes
-    black.elo = elo.elo(black.elo, b_exp, b_result, k=32)
-    white.elo = elo.elo(white.elo, w_exp, w_result, k=32)
-    return black, white
-
   def poolChampGame(self, info):
     blackPlayer = self.population.players[info['Players'][0]]
     whitePlayer = self.population.players[info['Players'][1]]
     results = game.tournamentMatch(blackPlayer,whitePlayer)
     if results['Winner'] == info['champColour']:
       # champion won.
-      return 1
+      return WinPt
     elif results['Winner'] == empty:
-      return 0
+      return DrawPt
     else:
-      return -1
+      return LosePt
 
   def createChampGames(self):
     currentChampID = self.population.champions[-1]
@@ -322,6 +305,10 @@ class Generator:
     debugList.append(["Cummulative Score", self.cummulativeScore])
     debugList.append(["Average Growth", np.mean(recent_scores)])
     debugList.append(["Recent Scores", recent_scores])
+    debugList.append([" ", " "])
+    debugList.append([self.previousGenerationRankings, ""])
+    debugList.append([" ", " "])
+    
     return debugList
 
   def displayDebugInfo(self):

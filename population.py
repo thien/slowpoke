@@ -9,6 +9,8 @@ import operator
 
 Black, White, empty = 0, 1, -1
 
+WinPt, DrawPt, LosePt = 2, 0, -1
+
 class Population:
   def __init__(self, numberOfPlayers, plyDepth):
     self.generation = 0
@@ -89,9 +91,9 @@ class Population:
       self.players[i].points = 0
     # create magic crossover from new parents
     for i in range(0,2):
-      # get ID's of parents
+      # # get ID's of parents
       parent_a_ID, parent_b_ID = self.currentPopulation[i], self.currentPopulation[i+1]
-      # here we create 4 new children
+      # # here we create 4 new children
       children = self.generatePlayers(4)
       # generate random cutoff positions
       index1 = random.randint(0, self.numberOfWeights)
@@ -102,8 +104,9 @@ class Population:
       # crossover from parents
       children[0], children[1] = self.crossOver(parent_a_ID, parent_b_ID, children[0], children[1], index1, index2)
       # for the last 2 offsprings, they obtain the same weights as their parents.
-      self.setWeights(children[2],self.getWeights(parent_a_ID))
-      self.setWeights(children[3],self.getWeights(parent_b_ID))
+ 
+      self.setWeights(children[2],self.getWeights(i))
+      self.setWeights(children[3],self.getWeights(i))
       # mutate all offsprings
       for offspring in children:
         self.mutate(offspring)
@@ -119,7 +122,7 @@ class Population:
     offsprings = offsprings + remainders
     # assign this set of offsprings as the new population.
     self.currentPopulation = offsprings
-
+    self.count = len(offsprings)
   # Done
   def crossOver(self, cpu1, cpu2, child1, child2, index1, index2):
     """
@@ -204,11 +207,11 @@ class Population:
   def allocatePoints(self, results, black, white):
     # allocates points to players dependent on the game results.
     if results["Winner"] == Black:
-      self.players[black].points += 1
-      self.players[white].points -= 2
+      self.players[black].points += WinPt
+      self.players[white].points += LosePt
     elif results["Winner"] == White:
-      self.players[black].points -= 2
-      self.players[white].points += 1
+      self.players[black].points += LosePt
+      self.players[white].points += WinPt
 
   # Done
   def addChampion(self):
