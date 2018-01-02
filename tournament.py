@@ -18,6 +18,7 @@ import multiprocessing
 Black, White, empty = 0, 1, -1
 
 WinPt, DrawPt, LosePt = 2, 0, -1
+ChampWinPt, ChampDrawPt, ChampLosePt = 1,0,-1
 
 def optionDefaults(options):
   # adds default options if they are absent from options.
@@ -66,7 +67,9 @@ class Generator:
     self.playPreviousChampCount = 5
     self.champGamesRoundsCount = 6 # should always be even and at least 2.
     self.progress = []
+
     self.previousGenerationRankings = None
+    self.previousChampPointList = None
     # Initiate other information
     self.processors = multiprocessing.cpu_count()-1
     self.config = self.loadJSONConfig(options['mongoConfigPath'])
@@ -174,11 +177,11 @@ class Generator:
     results = game.tournamentMatch(blackPlayer,whitePlayer)
     if results['Winner'] == info['champColour']:
       # champion won.
-      return WinPt
+      return ChampWinPt
     elif results['Winner'] == empty:
-      return DrawPt
+      return ChampDrawPt
     else:
-      return LosePt
+      return ChampLosePt
 
   def createChampGames(self):
     currentChampID = self.population.champions[-1]
@@ -230,10 +233,12 @@ class Generator:
       n = self.playPreviousChampCount
       results = [l[i:i + n] for i in range(0, len(l), n)]
       # calculate the gradient of the scores.
-
+    
       medians = []
       for i in results:
         medians.append(np.mean(i))
+
+      self.previousChampPointList = medians
 
       # compute new champ points compared to previous champ
       newChampPoints = np.mean(medians)
@@ -305,9 +310,11 @@ class Generator:
     debugList.append(["Cummulative Score", self.cummulativeScore])
     debugList.append(["Average Growth", np.mean(recent_scores)])
     debugList.append(["Recent Scores", recent_scores])
+    debugList.append(["Prev. Champ Point Range",self.previousChampPointList])
     debugList.append([" ", " "])
+    debugList.append(["Previous Scoreboard", " "])
     debugList.append([self.previousGenerationRankings, ""])
-    debugList.append([" ", " "])
+  
     
     return debugList
 
