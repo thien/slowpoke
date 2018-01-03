@@ -117,75 +117,73 @@ class Slowpoke:
     # Return the results.
     return result
 
-  def miniMax(self, B, ply):
-    def minPlay(B, ply):
-      if B.is_over():
-        return 1
-      moves = B.get_moves()
-      best_score = float('inf')
-      for move in moves:
-        HB = B.copy()
-        HB.make_move(move)
-        if ply == 0:
-          score = self.evaluateBoard(HB)
-        else:
-          score = maxPlay(HB, ply-1)
-        if score < best_score:
-          best_move = move
-          best_score = score
-        return best_score
-    def maxPlay(B, ply):
-      if B.is_over():
-        return -1
-      moves = B.get_moves()
-      best_score = float('-inf')
-      for move in moves:
-        HB = B.copy()
-        HB.make_move(move)
-        if ply == 0:
-          score = self.evaluateBoard(HB)
-        else:
-          score = minPlay(HB, ply-1)
-        if score > best_score:
-          best_move = move
-          best_score = score
-        return best_score
+  # def miniMax(self, B, ply):
+  #   def minPlay(B, ply):
+  #     if B.is_over():
+  #       return 1
+  #     moves = B.get_moves()
+  #     best_score = float('inf')
+  #     for move in moves:
+  #       HB = B.copy()
+  #       HB.make_move(move)
+  #       if ply == 0:
+  #         score = self.evaluateBoard(HB)
+  #       else:
+  #         score = maxPlay(HB, ply-1)
+  #       if score < best_score:
+  #         best_move = move
+  #         best_score = score
+  #       return best_score
+  #   def maxPlay(B, ply):
+  #     if B.is_over():
+  #       return -1
+  #     moves = B.get_moves()
+  #     best_score = float('-inf')
+  #     for move in moves:
+  #       HB = B.copy()
+  #       HB.make_move(move)
+  #       if ply == 0:
+  #         score = self.evaluateBoard(HB)
+  #       else:
+  #         score = minPlay(HB, ply-1)
+  #       if score > best_score:
+  #         best_move = move
+  #         best_score = score
+  #       return best_score
 
-    moves = B.get_moves()
-    best_move = moves[0]
-    best_score = float('-inf')
+  #   moves = B.get_moves()
+  #   best_move = moves[0]
+  #   best_score = float('-inf')
 
-    # iterate through the current possible moves.
-    for move in moves:
-      HB = B.copy()
-      HB.make_move(move)
-      if ply == 0:
-        score = self.evaluateBoard(HB)
-      else:
-        score = minPlay(HB, ply-1)
-      if rating > best_score:
-        best_move = move
-        best_score = score
-      return best_move
+  #   # iterate through the current possible moves.
+  #   for move in moves:
+  #     HB = B.copy()
+  #     HB.make_move(move)
+  #     if ply == 0:
+  #       score = self.evaluateBoard(HB)
+  #     else:
+  #       score = minPlay(HB, ply-1)
+  #     if rating > best_score:
+  #       best_move = move
+  #       best_score = score
+  #     return best_move
 
   def miniMaxAB(self, B, ply):
+    # We arbitrarily defined the value of a winning board as +1.0 and a losing board as −1.0. All other boards would receive values between −1.0 and +1.0, with a neural network favoring boards with higher values.
+
     def minPlayAB(B, ply, alpha, beta):
       if B.is_over():
         return 1
-
       # get the moves
       moves = B.get_moves()
-
       # iterate through moves
       for move in moves:
         HB = B.copy()
         HB.make_move(move)
-
         if ply == 0:
           score = self.evaluateBoard(HB)
         else:
           score = maxPlayAB(HB, ply-1, alpha, beta)
-
         if score < beta:
           beta = score
         if beta <= alpha:
@@ -195,10 +193,8 @@ class Slowpoke:
     def maxPlayAB(B, ply, alpha, beta):
       if B.is_over():
         return -1
-
       # get the moves
       moves = B.get_moves()
-
       # iterate through moves
       for move in moves:
         HB = B.copy()
