@@ -5,17 +5,17 @@ import random
 import slowpoke as sp
 import mongo
 import game
-import genetic as ga
 
 # import libraries
 import datetime
 import numpy as np
-np.set_printoptions(precision=3, suppress=True)
 from random import randint
-import elo
-
 import multiprocessing
 
+# numpy print options
+np.set_printoptions(precision=3, suppress=True)
+
+# Piece values on board
 Black, White, empty = 0, 1, -1
 
 # Blondie was 1,0,-2
@@ -351,3 +351,4 @@ class Generator:
     IDPadding = generationID +"_"+ str(i) +"_"+ str(j)
     game_id = IDPadding + cpu1.id + cpu2.id
     return game_id
+
