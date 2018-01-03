@@ -296,7 +296,7 @@ class Generator:
     debugList.append(["Test Start Date", self.cleanDate(self.StartTime, True)])
     debugList.append(["Current Runtime", currentRunTime])
     debugList.append(["Test End Date*", self.cleanDate(EstEndDate, True)])
-    debugList.append(["Remaining Test Time*", self.cleanDate(EstRemainingTime-currentRunTime)])
+    debugList.append(["Remaining Test Time*", self.cleanDate(EstRemainingTime)])
     # Time info
     debugList.append([" ", " "])
     debugList.append(["Mean Game Time", self.cleanDate(averageGenTimeLength)])
