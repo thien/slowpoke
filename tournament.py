@@ -10,6 +10,7 @@ import genetic as ga
 # import libraries
 import datetime
 import numpy as np
+np.set_printoptions(precision=3, suppress=True)
 from random import randint
 import elo
 
@@ -17,6 +18,7 @@ import multiprocessing
 
 Black, White, empty = 0, 1, -1
 
+# Blondie was 1,0,-2
 WinPt, DrawPt, LosePt = 2, 0, -1
 ChampWinPt, ChampDrawPt, ChampLosePt = 1,0,-1
 
@@ -294,7 +296,7 @@ class Generator:
     debugList.append(["Test Start Date", self.cleanDate(self.StartTime, True)])
     debugList.append(["Current Runtime", currentRunTime])
     debugList.append(["Test End Date*", self.cleanDate(EstEndDate, True)])
-    debugList.append(["Remaining Test Time*", self.cleanDate(EstRemainingTime)])
+    debugList.append(["Remaining Test Time*", self.cleanDate(EstRemainingTime-currentRunTime)])
     # Time info
     debugList.append([" ", " "])
     debugList.append(["Mean Game Time", self.cleanDate(averageGenTimeLength)])
