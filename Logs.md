@@ -153,3 +153,13 @@ https://arxiv.org/abs/1712.06567
      "The neural network topology chosen for the evolutionary checkers experiments. The net- works have 32 input nodes (blue) that correspond to the 32 possible positions on the board. The two hidden layers (green) comprise 40 and 10 hidden nodes, respectively. All input nodes are connected directly to the output node (red) with a weight of 1.0. Bias terms affect each hidden and output node as a threshold term (not pictured)."
 
 - score should not consider previous champs weighting with the further previous champs.
+
+## 03/01/2018
+
+    After every neural network in the population played its five games as the red player, the fifteen neural networks with the highest point totals were saved as parents for the next generation. The remaining fifteen neural networks with the lowest point totals were killed o¤, victims of natural selection. Then, to begin the next generation, each surviving parent was copied to create a new o¤spring neural net- work, in which each weight of every o¤spring was varied at random, and the competition was started anew with the thirty members of the population.
+    Playing at the edge of ai
+
+    The only detail about our evolutionary process that I haven’t pro- vided concerns how o¤spring neural networks were created from their parents.You’ve probably heard of a “bell curve.”4 Kumar and I im- plemented a variation process whereby each weight of a surviving par- ent neural network was mutated using a bell curve.
+The details of how to accomplish this procedure are presented in technical papers that we’ve published.5 The essence of the idea is to use a method that’s likely to generate values for an o¤spring’s weights
+
+read p177!

@@ -161,12 +161,12 @@ def playCPU(coefficents):
     B.getWinnerMessage()
     return 0
 
-def slowpokeGame(coefficents):
+def slowpokeGame(coefficents1, coefficents2):
     slowpoke1 = sp.Slowpoke(4)
     slowpoke2 = sp.Slowpoke(4)
  
-    slowpoke1.nn.loadCoefficents(coefficents)
-    # slowpoke2.nn.loadCoefficents(coefficents)
+    slowpoke1.nn.loadCoefficents(coefficents1)
+    slowpoke2.nn.loadCoefficents(coefficents2)
     print("Loaded coefficents")
     cpu_1 = agent.Agent(slowpoke1)
     cpu_2 = agent.Agent(slowpoke2)
