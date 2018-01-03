@@ -4,6 +4,8 @@ import sys
 import slowpoke as sp
 import mongo
 
+Black, White, empty = 0, 1, -1
+
 """
 Allows the user to decide what gameplay they want to play on.
 """
@@ -34,7 +36,7 @@ def printStatus(B):
     print("--------")
 
 """
-Function to handle player move logic.
+Function to handle human player move logic.
 """
 def makeHumanMove(B):
     legal_moves = B.get_moves()
@@ -61,6 +63,7 @@ def makeHumanMove(B):
 
     B.make_move(legal_moves[move_idx])
 
+# play 2 player game (human human)
 def play2Player():
     B = checkers.CheckerBoard()
     print ("Black moves first.")
@@ -80,49 +83,11 @@ def play2Player():
 
     return 0
 
-def testCoefficent(coefficents):
-    agent_module = input("Enter name of agent module: ");
-    __import__(agent_module)
-    agent_module = sys.modules[agent_module]
-    cpu = agent.CheckersAgent(agent_module.move_function)
-    choice = 0
-    while True:
-        choice = input("Enter 0 to go first and 1 to go second: ")
-        try:
-            choice = int(choice)
-            break
-        except ValueError:
-            print ("Please input 0 or 1.")
-            continue
-    B = checkers.CheckerBoard()
-    current_player = B.active
-    print ("Black moves first.")
-    while not B.is_over():
-        print (B)
-        if  B.turnCount % 2 != choice:
-            makeHumanMove(B)
-            # If jumps remain, then the board will not update current player
-            if B.active == current_player:
-                print ("Jumps must be taken.")
-                continue
-            else:
-                current_player = B.active
-        else:
-            B.make_move(cpu.make_move(B))
-            if B.active == current_player:
-                print ("Jumps must be taken.")
-                continue
-            else:
-                current_player = B.active
-    print (B)
-    B.getWinnerMessage()
-    return 0
-
-
+# play human robot
 def playCPU(coefficents):
     slowpoke1 = sp.Slowpoke(4)
  
-    slowpoke1.nn.loadCoefficents(coefficents)
+    slowpoke1.loadWeights(coefficents)
     # slowpoke2.nn.loadCoefficents(coefficents)
     print("Loaded coefficents")
     cpu = agent.Agent(slowpoke1)
@@ -165,8 +130,8 @@ def slowpokeGame(coefficents1, coefficents2):
     slowpoke1 = sp.Slowpoke(4)
     slowpoke2 = sp.Slowpoke(4)
  
-    slowpoke1.nn.loadCoefficents(coefficents1)
-    slowpoke2.nn.loadCoefficents(coefficents2)
+    slowpoke1.loadWeights(coefficents1)
+    slowpoke2.loadWeights(coefficents2)
     print("Loaded coefficents")
     cpu_1 = agent.Agent(slowpoke1)
     cpu_2 = agent.Agent(slowpoke2)
@@ -190,39 +155,6 @@ def slowpokeGame(coefficents1, coefficents2):
     print(B.pdn)
     return 0
 
-def BotGame():
-    agent_module = input("Enter name of first agent module: ");
-    __import__(agent_module)
-    agent_module = sys.modules[agent_module]
-    cpu_1 = agent.CheckersAgent(agent_module.move_function)
-    agent_module = input("Enter name of second agent module: ");
-    __import__(agent_module)
-    agent_module = sys.modules[agent_module]
-    cpu_2 = agent.CheckersAgent(agent_module.move_function)
-    debug = input("Would you like to step through game play? [Y/N]: ")
-    debug = 1 if debug.lower()[0] == 'y' else 0
-        
-    # start game.
-    B = checkers.CheckerBoard()
-    current_player = B.active
-    if debug:
-        print ("sorry not ready")
-        return 0
-    else:
-        while not B.is_over():
-            B.make_move(cpu_1.make_move(B))
-            if B.active == current_player:
-                continue
-            current_player = B.active
-            while B.active == current_player and not B.is_over():
-                B.make_move(cpu_2.make_move(B))
-            current_player = B.active
-        B.getWinnerMessage()
-        print(B.pgn)
-        return 0
-
-# -----------
-
 def sampleGame(self):
     """
     Generates a sample game for testing purposes.
@@ -238,8 +170,6 @@ def sampleGame(self):
     results = self.playGame(cpu1, cpu2)
     # print results.
     print(results)
-
-Black, White, empty = 0, 1, -1
 
 def debugPrint(check, msg):
     if check:
@@ -285,7 +215,7 @@ def tournamentMatch(blackCPU, whiteCPU, gameID="NULL", dbURI=False, debug=False,
 
         # game loop!
         if  B.turnCount % 2 != choice:
-            botMove = blackCPU.make_move(B)
+            botMove = blackCPU.make_move(B, Black)
             B.make_move(botMove)
             if B.active == current_player:
                 # Jumps must be taken; don't assign the next player.
@@ -293,7 +223,7 @@ def tournamentMatch(blackCPU, whiteCPU, gameID="NULL", dbURI=False, debug=False,
             else:
                 current_player = B.active
         else:
-            botMove = whiteCPU.make_move(B)
+            botMove = whiteCPU.make_move(B, White)
             B.make_move(botMove)
             if B.active == current_player:
                 # Jumps must be taken; don't assign the next player.

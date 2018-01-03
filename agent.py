@@ -40,5 +40,5 @@ class Agent:
     self.colour = colID
     self.bot.currentColour = colID
 
-  def make_move(self, board):
-    return self.bot.move_function(board)
+  def make_move(self, board, colour):
+    return self.bot.move_function(board, colour)
