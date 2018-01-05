@@ -93,7 +93,7 @@ class NeuralNetwork:
 
     return True
 
-  def compute(self, xValues):
+  def compute(self, x):
     sums = []
     # initate placeholders to compute results.
     for i in range(self.NumberOfLayers-1):
@@ -101,7 +101,7 @@ class NeuralNetwork:
       sums.append(holder)
     
     # assign input values to input layer
-    self.layers[0] = xValues
+    self.layers[0] = x
 
     # compute neural network propagation for hidden layers
     for n in range(len(sums)):
@@ -111,6 +111,12 @@ class NeuralNetwork:
           sums[n] = np.array([self.layers[n]]).dot(self.weights[n])
         else:
           sums[n] = sums[n-1].dot(self.weights[n])
+
+      # check if output layer so we can feed the sum of the input layer directly
+      if n == len(sums)-1:
+        # on output layer
+        sums[n] = sums[n] + np.sum(self.layers[0])
+    
       # add biases
       sums[n] += self.biases[n][j]
 
@@ -122,6 +128,11 @@ class NeuralNetwork:
       return flatten[0]
     else:
       return self.layers[self.NumberOfLayers-1]
+
+  @staticmethod
+  def subsquares(x):
+    # This is the fastest way (albeit also very ugly) i can think of to approach this problem
+    return np.array([(x[0] + x[4] + x[5] + x[8]),(x[0] + x[1] + x[5] + x[8] + x[9]),(x[1] + x[5] + x[6] + x[9]),(x[1] + x[2] + x[6] + x[9] + x[10]),(x[2] + x[6] + x[7] + x[10]),(x[2] + x[3] + x[7] + x[10] + x[11]),(x[4] + x[5] + x[8] + x[12] + x[13]),(x[5] + x[8] + x[9] + x[13]),(x[5] + x[6] + x[9] + x[13] + x[14]),(x[6] + x[9] + x[10] + x[14]),(x[6] + x[7] + x[10] + x[14] + x[15]),(x[7] + x[10] + x[11] + x[15]),(x[8] + x[12] + x[13] + x[16]),(x[8] + x[9] + x[13] + x[16] + x[17]),(x[9] + x[13] + x[14] + x[17]),(x[9] + x[10] + x[14] + x[17] + x[18]),(x[10] + x[14] + x[15] + x[18]),(x[10] + x[11] + x[15] + x[18] + x[19]),(x[12] + x[13] + x[16] + x[20] + x[21]),(x[13] + x[16] + x[17] + x[21]),(x[13] + x[14] + x[17] + x[21] + x[22]),(x[14] + x[17] + x[18] + x[22]),(x[14] + x[15] + x[18] + x[22] + x[23]),(x[15] + x[18] + x[19] + x[23]),(x[16] + x[20] + x[21] + x[24]),(x[16] + x[17] + x[21] + x[24] + x[25]),(x[17] + x[21] + x[22] + x[25]),(x[17] + x[18] + x[22] + x[25] + x[26]),(x[18] + x[22] + x[23] + x[26]),(x[18] + x[19] + x[23] + x[26] + x[27]),(x[20] + x[21] + x[24] + x[28] + x[29]),(x[21] + x[24] + x[25] + x[29]),(x[21] + x[22] + x[25] + x[29] + x[30]),(x[22] + x[25] + x[26] + x[30]),(x[22] + x[23] + x[26] + x[30] + x[31]),(x[23] + x[26] + x[27] + x[31]),(x[0] + x[1] + x[4] + x[5] + x[8] + x[9] + x[12] + x[13]),(x[0] + x[1] + x[5] + x[6] + x[8] + x[9] + x[13] + x[14]),(x[1] + x[2] + x[5] + x[6] + x[9] + x[10] + x[13] + x[14]),(x[1] + x[2] + x[6] + x[7] + x[9] + x[10] + x[14] + x[15]),(x[2] + x[3] + x[6] + x[7] + x[10] + x[11] + x[14] + x[15]),(x[4] + x[5] + x[8] + x[9] + x[12] + x[13] + x[16] + x[17]),(x[5] + x[6] + x[8] + x[9] + x[13] + x[14] + x[16] + x[17]),(x[5] + x[6] + x[9] + x[10] + x[13] + x[14] + x[17] + x[18]),(x[6] + x[7] + x[9] + x[10] + x[14] + x[15] + x[17] + x[18]),(x[6] + x[7] + x[10] + x[11] + x[14] + x[15] + x[18] + x[19]),(x[8] + x[9] + x[12] + x[13] + x[16] + x[17] + x[20] + x[21]),(x[8] + x[9] + x[13] + x[14] + x[16] + x[17] + x[21] + x[22]),(x[9] + x[10] + x[13] + x[14] + x[17] + x[18] + x[21] + x[22]),(x[9] + x[10] + x[14] + x[15] + x[17] + x[18] + x[22] + x[23]),(x[10] + x[11] + x[14] + x[15] + x[18] + x[19] + x[22] + x[23]),(x[12] + x[13] + x[16] + x[17] + x[20] + x[21] + x[24] + x[25]),(x[13] + x[14] + x[16] + x[17] + x[21] + x[22] + x[24] + x[25]),(x[13] + x[14] + x[17] + x[18] + x[21] + x[22] + x[25] + x[26]),(x[14] + x[15] + x[17] + x[18] + x[22] + x[23] + x[25] + x[26]),(x[14] + x[15] + x[18] + x[19] + x[22] + x[23] + x[26] + x[27]),(x[16] + x[17] + x[20] + x[21] + x[24] + x[25] + x[28] + x[29]),(x[16] + x[17] + x[21] + x[22] + x[24] + x[25] + x[29] + x[30]),(x[17] + x[18] + x[21] + x[22] + x[25] + x[26] + x[29] + x[30]),(x[17] + x[18] + x[22] + x[23] + x[25] + x[26] + x[30] + x[31]),(x[18] + x[19] + x[22] + x[23] + x[26] + x[27] + x[30] + x[31]),(x[0] + x[1] + x[4] + x[5] + x[6] + x[8] + x[9] + x[12] + x[13] + x[14] + x[16] + x[17]),(x[0] + x[1] + x[2] + x[5] + x[6] + x[8] + x[9] + x[10] + x[13] + x[14] + x[16] + x[17] + x[18]),(x[1] + x[2] + x[5] + x[6] + x[7] + x[9] + x[10] + x[13] + x[14] + x[15] + x[17] + x[18]),(x[1] + x[2] + x[3] + x[6] + x[7] + x[9] + x[10] + x[11] + x[14] + x[15] + x[17] + x[18] + x[19]),(x[4] + x[5] + x[6] + x[8] + x[9] + x[12] + x[13] + x[14] + x[16] + x[17] + x[20] + x[21] + x[22]),(x[5] + x[6] + x[8] + x[9] + x[10] + x[13] + x[14] + x[16] + x[17] + x[18] + x[21] + x[22]),(x[5] + x[6] + x[7] + x[9] + x[10] + x[13] + x[14] + x[15] + x[17] + x[18] + x[21] + x[22] + x[23]),(x[6] + x[7] + x[9] + x[10] + x[11] + x[14] + x[15] + x[17] + x[18] + x[19] + x[22] + x[23]),(x[8] + x[9] + x[12] + x[13] + x[14] + x[16] + x[17] + x[20] + x[21] + x[22] + x[24] + x[25]),(x[8] + x[9] + x[10] + x[13] + x[14] + x[16] + x[17] + x[18] + x[21] + x[22] + x[24] + x[25] + x[26]),(x[9] + x[10] + x[13] + x[14] + x[15] + x[17] + x[18] + x[21] + x[22] + x[23] + x[25] + x[26]),(x[9] + x[10] + x[11] + x[14] + x[15] + x[17] + x[18] + x[19] + x[22] + x[23] + x[25] + x[26] + x[27]),(x[12] + x[13] + x[14] + x[16] + x[17] + x[20] + x[21] + x[22] + x[24] + x[25] + x[28] + x[29] + x[30]),(x[13] + x[14] + x[16] + x[17] + x[18] + x[21] + x[22] + x[24] + x[25] + x[26] + x[29] + x[30]),(x[13] + x[14] + x[15] + x[17] + x[18] + x[21] + x[22] + x[23] + x[25] + x[26] + x[29] + x[30] + x[31]),(x[14] + x[15] + x[17] + x[18] + x[19] + x[22] + x[23] + x[25] + x[26] + x[27] + x[30] + x[31]),(x[0] + x[1] + x[2] + x[4] + x[5] + x[6] + x[8] + x[9] + x[10] + x[12] + x[13] + x[14] + x[16] + x[17] + x[18] + x[20] + x[21] + x[22]),(x[0] + x[1] + x[2] + x[5] + x[6] + x[7] + x[8] + x[9] + x[10] + x[13] + x[14] + x[15] + x[16] + x[17] + x[18] + x[21] + x[22] + x[23]),(x[1] + x[2] + x[3] + x[5] + x[6] + x[7] + x[9] + x[10] + x[11] + x[13] + x[14] + x[15] + x[17] + x[18] + x[19] + x[21] + x[22] + x[23]),(x[4] + x[5] + x[6] + x[8] + x[9] + x[10] + x[12] + x[13] + x[14] + x[16] + x[17] + x[18] + x[20] + x[21] + x[22] + x[24] + x[25] + x[26]),(x[5] + x[6] + x[7] + x[8] + x[9] + x[10] + x[13] + x[14] + x[15] + x[16] + x[17] + x[18] + x[21] + x[22] + x[23] + x[24] + x[25] + x[26]),(x[5] + x[6] + x[7] + x[9] + x[10] + x[11] + x[13] + x[14] + x[15] + x[17] + x[18] + x[19] + x[21] + x[22] + x[23] + x[25] + x[26] + x[27]),(x[8] + x[9] + x[10] + x[12] + x[13] + x[14] + x[16] + x[17] + x[18] + x[20] + x[21] + x[22] + x[24] + x[25] + x[26] + x[28] + x[29] + x[30]),(x[8] + x[9] + x[10] + x[13] + x[14] + x[15] + x[16] + x[17] + x[18] + x[21] + x[22] + x[23] + x[24] + x[25] + x[26] + x[29] + x[30] + x[31]),(x[9] + x[10] + x[11] + x[13] + x[14] + x[15] + x[17] + x[18] + x[19] + x[21] + x[22] + x[23] + x[25] + x[26] + x[27] + x[29] + x[30] + x[31]),(x[0] + x[1] + x[2] + x[4] + x[5] + x[6] + x[7] + x[8] + x[9] + x[10] + x[12] + x[13] + x[14] + x[15] + x[16] + x[17] + x[18] + x[20] + x[21] + x[22] + x[23] + x[24] + x[25] + x[26]),(x[0] + x[1] + x[2] + x[3] + x[5] + x[6] + x[7] + x[8] + x[9] + x[10] + x[11] + x[13] + x[14] + x[15] + x[16] + x[17] + x[18] + x[19] + x[21] + x[22] + x[23] + x[24] + x[25] + x[26] + x[27]),(x[4] + x[5] + x[6] + x[7] + x[8] + x[9] + x[10] + x[12] + x[13] + x[14] + x[15] + x[16] + x[17] + x[18] + x[20] + x[21] + x[22] + x[23] + x[24] + x[25] + x[26] + x[28] + x[29] + x[30] + x[31]),(x[5] + x[6] + x[7] + x[8] + x[9] + x[10] + x[11] + x[13] + x[14] + x[15] + x[16] + x[17] + x[18] + x[19] + x[21] + x[22] + x[23] + x[24] + x[25] + x[26] + x[27] + x[29] + x[30] + x[31]),(x[0] + x[1] + x[2] + x[3] + x[4] + x[5] + x[6] + x[7] + x[8] + x[9] + x[10] + x[11] + x[12] + x[13] + x[14] + x[15] + x[16] + x[17] + x[18] + x[19] + x[20] + x[21] + x[22] + x[23] + x[24] + x[25] + x[26] + x[27] + x[28] + x[29] + x[30] + x[31])])
 
   @staticmethod
   def normaliseVectors(vector):
@@ -150,13 +161,24 @@ if __name__ == "__main__":
   inputs = [32,40,10,1]
   nn = NeuralNetwork(inputs)
   # Insert checkerboard.
-  xValues = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1.1, 1.1, 0, 0], dtype=np.float32)
-  # xValues = np.random.random_sample(32)
+  x = np.array([1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], dtype=np.float32)
+  
+  import datetime
+  start = datetime.datetime.now().timestamp()
+  # x = nn.subsquares(x)
+  # print(np.sum(x))
+
+  end = datetime.datetime.now().timestamp() - start
+  mu = datetime.datetime.now().timestamp()
+  print("TIME GENUGL:",end)
+
+  # x = np.random.random_sample(32)
   # Run Neural Network
   # import datetime
   # startTime = datetime.datetime.now()
   # for i in range(0,10000):
-  yValues = nn.compute(xValues)
-  print(yValues)
+  yValues = nn.compute(x)
+  print("Probability:",yValues)
+  print("TIME TO RUN:",datetime.datetime.now().timestamp() - start)
   # print("\nOutput values are: ")
   # showVector(yValues, 4)

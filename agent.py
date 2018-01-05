@@ -9,9 +9,10 @@ It also has a default ELO.
 """
 
 import hashlib
+import time
 
 class Agent:
-  def __init__(self, bot):
+  def __init__(self, bot, agent_id=None):
     self.bot = bot
     self.elo = 1200
     self.points = 0
@@ -19,10 +20,18 @@ class Agent:
     self.champScore = 0
     self.move_function = bot.move_function
     self.colour = None
-    self.genID()
+    if agent_id is not None:
+      self.setID(agent_id)
+    else:
+      self.genID()
 
   def genID(self):
-    self.id = hashlib.md5(self.bot.nn.getAllCoefficents()).hexdigest()
+    try:
+      self.id = hashlib.md5(self.bot.nn.getAllCoefficents()).hexdigest()
+    except:
+      # default into using the time as the checksum
+      k = str(time.time()).encode('utf-8')
+      self.id = hashlib.md5(k).hexdigest()
 
   def setID(self, value):
     self.id = value
@@ -40,5 +49,5 @@ class Agent:
     self.colour = colID
     self.bot.currentColour = colID
 
-  def make_move(self, board):
-    return self.bot.move_function(board)
+  def make_move(self, board, colour):
+    return self.bot.move_function(board, colour)

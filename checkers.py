@@ -2,6 +2,7 @@
     This module defines the CheckerBoard class.
     Built on top of Andrew Edwards's Checkers board. -- (almostimplemented.com)
 """
+import numpy as np
 import datetime
 from termcolor import colored
 
@@ -540,15 +541,26 @@ class CheckerBoard:
         else:
             results = self.AIBoardPos
         # initiate pythonic conversion
-        rep = {
-            Black:weights['Black'], 
-            White:weights['White'], 
-            empty:weights['empty'], 
-            whiteKing:weights['whiteKing'], 
-            blackKing:weights['blackKing']
+
+        rep = {}
+        if colour != Black:
+            rep = {
+                Black:weights['White'], 
+                White:weights['Black'], 
+                empty:weights['empty'], 
+                whiteKing:weights['blackKing'], 
+                blackKing:weights['whiteKing']
+            }
+        else:
+            rep = {
+                Black:weights['Black'], 
+                White:weights['White'], 
+                empty:weights['empty'], 
+                whiteKing:weights['whiteKing'], 
+                blackKing:weights['blackKing']
             }
         # return manipulated list
-        return [rep[n] if n in rep else n for n in results]
+        return np.array([rep[n] if n in rep else n for n in results],dtype=np.float32)
 
     """
     Prints out ASCII art representation of board.
