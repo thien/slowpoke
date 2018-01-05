@@ -158,15 +158,16 @@ class NeuralNetwork:
     return result
 
 if __name__ == "__main__":
-  inputs = [91,40,10,1]
+  inputs = [32,40,10,1]
   nn = NeuralNetwork(inputs)
   # Insert checkerboard.
-  x = np.array([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], dtype=np.float32)
+  x = np.array([1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], dtype=np.float32)
   
   import datetime
   start = datetime.datetime.now().timestamp()
-  x = nn.subsquares(x)
-  print(np.sum(x))
+  # x = nn.subsquares(x)
+  # print(np.sum(x))
+
   end = datetime.datetime.now().timestamp() - start
   mu = datetime.datetime.now().timestamp()
   print("TIME GENUGL:",end)

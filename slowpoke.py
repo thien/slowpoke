@@ -60,10 +60,6 @@ pieceWeights = {
 
 class Slowpoke:
   
-  """
-  Initialisation Functions
-  """
-
   def __init__(self, plyDepth=4, kingWeight=1.5, weights=[]):
     """
     Initialise Agent
@@ -106,14 +102,7 @@ class Slowpoke:
   """
 
   def move_function(self, board, colour):
-    # proceed to generate the possible moves the bot can make. For 
-    # each one, we'll shove it in our neural network and generate
-    # an outcome based on that.
-
-    # Now we can shove boardStatus in the neural network!
-    # call minimax algorithm
-    move = self.miniMaxAB(board, self.ply, colour)
-
+    # move = self.minimax(board, self.ply, colour)
     # we'll need to get the current pieces of the board, manipulated 
     # in a way so that it can be shoved into the NN.
     # stage = self.checkGameStage(boardStatus)
@@ -121,17 +110,27 @@ class Slowpoke:
     # Now we choose appropiately which outcome we want. From here, we add
     # that current board choice and the probability of it doing damage.
     # chance = chooseGameStage(chances, stage)
-    return move
+    return self.minimax(board, self.ply, colour)
 
-  def miniMaxAB(self, B, ply, colour):
+  def minimax(self, B, ply, colour):
     # We arbitrarily defined the value of a winning board as +1.0 and a losing board as −1.0. All other boards would receive values between −1.0 and +1.0, with a neural network favoring boards with higher values.
+    print("Move Calculation")
     minimax_win = 1
     minimax_lose = -minimax_win
+    minimax_draw = 0
+    minimax_empty = -1
 
-    def minPlayAB(B, ply, alpha, beta, colour):
+    # start with flip being min
+    def alphabeta(B,ply,alpha,beta,colour,flip=True):
       if B.is_over():
-        return minimax_win
-      # get the moves
+        if B.winner != minimax_empty:
+          if flip:
+            return minimax_win
+          else:
+            return minimax_lose
+        else:
+          return minimax_draw
+      # get moves
       moves = B.get_moves()
       # iterate through moves
       for move in moves:
@@ -139,37 +138,27 @@ class Slowpoke:
         HB.make_move(move)
 
         if ply == 0:
-          score = self.evaluateBoard(HB, colour)
+          score = self.evaluate_board(HB, colour)
         else:
-          score = maxPlayAB(HB, ply-1, alpha, beta, colour)
+          if flip:
+            score = alphabeta(HB, ply-1, alpha, beta, colour, False)
+          else:
+            score = alphabeta(HB, ply-1, alpha, beta, colour, True)
+        if flip:
+          if score < beta:
+            beta = score
+          if beta <= alpha:
+            return beta
+        else:
+          if score > alpha:
+            alpha = score
+          if alpha >= beta:
+            return alpha
+      if flip:
+        return beta
+      else:
+        return alpha
         
-        if score < beta:
-          beta = score
-        if beta <= alpha:
-          return beta
-      return beta
-
-    def maxPlayAB(B, ply, alpha, beta, colour):
-      if B.is_over():
-        return minimax_lose
-      # get the moves
-      moves = B.get_moves()
-      # iterate through moves
-      for move in moves:
-        HB = B.copy()
-        HB.make_move(move)
-
-        if ply == 0:
-          score = self.evaluateBoard(HB, colour)
-        else:
-          score = minPlayAB(HB, ply-1, alpha, beta, colour)
-
-        if score > alpha:
-          alpha = score
-        if alpha >= beta:
-          return alpha  
-      return alpha
-
     # ---------------------------------------------
     moves = B.get_moves()
     best_move = moves[0]
@@ -179,23 +168,25 @@ class Slowpoke:
     beta = float('inf')
 
     # iterate through the current possible moves.
-    for move in moves:
+    lol = B.get_move_strings()
+
+    for i in range(len(moves)):
       HB = B.copy()
-      HB.make_move(move)
+      HB.make_move(moves[i])
       if ply == 0:
-        score = self.evaluateBoard(HB)
+        score = self.evaluate_board(HB)
       else:
-        score = minPlayAB(HB, ply-1, alpha, beta, colour)
+        score = alphabeta(HB,ply-1,alpha,beta,colour,True)
       if score > best_score:
-        best_move = move
+        best_move = moves[i]
         best_score = score
+        print(lol[i], ":\t\t", score, "!")
+      else:
+        print(lol[i], ":\t\t", score, )
+    input("")
     return best_move
 
-  """
-  Evaluation Function calls the neural network and evaluates the current position of the board.
-  """
-
-  def evaluateBoard(self,board,colour):
+  def evaluate_board(self,board,colour):
     """
     We throw in the board into the neural network here, and
     then the neural network evaluates the position of the
@@ -206,26 +197,8 @@ class Slowpoke:
 
     # Get the current status of the board.
     boardStatus = board.getBoardPosWeighted(colour, self.pieceWeights)
-    # Get an array of the board.
-    boardArray = np.array(boardStatus,dtype=np.float32)
     # Evaluate the board array using our CNN.
-    result = self.nn.compute(boardStatus)
-
-    # Return the results.
-    return result
-
-  """
-  Prints the colour string.
-  """
-  @staticmethod
-  def getColourString():
-    if config['colour'] == pieceWeights['Black']:
-      return "Black"
-    elif config['colour'] == pieceWeights['White']:
-      return "White"
-    else:
-      return "NAN"
-
+    return self.nn.compute(boardStatus)
 
   # """
   # Checks the current stage of the board.

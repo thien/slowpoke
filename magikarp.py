@@ -40,5 +40,10 @@ Magikarp is a draughts AI that plays completely randomly.
 """
 import random
 
-def move_function(board):
+class Magikarp:
+  
+  def __init__(self):
+    self.null = None
+
+  def make_move(self,board, colour=None):
     return random.choice(board.get_moves())
