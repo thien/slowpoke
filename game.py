@@ -71,8 +71,8 @@ def playCPU(coefficents=[]):
         playGame(cpu, player)
 
 def slowpokeGame(coefficents1, coefficents2):
-    slowpoke1 = sp.Slowpoke(1)
-    slowpoke2 = sp.Slowpoke(1)
+    slowpoke1 = sp.Slowpoke(4)
+    slowpoke2 = sp.Slowpoke(4)
     
     import magikarp
     magi = magikarp.Magikarp()
