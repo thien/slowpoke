@@ -16,5 +16,5 @@ mira200_4_good = np.array(ting['mira200_4_good'])
 reallygood = np.array(ting['ply1master'])
 eh = np.array(ting['poke2'])
 
-game.slowpokeGame(mira200_4_good,mira200_4_good)
-# game.playCPU(mira200_4_good)
+# game.slowpokeGame(reallygood,mira200_4_good)
+game.playCPU(mira200_4_good)
