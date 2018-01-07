@@ -114,7 +114,7 @@ class Slowpoke:
 
   def minimax(self, B, ply, colour):
     # We arbitrarily defined the value of a winning board as +1.0 and a losing board as −1.0. All other boards would receive values between −1.0 and +1.0, with a neural network favoring boards with higher values.
-    print("Move Calculation")
+    # print("Move Calculation")
     minimax_win = 1
     minimax_lose = -minimax_win
     minimax_draw = 0
@@ -180,10 +180,10 @@ class Slowpoke:
       if score > best_score:
         best_move = moves[i]
         best_score = score
-        print(lol[i], ":\t\t", score, "!")
-      else:
-        print(lol[i], ":\t\t", score, )
-    input("")
+        # print(lol[i], ":\t\t", score, "!")
+      # else:
+        # print(lol[i], ":\t\t", score, )
+    # input("")
     return best_move
 
   def evaluate_board(self,board,colour):
