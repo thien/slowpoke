@@ -163,3 +163,34 @@ https://arxiv.org/abs/1712.06567
 The details of how to accomplish this procedure are presented in technical papers that we’ve published.5 The essence of the idea is to use a method that’s likely to generate values for an o¤spring’s weights
 
 read p177!
+
+## 06/01/2018
+
+Crossover Algorithm:
+
+  def crossOver(self, cpu1, cpu2, child1, child2, index1, index2):
+    """
+    Basic Crossover Algorithm for the GA.
+    """
+    mother = self.getWeights(cpu1)
+    father = self.getWeights(cpu2)
+
+    # pythonic crossover
+    child1W = np.append(np.append(father[:index1], mother[index1:index2]), father[index2:])
+    child2W = np.append(np.append(mother[:index1], father[index1:index2]), mother[index2:])
+    
+    # create new children with it
+    self.setWeights(child1, child1W)
+    self.setWeights(child2, child2W)
+
+    # return the pair of children
+    return (child1,child2)  
+
+for each layer's weights:
+    n = number of weights and biases in a given layer
+    index1 = random integer[0 to n]
+    index2 = random integer[0 to n]
+    if index2 < index1:
+        swap index1 and index2's values
+    Weights(child1) = father[0 to index1] + mother[index1 to index 2] + father[index2 to n]
+    Weights(child2) = mother[0 to index1] + father[index1 to index 2] + mother[index2 to n]
