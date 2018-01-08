@@ -12,7 +12,6 @@ import numpy as np
 from random import randint
 import multiprocessing
 
-
 # Piece values on board
 Black, White, empty = 0, 1, -1
 
