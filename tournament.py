@@ -12,8 +12,6 @@ import numpy as np
 from random import randint
 import multiprocessing
 
-# numpy print options
-np.set_printoptions(precision=3, suppress=True)
 
 # Piece values on board
 Black, White, empty = 0, 1, -1
@@ -313,8 +311,11 @@ class Generator:
     debugList.append(["Previous Score", self.LastChampionScore])
     debugList.append(["Cummulative Score", self.cummulativeScore])
     debugList.append(["Average Growth", np.mean(recent_scores)])
-    debugList.append(["Recent Scores", recent_scores])
-    debugList.append(["Prev. Champ Point Range",self.previousChampPointList])
+    try:
+      debugList.append(["Recent Scores", [ "{:0.2f}".format(x) for x in recent_scores ]])
+      debugList.append(["Prev. Champ Point Range",[ "{:0.2f}".format(x) for x in self.previousChampPointList ]])
+    except:
+      pass
     debugList.append([" ", " "])
     debugList.append(["Previous Scoreboard", " "])
     debugList.append([self.previousGenerationRankings, ""])
