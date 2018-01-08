@@ -200,7 +200,7 @@ class Population:
 
   # Done
   def saveChampionsToFile(self, datepath="today"):
-    folderDirectory = os.getcwd() + "/champions/" + datepath + "/"
+    folderDirectory = os.path.join(os.getcwd(),"champions",datepath)
       # check save directory exists prior to saving
     if not os.path.isdir(folderDirectory):
       os.makedirs(folderDirectory)
@@ -216,11 +216,12 @@ class Population:
     championJson[i]['champRange'] = self.players[championID].champRange
     championJson[i]['champScore'] = self.players[championID].champScore
   
-    with open(folderDirectory + datepath + " - " + str(i) + ".json", 'w') as outfile:
+    filename = datepath + " - " + str(i) + ".json"
+    with open(os.path.join(folderDirectory, filename), 'w') as outfile:
       json.dump(championJson, outfile)
     
       # append to file.
-    print("saved champs to ",( folderDirectory+ str(i) + ".json"))
+    print("saved champs to ",filename)
 
   def savePopulationGenomes(self, datepath):
     folderDirectory = os.getcwd() + "/champions/" + datepath + "/"
