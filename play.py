@@ -133,9 +133,19 @@ def runGame(blackAgent, whiteAgent):
     """
     To be called once players are generated.
     """
+    options = {
+        'show_board' : True,
+        'human_white' : False,
+        'human_black' : False    
+    }
+    
+    if blackAgent[1] == "human":
+        options['human_black'] = True
+    if whiteAgent[1] == "human":
+        options['human_white'] = True
 
     # load the game
-    board = game.playGame(blackAgent[0], whiteAgent[0])
+    board = game.playGame(blackAgent[0], whiteAgent[0], options)
 
     if board.winner == 0:
         print(blackAgent[1], "wins!")
@@ -143,10 +153,10 @@ def runGame(blackAgent, whiteAgent):
     elif board.winner == 1:
         print(whiteAgent[1], "wins!")
         print(blackAgent[1], "loses.")
-    print("This game was generated with a ply count of", ply)
+    # print("This game was generated with a ply count of", ply)
     
 if __name__ == "__main__":
-
+    ply = None
     blackAgent, whiteAgent = None, None
 
     # check if theres any parameters?

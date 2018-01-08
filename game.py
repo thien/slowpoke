@@ -21,14 +21,51 @@ def printStatus(B):
     # print(B.moves())
     print("--------")
 
-def playGame(black_player, white_player, options={}):
+
+baseOptions = {
+    'show_board' : True,
+    'human_white' : True,
+    'human_black' : True
+}
+
+def printPerspectiveBoard(B, options):
+    print('\033c', end=None)
+
+    # set default colour.
+    blackPOV = None
+
+    if options['human_black'] or options['human_white']:
+        # we know that a person is playing.
+        if options['human_black'] and options['human_white']:
+            # both of them are playing, swap when needed.
+            if B.turnCount % 2 != 0:
+                # blacks turn
+                if options['human_black']:
+                    blackPOV = True
+            else:
+                if options['human_white']:
+                    # generate board sprite
+                    blackPOV = False
+        else:
+            if options['human_black']:
+                blackPOV = True
+            else:
+                blackPOV = False
+    else:
+        # set a default colour.
+        blackPOV = True
+
+        # whites turn
+    print(B.printBoard(blackPOV))
+
+def playGame(black_player, white_player, options=baseOptions):
     B = checkers.CheckerBoard()
     current_player = B.active
-
+    
     choice = 0
     # take as input agents.
     while not B.is_over():
-        print(B)
+        printPerspectiveBoard(B, options)
         if  B.turnCount % 2 != choice:
             print("blacks turn")
             B.make_move(black_player.make_move(B, White))

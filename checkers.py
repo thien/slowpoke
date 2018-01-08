@@ -562,11 +562,15 @@ class CheckerBoard:
         # return manipulated list
         return np.array([rep[n] if n in rep else n for n in results],dtype=np.float32)
 
-    """
-    Prints out ASCII art representation of board.
-    """
-    def __str__(self):
-        print('\033c', end=None)
+    
+    def generateASCIIBoard(self, blackPOV=True):
+        """
+        Param:
+            blackPOV: True
+            prints from the perspective of black if it's set to true.
+            otherwise it will print to white's perspective; i.e it flips the board.
+        """
+
         # generate ASCII board frame
         board = [None] * 17
         for i in range(9):
@@ -608,4 +612,18 @@ class CheckerBoard:
                 # initiate the board with values.
                 board[x][y] = piece + str(1 + j + 8*i) + (paddingCheck(i,j))
 
-        return "".join(map(lambda x: "".join(x), board))
+        # return "".join(map(lambda x: "".join(x), board))
+        if blackPOV != True:
+            # its white, reverse.
+            board = board[::-1]
+        return board
+    
+    def printBoard(self, blackPOV=True):
+        return "".join(map(lambda x: "".join(x), self.generateASCIIBoard(blackPOV)))
+    """
+    Prints out the checkerboard. Mapped to default __str__ value; use if needed.
+    """
+    def __str__(self):
+        print('\033c', end=None)
+        return  "".join(map(lambda x: "".join(x), self.generateASCIIBoard()))
+        # return self.generateASCIIBoard()
