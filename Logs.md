@@ -194,3 +194,9 @@ for each layer's weights:
         swap index1 and index2's values
     Weights(child1) = father[0 to index1] + mother[index1 to index 2] + father[index2 to n]
     Weights(child2) = mother[0 to index1] + father[index1 to index 2] + mother[index2 to n]
+
+## 08/01/2018
+
+Testing performance of ReLU. It's much more faster than our current function; tanh; but it is nowhere near as effective. This may be due to the fact that it only considers the positive part of the argument; i'd imagine that the network is set up to consider negative numbers.
+
+JK at generation 50 it started picking up. I've saved the historical champions and its strategies; here it's playing at 6.22
