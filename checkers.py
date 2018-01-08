@@ -65,7 +65,6 @@ class CheckerBoard:
         self.pdn['Black'] = blackID
         self.pdn['White'] = whiteID
     
-
     """
     Resets current state to new game.
     """
