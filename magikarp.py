@@ -45,5 +45,5 @@ class Magikarp:
   def __init__(self):
     self.null = None
 
-  def make_move(self,board, colour=None):
-    return random.choice(board.get_moves())
+  def move_function(self, B, colour=None):
+    return random.choice(B.get_moves())

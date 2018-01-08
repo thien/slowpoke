@@ -1,29 +1,14 @@
 import checkers
 import agent
 import sys
-import slowpoke as sp
 import mongo
+
+# import player types
+import slowpoke as sp
+import magikarp as magi
 import human
 
 Black, White, empty = 0, 1, -1
-
-"""
-Allows the user to decide what gameplay they want to play on.
-"""
-def handlePlayerOption():
-    n = -1
-    while not n in [0, 1, 2]:
-        n = input("How many human players? (0, 1, 2): ")
-        try:
-            n = int(n)
-        except ValueError:
-            print ("Please input 0, 1, or 2.")
-    if n == 2:
-        play2Player()
-    elif n == 1:
-        playCPU()
-    else:
-        BotGame()
 
 """
 Displays the ASCII Board and other various information.
@@ -36,71 +21,20 @@ def printStatus(B):
     # print(B.moves())
     print("--------")
 
-# play 2 player game (human human)
-def play2Player():
-    cpu_1 = agent.Agent(human.Human())
-    cpu_2 = agent.Agent(human.Human())
-    playGame(player1, player2)
-
-# play human robot
-def playCPU(coefficents=[]):
-    p1 = human.Human()
-    player = agent.Agent(p1)
-
-    slowpoke1 = sp.Slowpoke(4)
-    if len(coefficents) > 0:
-        slowpoke1.loadWeights(coefficents)
-        print("Loaded coefficents")
-    cpu = agent.Agent(slowpoke1)
-    
-    humanColour = Black
-    botColour = White
-    choice = 0
-    while True:
-        choice = input("Enter 0 to go first and 1 to go second: ")
-        try:
-            choice = int(choice)
-            break
-        except ValueError:
-            print ("Please input 0 or 1.")
-            continue
-    
-    if choice == 0:
-        playGame(player, cpu)
-    else:
-        playGame(cpu, player)
-
-def slowpokeGame(coefficents1, coefficents2):
-    slowpoke1 = sp.Slowpoke(4)
-    slowpoke2 = sp.Slowpoke(4)
-    
-    import magikarp
-    magi = magikarp.Magikarp()
-    
-    slowpoke1.loadWeights(coefficents1)
-    slowpoke2.loadWeights(coefficents2)
-
-    print("Loaded coefficents")
-    cpu_1 = agent.Agent(slowpoke1)
-    cpu_2 = agent.Agent(slowpoke2)
-    # debug = input("Would you like to step through game play? [Y/N]: ")
-    # debug = 1 if debug.lower()[0] == 'y' else 0
-    playGame(cpu_1, cpu_2)
-
-def playGame(player1, player2, options={}):
+def playGame(black_player, white_player, options={}):
     B = checkers.CheckerBoard()
     current_player = B.active
 
     choice = 0
     # take as input agents.
     while not B.is_over():
-        print (B)
+        print(B)
         if  B.turnCount % 2 != choice:
             print("blacks turn")
-            B.make_move(player1.make_move(B, White))
+            B.make_move(black_player.make_move(B, White))
         else:
             print("whites turn")
-            B.make_move(player2.make_move(B, Black))
+            B.make_move(white_player.make_move(B, Black))
         # If jumps remain, then the board will not update current player
         if B.active == current_player:
             print ("Jumps must be taken.")
@@ -110,7 +44,7 @@ def playGame(player1, player2, options={}):
 
     print (B)
     B.getWinnerMessage()
-    return 0
+    return B
 
 def debugPrint(check, msg):
     if check:
@@ -181,7 +115,8 @@ def tournamentMatch(blackCPU, whiteCPU, gameID="NULL", dbURI=False, debug=False,
 def main():
     # handlePlayerOption()
     # play2Player()
-    playCPU()
+    print("You shouldn't be able to load this program directly. It is only called.")
+    print("Terminating..")
     # slowpokeGame()
 
 if __name__ == '__main__':

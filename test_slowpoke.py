@@ -12,9 +12,25 @@ ting = {
 
 import numpy as np
 import game
+import slowpoke as sp
+import agent
+
 mira200_4_good = np.array(ting['mira200_4_good'])
 reallygood = np.array(ting['ply1master'])
 eh = np.array(ting['poke2'])
 
 # game.slowpokeGame(reallygood,mira200_4_good)
-game.playCPU(mira200_4_good)
+# game.playCPU(mira200_4_good)
+
+slowpoke1 = sp.Slowpoke(4)
+slowpoke2 = sp.Slowpoke(4)
+
+slowpoke1.loadWeights(mira200_4_good)
+slowpoke2.loadWeights(mira200_4_good)
+
+print("Loaded coefficents")
+cpu_1 = agent.Agent(slowpoke1)
+cpu_2 = agent.Agent(slowpoke2)
+# debug = input("Would you like to step through game play? [Y/N]: ")
+# debug = 1 if debug.lower()[0] == 'y' else 0
+game.playGame(cpu_1, cpu_2)
