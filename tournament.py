@@ -175,6 +175,7 @@ class Generator:
       self.GenerationTimeLengths = np.hstack((self.GenerationTimeLengths, timeDifference))
 
   def poolChampGame(self, info):
+    self.displayDebugInfo()
     blackPlayer = self.population.players[info['Players'][0]]
     whitePlayer = self.population.players[info['Players'][1]]
     results = game.tournamentMatch(blackPlayer,whitePlayer)
@@ -185,6 +186,7 @@ class Generator:
       return ChampDrawPt
     else:
       return ChampLosePt
+    self.displayDebugInfo()
 
   def createChampGames(self):
     currentChampID = self.population.champions[-1]
@@ -280,9 +282,18 @@ class Generator:
     numGens = np.size(self.progress)
     remainingGenTime = averageGenTimeLength - (currentTime - self.currentGenStartTime)
     RemainingGenCount = self.generations-numGens
-    EstRemainingTime = (RemainingGenCount * averageGenTimeLength) + np.sum(self.GenerationTimeLengths)
-    EstEndDate = EstRemainingTime + self.StartTime
+
+    # calculate current run time
     currentRunTime = datetime.datetime.now() - datetime.datetime.fromtimestamp(self.StartTime)
+    # calculate remaining time
+    EstRemainingTime = (RemainingGenCount * averageGenTimeLength) + np.sum(self.GenerationTimeLengths)
+    EstEndDate = None
+    # if np.isnan(EstRemainingTime) == False:
+    EstRemainingTime = EstRemainingTime - currentRunTime.total_seconds()
+
+    if np.isnan(EstRemainingTime) == False:
+      EstEndDate = EstRemainingTime + self.StartTime + currentTime
+
     debugList = []
 
     # debuglist.append([self.population.ting,""])
@@ -296,7 +307,7 @@ class Generator:
     debugList.append([" ", " "])
     debugList.append(["Test Start Date", self.cleanDate(self.StartTime, True)])
     debugList.append(["Current Runtime", currentRunTime])
-    debugList.append(["Test End Date*", self.cleanDate(EstEndDate, True)])
+    debugList.append(["Test End Date*",  self.cleanDate(EstEndDate, True)])
     debugList.append(["Remaining Test Time*", self.cleanDate(EstRemainingTime)])
     # Time info
     debugList.append([" ", " "])
@@ -320,7 +331,6 @@ class Generator:
     debugList.append([" ", " "])
     debugList.append(["Previous Scoreboard", " "])
     debugList.append([self.previousGenerationRankings, ""])
-  
     
     return debugList
 
