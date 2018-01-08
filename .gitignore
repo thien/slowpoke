@@ -6,3 +6,4 @@ config.json
 champions.json
 og/*
 champions/*
+.vscode/*
