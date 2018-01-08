@@ -194,6 +194,11 @@ class Population:
     self.setWeights(cpu, weights)
 
   # Done
+  def storeCurrentChampionStats(self,stats):
+    self.generation
+    championJson[i]
+
+  # Done
   def saveChampionsToFile(self, datepath="today"):
     folderDirectory = os.getcwd() + "/champions/" + datepath + "/"
       # check save directory exists prior to saving
@@ -203,15 +208,14 @@ class Population:
     championJson = {}
     i = self.generation
     championJson[i] = {}
-    # store player and its weights.
-    championJson[i]['playerID'] = self.players[i].id
-    championJson[i]['coefficents'] = self.players[i].bot.nn.getAllCoefficents().tolist()
-    championJson[i]['scoreRange'] = self.players[i].champRange
-    championJson[i]['score'] = self.players[i].champScore
-    # championJson[i]['origin'] = self.players[i].origin
-    # championJson[i]['parents'] = self.players[i].parents
-  
 
+    championID = self.champions[-1]
+    # store player and its weights.
+    championJson[i]['pid'] = self.players[championID].id
+    championJson[i]['coefficents'] = self.players[championID].bot.nn.getAllCoefficents().tolist()
+    championJson[i]['champRange'] = self.players[championID].champRange
+    championJson[i]['champScore'] = self.players[championID].champScore
+  
     with open(folderDirectory + datepath + " - " + str(i) + ".json", 'w') as outfile:
       json.dump(championJson, outfile)
     
@@ -228,7 +232,7 @@ class Population:
     for i in range(len(self.players)):
       # store player and its weights.
       agent[i] = {}
-      agent[i]['score'] = self.players[i].champScore
+      agent[i]['score'] = self.players[i].points
       agent[i]['origin'] = self.players[i].origin
       agent[i]['parents'] = self.players[i].parents
   
