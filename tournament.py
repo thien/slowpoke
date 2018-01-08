@@ -286,28 +286,11 @@ class Generator:
     # calculate current run time
     currentRunTime = datetime.datetime.now() - datetime.datetime.fromtimestamp(self.StartTime)
     # calculate remaining time
-    EstRemainingTime = (RemainingGenCount * averageGenTimeLength) + np.sum(self.GenerationTimeLengths)
-    
-    print(EstRemainingTime*1)
-    print(self.StartTime)
-    # print(currentRunTime-0)
-    print("Current Run Time",currentRunTime.total_seconds())
-    print(self.StartTime + EstRemainingTime)
-    EstEndDate = None
-    # if np.isnan(EstRemainingTime) == False:
-    EstRemainingTime = EstRemainingTime - currentRunTime.total_seconds()
-      
-      # print(self.)
-    # print(self.StartTime)
-    print("Estimated Remaining Time",EstRemainingTime)
-    if np.isnan(EstRemainingTime) == False:
-      EstEndDate = EstRemainingTime + self.StartTime + currentRunTime.total_seconds()
-      print("Estimated End Date", EstEndDate)
-      # input()
+    EstRemainingTime = (RemainingGenCount * averageGenTimeLength) + np.sum(self.GenerationTimeLengths) - currentRunTime.total_seconds()
+
+    EstEndDate = EstRemainingTime + self.StartTime + currentRunTime.total_seconds()
 
     debugList = []
-
-    # debuglist.append([self.population.ting,""])
 
     debugList.append(["Generation", str(numGens)+"/"+str(self.generations)])
     debugList.append(["Population", self.populationSize])
