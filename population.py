@@ -121,8 +121,8 @@ class Population:
       self.setWeights(children[3],self.getWeights(i+1))
       self.addOrigins(children[2], [0,1,0])
       self.addOrigins(children[3], [0,1,0])
-      self.inheritOrigins(children[0], self.currentPopulation[i])
-      self.inheritOrigins(children[1], self.currentPopulation[i+1])
+      self.inheritOrigins(children[2], [self.currentPopulation[i]])
+      self.inheritOrigins(children[3], [self.currentPopulation[i+1]])
 
       # mutate all offsprings
       for offspring in children:
@@ -136,8 +136,8 @@ class Population:
     self.setWeights(remainders[1], self.getWeights(self.currentPopulation[4]))
     self.addOrigins(remainders[0], [0,1,0])
     self.addOrigins(remainders[1], [0,1,0])
-    self.inheritOrigins(remainders[0], self.currentPopulation[3])
-    self.inheritOrigins(remainders[1], self.currentPopulation[4])
+    self.inheritOrigins(remainders[0], [self.currentPopulation[3]])
+    self.inheritOrigins(remainders[1], [self.currentPopulation[4]])
 
     for offspring in remainders:
       self.mutate(offspring)
@@ -208,8 +208,8 @@ class Population:
     championJson[i]['coefficents'] = self.players[i].bot.nn.getAllCoefficents().tolist()
     championJson[i]['scoreRange'] = self.players[i].champRange
     championJson[i]['score'] = self.players[i].champScore
-    championJson[i]['origin'] = self.players[i].origin
-    championJson[i]['parents'] = self.players[i].parents
+    # championJson[i]['origin'] = self.players[i].origin
+    # championJson[i]['parents'] = self.players[i].parents
   
 
     with open(folderDirectory + datepath + " - " + str(i) + ".json", 'w') as outfile:
@@ -217,6 +217,26 @@ class Population:
     
       # append to file.
     print("saved champs to ",( folderDirectory+ str(i) + ".json"))
+
+  def savePopulationGenomes(self, datepath):
+    folderDirectory = os.getcwd() + "/champions/" + datepath + "/"
+      # check save directory exists prior to saving
+    if not os.path.isdir(folderDirectory):
+      os.makedirs(folderDirectory)
+
+    agent = {}
+    for i in range(len(self.players)):
+      # store player and its weights.
+      agent[i] = {}
+      agent[i]['score'] = self.players[i].champScore
+      agent[i]['origin'] = self.players[i].origin
+      agent[i]['parents'] = self.players[i].parents
+  
+    with open(folderDirectory + datepath + " - genomes.json", 'w') as outfile:
+      json.dump(agent, outfile)
+    
+      # append to file.
+    print("saved players genomic info.")     
 
   def savePopulation(self):
     """
@@ -267,7 +287,8 @@ class Population:
 
   # Done
   def inheritOrigins(self,botID, parentIDs):
-    self.players[botID].parents = parentIDs
+    for i in parentIDs:
+       self.players[botID].parents.append(i)
 
   # Done
   @staticmethod
