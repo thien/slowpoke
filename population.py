@@ -6,6 +6,7 @@ import numpy as np
 import mongo
 import json
 import operator
+import os
 
 Black, White, empty = 0, 1, -1
 
@@ -170,6 +171,13 @@ class Population:
     self.setWeights(cpu, weights)
 
   def saveChampionsToFile(self, filename="champions.json"):
+    folderDirectory = "champions/"
+
+    saveDir = os.getcwd() +"/"+ folderDirectory
+    # check save directory exists prior to saving
+    if not os.path.isdir(saveDir):
+      os.makedirs(saveDir)
+    
     championJson = {}
     for i in range(len(self.champions)):
       championJson[i] = {}
@@ -178,10 +186,12 @@ class Population:
       championJson[i]['coefficents'] = self.players[i].bot.nn.getAllCoefficents().tolist()
       championJson[i]['scoreRange'] = self.players[i].champRange
       championJson[i]['score'] = self.players[i].champScore
+    
     # write to file
-    with open(filename, 'w') as outfile:
+    with open(saveDir + filename, 'w') as outfile:
       json.dump(championJson, outfile)
-    print("saved champs to ", filename)
+    print("saved champs to ", saveDir + filename)
+
   def savePopulation(self):
     """
     Saves population to file, and also to database if needed.

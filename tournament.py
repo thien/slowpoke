@@ -148,6 +148,8 @@ class Generator:
     return self.population
 
   def runGenerations(self):
+
+    champions_filename = "champions " + self.cleanDate(self.StartTime, True) + ".json"
     # loop through the generations.
     for i in range(self.generations):
       # increment generation count
@@ -165,7 +167,7 @@ class Generator:
       # compute champion games (runs independently of others)
       self.runChampions()
       # save champions to file
-      self.population.saveChampionsToFile("champions.json")
+      self.population.saveChampionsToFile(champions_filename)
       # get the best players and generate a new population from them.
       self.population.generateNextPopulation()
       self.populationSize = self.population.count
