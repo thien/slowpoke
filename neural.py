@@ -161,27 +161,43 @@ class NeuralNetwork:
     return result
 
 if __name__ == "__main__":
-  inputs = [32,40,10,1]
-  nn = NeuralNetwork(inputs)
+
   # Insert checkerboard.
   x = np.array([1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], dtype=np.float32)
   
+
+  # standard neural network
+  inputs = [32,40,10,1]
+  nn = NeuralNetwork(inputs)
+
+  # subsquare neural network
+  subsq = [91,40,10,1]
+  nn2 = NeuralNetwork(subsq)
+
+
   import datetime
+
+
+  print("Regular Neural Network")
   start = datetime.datetime.now().timestamp()
-  # x = nn.subsquares(x)
-  # print(np.sum(x))
+
+  yValues = nn.compute(x)
 
   end = datetime.datetime.now().timestamp() - start
-  mu = datetime.datetime.now().timestamp()
-  print("TIME GENUGL:",end)
+  print(end)
 
-  # x = np.random.random_sample(32)
-  # Run Neural Network
-  # import datetime
-  # startTime = datetime.datetime.now()
-  # for i in range(0,10000):
-  yValues = nn.compute(x)
-  print("Probability:",yValues)
-  print("TIME TO RUN:",datetime.datetime.now().timestamp() - start)
+  x = nn.subsquares(x)
+
+  print("Subsquare Processed Neural Network")
+  mu = datetime.datetime.now().timestamp()
+
+  # print(x.size)
+  yValues = nn2.compute(x)
+ 
+  end2 = datetime.datetime.now().timestamp() - start
+  print(end2)
+
   # print("\nOutput values are: ")
   # showVector(yValues, 4)
+
+  print(end2/end)
