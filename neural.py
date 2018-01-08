@@ -142,9 +142,28 @@ class NeuralNetwork:
     # normalise to a range from -0.2 to 0.2
     return (vector-0.5) * 0.4
 
+  def nonlinear_function(self,val):
+    # tanh/sigmoid
+    # return np.tanh(val)
+    # return self.crelu(val)
+    return self.relu(val)
+
   @staticmethod
-  def nonlinear_function(val):
+  def tanh(val):
     return np.tanh(val)
+
+  @staticmethod
+  def relu(x):
+    # rectifier method; it turns out that this is not very effective at all.
+    x[x<0] =0
+    return x
+
+  @staticmethod
+  def crelu(x):
+    # linear cap from -1
+    x[x<-1] =-1
+    return x
+
 
   @staticmethod   
   def softmax(oSums):
