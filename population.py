@@ -28,6 +28,11 @@ class Population:
     self.numberOfWeights = self.players[0].bot.nn.lenCoefficents
     self.tau = 1 / math.sqrt( 2 * math.sqrt(self.numberOfWeights))
 
+    self.folderDirectory = os.getcwd() + "/champions/"
+    # check save directory exists prior to saving
+    if not os.path.isdir(self.folderDirectory):
+      os.makedirs(self.folderDirectory)
+
   # Done
   def generatePlayer(self):
     bot = sp.Slowpoke(self.plyDepth)
@@ -104,19 +109,36 @@ class Population:
         index1, index2 = index2, index1
       # crossover from parents
       children[0], children[1] = self.crossOver(parent_a_ID, parent_b_ID, children[0], children[1], index1, index2)
+
+      # assign evolution blocks to child 0 and child 1.
+      self.inheritOrigins(children[0], [parent_a_ID,parent_b_ID])
+      self.inheritOrigins(children[1], [parent_b_ID,parent_a_ID])
+      self.addOrigins(children[0], [1,1,0])
+      self.addOrigins(children[1], [1,1,0])
+
       # for the last 2 offsprings, they obtain the same weights as their parents.
- 
       self.setWeights(children[2],self.getWeights(i))
-      self.setWeights(children[3],self.getWeights(i))
+      self.setWeights(children[3],self.getWeights(i+1))
+      self.addOrigins(children[2], [0,1,0])
+      self.addOrigins(children[3], [0,1,0])
+      self.inheritOrigins(children[0], self.currentPopulation[i])
+      self.inheritOrigins(children[1], self.currentPopulation[i+1])
+
       # mutate all offsprings
       for offspring in children:
         self.mutate(offspring)
       # now we add children to the list of offsprings
       offsprings = offsprings + children
+
     # the last two children are mutations of 4th and 5th place bots.
     remainders = self.generatePlayers(2)
     self.setWeights(remainders[0], self.getWeights(self.currentPopulation[3]))
     self.setWeights(remainders[1], self.getWeights(self.currentPopulation[4]))
+    self.addOrigins(remainders[0], [0,1,0])
+    self.addOrigins(remainders[1], [0,1,0])
+    self.inheritOrigins(remainders[0], self.currentPopulation[3])
+    self.inheritOrigins(remainders[1], self.currentPopulation[4])
+
     for offspring in remainders:
       self.mutate(offspring)
     # add remainders to list of offsprings
@@ -124,6 +146,7 @@ class Population:
     # assign this set of offsprings as the new population.
     self.currentPopulation = offsprings
     self.count = len(offsprings)
+  
   # Done
   def crossOver(self, cpu1, cpu2, child1, child2, index1, index2):
     """
@@ -170,27 +193,30 @@ class Population:
     weights=np.clip(weights, -1, 1)
     self.setWeights(cpu, weights)
 
-  def saveChampionsToFile(self, filename="champions.json"):
-    folderDirectory = "champions/"
-
-    saveDir = os.getcwd() +"/"+ folderDirectory
-    # check save directory exists prior to saving
-    if not os.path.isdir(saveDir):
-      os.makedirs(saveDir)
-    
+  # Done
+  def saveChampionsToFile(self, datepath="today"):
+    folderDirectory = os.getcwd() + "/champions/" + datepath + "/"
+      # check save directory exists prior to saving
+    if not os.path.isdir(folderDirectory):
+      os.makedirs(folderDirectory)
+        
     championJson = {}
-    for i in range(len(self.champions)):
-      championJson[i] = {}
-      # store player and its weights.
-      championJson[i]['playerID'] = self.players[i].id
-      championJson[i]['coefficents'] = self.players[i].bot.nn.getAllCoefficents().tolist()
-      championJson[i]['scoreRange'] = self.players[i].champRange
-      championJson[i]['score'] = self.players[i].champScore
-    
-    # write to file
-    with open(saveDir + filename, 'w') as outfile:
+    i = self.generation
+    championJson[i] = {}
+    # store player and its weights.
+    championJson[i]['playerID'] = self.players[i].id
+    championJson[i]['coefficents'] = self.players[i].bot.nn.getAllCoefficents().tolist()
+    championJson[i]['scoreRange'] = self.players[i].champRange
+    championJson[i]['score'] = self.players[i].champScore
+    championJson[i]['origin'] = self.players[i].origin
+    championJson[i]['parents'] = self.players[i].parents
+  
+
+    with open(folderDirectory + str(i) + ".json", 'w') as outfile:
       json.dump(championJson, outfile)
-    print("saved champs to ", saveDir + filename)
+    
+      # append to file.
+    print("saved champs to ",( folderDirectory+ str(i) + ".json"))
 
   def savePopulation(self):
     """
@@ -234,6 +260,14 @@ class Population:
   # Done
   def getWeights(self,botID):
     return self.players[botID].bot.nn.getAllCoefficents()
+
+  # Done
+  def addOrigins(self,botID, values):
+    self.players[botID].origin = [values]
+
+  # Done
+  def inheritOrigins(self,botID, parentIDs):
+    self.players[botID].parents = parentIDs
 
   # Done
   @staticmethod

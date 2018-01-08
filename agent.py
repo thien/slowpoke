@@ -20,10 +20,29 @@ class Agent:
     self.champScore = 0
     self.move_function = bot.move_function
     self.colour = None
+    
+    # check for ID
     if agent_id is not None:
       self.setID(agent_id)
     else:
       self.genID()
+
+    # genomic properties.
+    self.origin = []
+    # store parent's ID
+    self.parents = []
+    self.generateOrigin()
+
+  def generateOrigin(self):
+    # generates hiearchy in order to determine successful evolution strategies.
+
+    # index guide:
+    # 0: crossover
+    # 0: mutation
+    # 0: continued
+
+    # this is the genesis block.
+    self.origin.append([0,0,0])
 
   def genID(self):
     try:

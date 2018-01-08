@@ -147,7 +147,7 @@ class Generator:
 
   def runGenerations(self):
 
-    champions_filename = "champions " + self.cleanDate(self.StartTime, True) + ".json"
+    champions_filename = self.cleanDate(self.StartTime, True)
     # loop through the generations.
     for i in range(self.generations):
       # increment generation count
