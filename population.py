@@ -212,7 +212,7 @@ class Population:
     championJson[i]['parents'] = self.players[i].parents
   
 
-    with open(folderDirectory + str(i) + ".json", 'w') as outfile:
+    with open(folderDirectory + datepath + " - " + str(i) + ".json", 'w') as outfile:
       json.dump(championJson, outfile)
     
       # append to file.
