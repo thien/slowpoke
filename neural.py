@@ -144,9 +144,9 @@ class NeuralNetwork:
 
   def nonlinear_function(self,val):
     # tanh/sigmoid
-    # return np.tanh(val)
+    return self.tanh(val)
     # return self.crelu(val)
-    return self.relu(val)
+    # return self.relu(val)
 
   @staticmethod
   def tanh(val):

@@ -17,7 +17,7 @@ def train():
                 'mongoConfigPath':'config2.json',
                 'plyDepth' : 1,
                 'NumberOfGenerations' : 100,
-                'Population' : 5,
+                'Population' : 15,
                 'printStatus' : True,
                 'connectMongo' : False
             }
