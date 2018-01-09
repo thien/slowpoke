@@ -42,7 +42,7 @@
 import numpy as np
 import random
 import math
-# Import Neural Network Class :)
+
 from neural import NeuralNetwork
 
 """
@@ -103,7 +103,6 @@ class Slowpoke:
   """
 
   def move_function(self, board, colour):
-    # move = self.minimax(board, self.ply, colour)
     # we'll need to get the current pieces of the board, manipulated 
     # in a way so that it can be shoved into the NN.
     # stage = self.checkGameStage(boardStatus)
@@ -201,7 +200,6 @@ class Slowpoke:
       # print(best_move)
       return best_move
 
-
   def evaluate_board(self,board,colour):
     """
     We throw in the board into the neural network here, and
@@ -216,37 +214,7 @@ class Slowpoke:
     # Evaluate the board array using our CNN.
     return self.nn.compute(self.nn.subsquares(boardStatus))
 
-
   def mcts(self, B, ply, colour):
-    minimax_win = 1
-    minimax_lose = -minimax_win
-    minimax_draw = 0
-    minimax_empty = -1
-
-    # start with flip being min
-    def treesearch(B,ply,colour):
-      if B.is_over():
-        if B.winner != minimax_empty:
-          if B.winner == colour:
-            return minimax_win
-          else:
-            return minimax_lose
-        else:
-          return minimax_draw
-      # get moves
-      moves = B.get_moves()
-      # iterate through a random move
-      move = random.choice(moves)
-   
-      HB = B.copy()
-      HB.make_move(move)
-      if ply == 0:
-        score = self.evaluate_board(HB, colour)
-      else:
-        score = treesearch(HB, ply-1, colour)
-      return score
-        
-    # ---------------------------------------------
     moves = B.get_moves()
     best_move = moves[0]
     best_score = float('-inf')
@@ -255,23 +223,52 @@ class Slowpoke:
     if len(moves) == 1:
       return moves[0]
     else:
+      # if the user adds some dud plycount default to 1 random round.
+      random_rounds = 1
       # iterate some random amount of times.
-      for i in range(100*self.ply):
+      if self.ply > 0:
+        random_rounds = 100*self.ply
+      
+      for i in range(random_rounds):
         random_move = random.choice(moves)
         HB = B.copy()
         HB.make_move(random_move)
-        if ply == 0:
-          score = self.evaluate_board(HB)
-        else:
-          score = treesearch(HB,ply-1,colour)
+        # start mcts
+        score = self.treesearch(HB,ply-1,colour)
         # get best score.
         if score > best_score:
           best_score = score
           if best_move != random_move:
             best_move = random_move
-            # print(i, best_score, best_move)
       return best_move
 
+  def treesearch(self,B,ply,colour):
+    minimax_win = 1
+    minimax_lose = -minimax_win
+    minimax_draw = 0
+    minimax_empty = -1
+
+    if B.is_over():
+      if B.winner != minimax_empty:
+        if B.winner == colour:
+          return minimax_win
+        else:
+          return minimax_lose
+      else:
+        return minimax_draw
+    # get moves
+    moves = B.get_moves()
+    # iterate through a random move
+    move = random.choice(moves)
+  
+    HB = B.copy()
+    HB.make_move(move)
+    if ply < 1:
+      score = self.evaluate_board(HB, colour)
+    else:
+      score = self.treesearch(HB, ply-1, colour)
+    return score
+        
   # """
   # Checks the current stage of the board.
   # """
