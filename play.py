@@ -156,6 +156,8 @@ def runGame(blackAgent, whiteAgent):
         print(blackAgent[1], "loses.")
     # print("This game was generated with a ply count of", ply)
     print(board.pdn)
+    # print(whiteAgent[0].bot.movesConsidered)
+
 if __name__ == "__main__":
     ply = None
     blackAgent, whiteAgent = None, None
