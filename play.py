@@ -19,7 +19,8 @@ slowpoke_coefficents = np.array(
 # Helper functions
 def isSlowpoke(playerName, playerclass):
     if playerName == "slowpoke":
-        playerclass.loadWeights(slowpoke_coefficents)
+        # playerclass.loadWeights(slowpoke_coefficents)
+        pass
     return playerclass
 
 def generatePlayerOptions(plyCount=4):

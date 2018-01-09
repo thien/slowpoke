@@ -87,7 +87,7 @@ class Slowpoke:
     This function initiates the neural network and adds it
     to the AI class.
     """
-    layers = [32,40,10,1]
+    layers = [91,40,10,1]
     # Now we can initialise the neural network.
     self.nn = NeuralNetwork(layers)
     if weights:
@@ -186,6 +186,10 @@ class Slowpoke:
     # input("")
     return best_move
 
+
+
+
+
   def evaluate_board(self,board,colour):
     """
     We throw in the board into the neural network here, and
@@ -198,7 +202,83 @@ class Slowpoke:
     # Get the current status of the board.
     boardStatus = board.getBoardPosWeighted(colour, self.pieceWeights)
     # Evaluate the board array using our CNN.
-    return self.nn.compute(boardStatus)
+    return self.nn.compute(self.nn.subsquares(boardStatus))
+
+
+
+  def mcts(self, B, ply, colour):
+    # We arbitrarily defined the value of a winning board as +1.0 and a losing board as −1.0. All other boards would receive values between −1.0 and +1.0, with a neural network favoring boards with higher values.
+    # print("Move Calculation")
+    minimax_win = 1
+    minimax_lose = -minimax_win
+    minimax_draw = 0
+    minimax_empty = -1
+
+    # start with flip being min
+    def alphabeta(B,ply,alpha,beta,colour,flip=True):
+      if B.is_over():
+        if B.winner != minimax_empty:
+          if flip:
+            return minimax_win
+          else:
+            return minimax_lose
+        else:
+          return minimax_draw
+      # get moves
+      moves = B.get_moves()
+      # iterate through moves
+      for move in moves:
+        HB = B.copy()
+        HB.make_move(move)
+
+        if ply == 0:
+          score = self.evaluate_board(HB, colour)
+        else:
+          if flip:
+            score = alphabeta(HB, ply-1, alpha, beta, colour, False)
+          else:
+            score = alphabeta(HB, ply-1, alpha, beta, colour, True)
+        if flip:
+          if score < beta:
+            beta = score
+          if beta <= alpha:
+            return beta
+        else:
+          if score > alpha:
+            alpha = score
+          if alpha >= beta:
+            return alpha
+      if flip:
+        return beta
+      else:
+        return alpha
+        
+    # ---------------------------------------------
+    moves = B.get_moves()
+    best_move = moves[0]
+    best_score = float('-inf')
+
+    alpha = float('-inf')
+    beta = float('inf')
+
+    # iterate through the current possible moves.
+    lol = B.get_move_strings()
+
+    for i in range(len(moves)):
+      HB = B.copy()
+      HB.make_move(moves[i])
+      if ply == 0:
+        score = self.evaluate_board(HB)
+      else:
+        score = alphabeta(HB,ply-1,alpha,beta,colour,True)
+      if score > best_score:
+        best_move = moves[i]
+        best_score = score
+        # print(lol[i], ":\t\t", score, "!")
+      # else:
+        # print(lol[i], ":\t\t", score, )
+    # input("")
+    return best_move
 
   # """
   # Checks the current stage of the board.
