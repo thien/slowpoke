@@ -81,6 +81,7 @@ class Slowpoke:
     # Once we have everything we are ready to initiate
     # the board.
     self.initiateNeuralNetwork(weights)
+    self.movesConsidered = []
 
   def initiateNeuralNetwork(self,weights=[]):
     """
@@ -110,7 +111,8 @@ class Slowpoke:
     # Now we choose appropiately which outcome we want. From here, we add
     # that current board choice and the probability of it doing damage.
     # chance = chooseGameStage(chances, stage)
-    return self.minimax(board, self.ply, colour)
+    # return self.minimax(board, self.ply, colour)
+    return self.mcts(board, self.ply, colour)
 
   def minimax(self, B, ply, colour):
     # We arbitrarily defined the value of a winning board as +1.0 and a losing board as −1.0. All other boards would receive values between −1.0 and +1.0, with a neural network favoring boards with higher values.
@@ -119,9 +121,12 @@ class Slowpoke:
     minimax_lose = -minimax_win
     minimax_draw = 0
     minimax_empty = -1
+    
+    self.counter = 0
 
     # start with flip being min
     def alphabeta(B,ply,alpha,beta,colour,flip=True):
+      self.counter += 1
       if B.is_over():
         if B.winner != minimax_empty:
           if flip:
@@ -170,24 +175,31 @@ class Slowpoke:
     # iterate through the current possible moves.
     lol = B.get_move_strings()
 
-    for i in range(len(moves)):
-      HB = B.copy()
-      HB.make_move(moves[i])
-      if ply == 0:
-        score = self.evaluate_board(HB)
-      else:
-        score = alphabeta(HB,ply-1,alpha,beta,colour,True)
-      if score > best_score:
-        best_move = moves[i]
-        best_score = score
-        # print(lol[i], ":\t\t", score, "!")
-      # else:
-        # print(lol[i], ":\t\t", score, )
-    # input("")
-    return best_move
-
-
-
+    # if theres only one move to make theres no point evaluating future moves.
+    if len(moves) == 1:
+      print("only one move")
+      # return the only move you can make.
+      return moves[0]
+    else:
+      for i in range(len(moves)):
+        HB = B.copy()
+        HB.make_move(moves[i])
+        if ply == 0:
+          score = self.evaluate_board(HB)
+        else:
+          score = alphabeta(HB,ply-1,alpha,beta,colour,True)
+        if score > best_score:
+          best_move = moves[i]
+          best_score = score
+        #   print(lol[i], ":\t\t", score, "!")
+        # else:
+        #   print(lol[i], ":\t\t", score, )
+      print("moves considered:",self.counter)
+      # print(best_move)
+      self.movesConsidered.append(self.counter)
+      # input("")
+      # print(best_move)
+      return best_move
 
 
   def evaluate_board(self,board,colour):
@@ -205,20 +217,17 @@ class Slowpoke:
     return self.nn.compute(self.nn.subsquares(boardStatus))
 
 
-
   def mcts(self, B, ply, colour):
-    # We arbitrarily defined the value of a winning board as +1.0 and a losing board as −1.0. All other boards would receive values between −1.0 and +1.0, with a neural network favoring boards with higher values.
-    # print("Move Calculation")
     minimax_win = 1
     minimax_lose = -minimax_win
     minimax_draw = 0
     minimax_empty = -1
 
     # start with flip being min
-    def alphabeta(B,ply,alpha,beta,colour,flip=True):
+    def treesearch(B,ply,colour):
       if B.is_over():
         if B.winner != minimax_empty:
-          if flip:
+          if B.winner == colour:
             return minimax_win
           else:
             return minimax_lose
@@ -226,59 +235,42 @@ class Slowpoke:
           return minimax_draw
       # get moves
       moves = B.get_moves()
-      # iterate through moves
-      for move in moves:
-        HB = B.copy()
-        HB.make_move(move)
-
-        if ply == 0:
-          score = self.evaluate_board(HB, colour)
-        else:
-          if flip:
-            score = alphabeta(HB, ply-1, alpha, beta, colour, False)
-          else:
-            score = alphabeta(HB, ply-1, alpha, beta, colour, True)
-        if flip:
-          if score < beta:
-            beta = score
-          if beta <= alpha:
-            return beta
-        else:
-          if score > alpha:
-            alpha = score
-          if alpha >= beta:
-            return alpha
-      if flip:
-        return beta
+      # iterate through a random move
+      move = random.choice(moves)
+   
+      HB = B.copy()
+      HB.make_move(move)
+      if ply == 0:
+        score = self.evaluate_board(HB, colour)
       else:
-        return alpha
+        score = treesearch(HB, ply-1, colour)
+      return score
         
     # ---------------------------------------------
     moves = B.get_moves()
     best_move = moves[0]
     best_score = float('-inf')
 
-    alpha = float('-inf')
-    beta = float('inf')
-
-    # iterate through the current possible moves.
-    lol = B.get_move_strings()
-
-    for i in range(len(moves)):
-      HB = B.copy()
-      HB.make_move(moves[i])
-      if ply == 0:
-        score = self.evaluate_board(HB)
-      else:
-        score = alphabeta(HB,ply-1,alpha,beta,colour,True)
-      if score > best_score:
-        best_move = moves[i]
-        best_score = score
-        # print(lol[i], ":\t\t", score, "!")
-      # else:
-        # print(lol[i], ":\t\t", score, )
-    # input("")
-    return best_move
+    # if theres only one move to make theres no point evaluating future moves.
+    if len(moves) == 1:
+      return moves[0]
+    else:
+      # iterate some random amount of times.
+      for i in range(1000):
+        random_move = random.choice(moves)
+        HB = B.copy()
+        HB.make_move(random_move)
+        if ply == 0:
+          score = self.evaluate_board(HB)
+        else:
+          score = treesearch(HB,ply-1,colour)
+        # get best score.
+        if score > best_score:
+          best_score = score
+          if best_move != random_move:
+            best_move = random_move
+            # print(i, best_score, best_move)
+      return best_move
 
   # """
   # Checks the current stage of the board.
