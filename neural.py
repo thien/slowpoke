@@ -116,7 +116,11 @@ class NeuralNetwork:
       # check if output layer so we can feed the sum of the input layer directly
       if n == len(sums)-1:
         # on output layer
-        sums[n] = sums[n] + np.sum(self.layers[0])
+        if self.layers[0].size == 91:
+          sums[n] = sums[n] + self.layers[0][-1]*32
+        else:
+          sums[n] = sums[n] + np.sum(self.layers[0])
+
     
       # add biases
       sums[n] += self.biases[n][j]
@@ -141,6 +145,8 @@ class NeuralNetwork:
   def normaliseVectors(vector):
     # normalise to a range from -0.2 to 0.2
     return (vector-0.5) * 0.4
+    # normalise to a range from -1 to 1
+    # return (vector-0.5) * 2
 
   def nonlinear_function(self,val):
     # tanh/sigmoid
@@ -182,7 +188,7 @@ class NeuralNetwork:
 if __name__ == "__main__":
 
   # Insert checkerboard.
-  x = np.array([1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], dtype=np.float32)
+  x = np.array([1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], dtype=np.float32)
   
 
   # standard neural network
@@ -197,26 +203,26 @@ if __name__ == "__main__":
   import datetime
 
 
-  print("Regular Neural Network")
+  # print("Regular Neural Network")
   start = datetime.datetime.now().timestamp()
 
   yValues = nn.compute(x)
-
+  print("RNN:",yValues)
   end = datetime.datetime.now().timestamp() - start
-  print(end)
+  # print("RNN Time:",end)
 
   x = nn.subsquares(x)
 
-  print("Subsquare Processed Neural Network")
+  # print("Subsquare Processed Neural Network")
   mu = datetime.datetime.now().timestamp()
 
   # print(x.size)
   yValues = nn2.compute(x)
- 
+  print("SNN:",yValues)
   end2 = datetime.datetime.now().timestamp() - start
-  print(end2)
+  # print("SNN Time:",end2)
 
   # print("\nOutput values are: ")
   # showVector(yValues, 4)
 
-  print(end2/end)
+  print("Time Multiplier:",end2/end)
