@@ -351,6 +351,45 @@ class CheckerBoard:
             else:
                 return False
 
+
+    """
+    Checks for a winner.
+    """
+    def checkWinner(self):
+        # check if nobody's pieces have been taken in a while.
+        if self.noEatCount == boringNoEatLimit:
+            self.winner = empty
+            self.pdn["Winner"] = empty
+            self.pdn["Result"] = "1/2-1/2"
+        else:
+        # check if players have pieces on the board.
+            if (len(self.blackPieces) > 0) and (len(self.whitePieces) > 0):
+                # it's still a draw.
+                self.winner = empty
+                self.pdn["Winner"] = empty
+                self.pdn["Result"] = "1/2-1/2"
+            else:
+                if self.active == White:
+                    self.winner = Black
+                    self.pdn["Winner"] = Black
+                    self.pdn["Result"] = "1-0"
+                else:
+                    self.winner = White
+                    self.pdn["Winner"] = White
+                    self.pdn["Result"] = "0-1"
+
+    """
+    Print Winner Message (when needed.)
+    """
+    def getWinnerMessage(self):
+        if self.winner == Black:
+            print ("Congrats Black, you win!")
+        elif self.winner == empty:
+            print ("It's a draw!")
+        else:
+            print ("Congrats White, you win!")
+
+
     """
     Returns a new board with the exact same state as the calling object.
     """
@@ -423,31 +462,6 @@ class CheckerBoard:
 
 
     """
-    Checks for a winner.
-    """
-    def checkWinner(self):
-        if self.noEatCount == boringNoEatLimit:
-            self.winner = empty
-            self.pdn["Winner"] = empty
-            self.pdn["Result"] = "1/2-1/2"
-        elif self.active == White:
-            self.winner = Black
-            self.pdn["Winner"] = Black
-            self.pdn["Result"] = "1-0"
-        else:
-            self.winner = White
-            self.pdn["Winner"] = White
-            self.pdn["Result"] = "0-1"
-
-    def getWinnerMessage(self):
-        if self.winner == Black:
-            print ("Congrats Black, you win!")
-        elif self.winner == empty:
-            print ("It's a draw!")
-        else:
-            print ("Congrats White, you win!")
-
-    """
     Returns a record of the positions of the pieces on the board.
     This also updates the FEN.
     """
@@ -457,6 +471,8 @@ class CheckerBoard:
         def genPDN(blackPieces, whitePieces):
             Black_list = ','.join(blackPieces)
             White_list = ','.join(whitePieces)
+            self.blackPieces = blackPieces
+            self.whitePieces = whitePieces
             current = "B"
             if self.active == White:
                 current = "W"
