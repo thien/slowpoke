@@ -548,7 +548,7 @@ class CheckerBoard:
     """
     def getBoardPosWeighted(self, colour, weights):
         results = []
-        if colour != Black:
+        if colour == White:
             # perform ugly position swap
             self.AIBoardPos.reverse()
             results = self.AIBoardPos
@@ -558,7 +558,7 @@ class CheckerBoard:
         # initiate pythonic conversion
 
         rep = {}
-        if colour != Black:
+        if colour == White:
             rep = {
                 Black:weights['White'], 
                 White:weights['Black'], 
