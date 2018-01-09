@@ -24,8 +24,8 @@ def printStatus(B):
 
 baseOptions = {
     'show_board' : True,
-    'human_white' : True,
-    'human_black' : True
+    'human_white' : False,
+    'human_black' : False
 }
 
 def printPerspectiveBoard(B, options):
