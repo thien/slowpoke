@@ -177,7 +177,7 @@ class Slowpoke:
 
     # if theres only one move to make theres no point evaluating future moves.
     if len(moves) == 1:
-      print("only one move")
+      # print("only one move")
       # return the only move you can make.
       return moves[0]
     else:
@@ -194,7 +194,7 @@ class Slowpoke:
         #   print(lol[i], ":\t\t", score, "!")
         # else:
         #   print(lol[i], ":\t\t", score, )
-      print("moves considered:",self.counter)
+      # print("moves considered:",self.counter)
       # print(best_move)
       self.movesConsidered.append(self.counter)
       # input("")
@@ -256,7 +256,7 @@ class Slowpoke:
       return moves[0]
     else:
       # iterate some random amount of times.
-      for i in range(1000):
+      for i in range(100*self.ply):
         random_move = random.choice(moves)
         HB = B.copy()
         HB.make_move(random_move)
