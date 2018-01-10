@@ -35,12 +35,11 @@ ting77 = np.array(ting['gen77ssq'])
 slowpoke1 = sp.Slowpoke(6)
 slowpoke2 = sp.Slowpoke(6)
 
-slowpoke1.loadWeights(gm)
-slowpoke2.loadWeights(ting77)
+slowpoke1.loadWeights(ting77)
+slowpoke2.loadWeights(gm)
 
 print("Loaded coefficents")
 cpu_1 = agent.Agent(slowpoke1)
 cpu_2 = agent.Agent(slowpoke2)
-# debug = input("Would you like to step through game play? [Y/N]: ")
-# debug = 1 if debug.lower()[0] == 'y' else 0
 game.playGame(cpu_1, cpu_2)
+print('gm is white, 4 is black')
