@@ -50,10 +50,15 @@ class Human:
     while True:
       move_idx = input("Enter your move number: ")
       try:
+        # check if the user entered a number
         move_idx = int(move_idx)
       except ValueError:
-        print ("Please input a valid move number.")
-        continue
+        # try and see if you can parse the move.
+        is_move = move_idx
+        move_idx = -1
+        for i in range(len(B.get_move_strings())):
+          if B.get_move_strings()[i] == is_move:
+            move_idx = i
       if move_idx in range(len(legal_moves)):
         break
       else:
