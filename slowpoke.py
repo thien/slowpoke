@@ -60,7 +60,7 @@ pieceWeights = {
 
 class Slowpoke:
   
-  def __init__(self, plyDepth=4, kingWeight=1.5, weights=[]):
+  def __init__(self, plyDepth=4, kingWeight=1.5, weights=[], layers=[91,40,10,1]):
     """
     Initialise Agent
 
@@ -69,7 +69,7 @@ class Slowpoke:
     """
     self.nn = False
     self.ply = plyDepth
-
+    self.layers = layers
     self.pieceWeights = {
       "Black" : -1,
       "White" : 1,
@@ -80,15 +80,14 @@ class Slowpoke:
 
     # Once we have everything we are ready to initiate
     # the board.
-    self.initiateNeuralNetwork(weights)
+    self.initiateNeuralNetwork(layers, weights)
     self.movesConsidered = []
 
-  def initiateNeuralNetwork(self,weights=[]):
+  def initiateNeuralNetwork(self, layers, weights=[]):
     """
     This function initiates the neural network and adds it
     to the AI class.
     """
-    layers = [91,40,10,1]
     # Now we can initialise the neural network.
     self.nn = NeuralNetwork(layers)
     if weights:
@@ -211,8 +210,10 @@ class Slowpoke:
 
     # Get the current status of the board.
     boardStatus = board.getBoardPosWeighted(colour, self.pieceWeights)
+    if self.layers[0] == 91:
+      boardStatus = self.nn.subsquares(boardStatus)
     # Evaluate the board array using our CNN.
-    return self.nn.compute(self.nn.subsquares(boardStatus))
+    return self.nn.compute(boardStatus)
 
   def mcts(self, B, ply, colour):
     moves = B.get_moves()
