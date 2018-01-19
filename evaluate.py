@@ -22,12 +22,16 @@ gameOpt = {
 }
 
 # load the games we want to see.
+# games = [
+#   ['slowpoke', 'random'],
+#   ['slowpoke', 'slowpoke_gen100'],
+#   ['slowpoke', 'slowpoke_no_subsquares'],
+#   ['slowpoke', 'slowpoke0'],
+#   ['slowpoke', 'slowpoke_minimax']
+# ]
 games = [
   ['slowpoke', 'random'],
-  ['slowpoke', 'slowpoke_gen100'],
-  ['slowpoke', 'slowpoke_no_subsquares'],
-  ['slowpoke', 'slowpoke0'],
-  ['slowpoke', 'slowpoke_minimax']
+  ['random', 'random']
 ]
 
 # gm vs random
@@ -182,13 +186,15 @@ def evaluate(games, numberOfGames=10, filename='evaluations'):
       with open(filename + ".json", 'w') as outfile:
         json.dump(entry, outfile)
       # now we need to make a csv.
+    print("saving to csv..")
+    print()
     csv_ent = create_csv(entry)
     print(csv_ent)
-
-    with open(filename + '.csv', 'wb') as csvfile:
+    print()
+    with open(filename + '.csv', 'w') as csvfile:
       writer = csv.writer(csvfile)
-      for i in csv_ent:
-        writer.writerow(i)
+      for i in range(len(csv_ent)):
+        writer.writerow(csv_ent[i])
     print("evaluations done; saved results to file.")
   else:
     print("Evaluations cancelled.")
