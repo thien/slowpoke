@@ -2,6 +2,7 @@ import play as p
 import json
 import multiprocessing
 import csv
+import datetime
 
 # player classes we want to play with.
 players = {
@@ -22,25 +23,14 @@ gameOpt = {
 }
 
 # load the games we want to see.
-# games = [
-#   ['slowpoke', 'random'],
-#   ['slowpoke', 'slowpoke_gen100'],
-#   ['slowpoke', 'slowpoke_no_subsquares'],
-#   ['slowpoke', 'slowpoke0'],
-#   ['slowpoke', 'slowpoke_minimax']
-# ]
 games = [
+  ['random', 'random'],
   ['slowpoke', 'random'],
-  ['random', 'random']
+  ['slowpoke', 'slowpoke_gen100'],
+  ['slowpoke', 'slowpoke_no_subsquares'],
+  ['slowpoke', 'slowpoke0'],
+  ['slowpoke', 'slowpoke_minimax']
 ]
-
-# gm vs random
-# gm(200) vs gm100
-# gm vs minimax
-# gm(0) vs minimax(0)
-# gm vs mcts
-# gm(0) vs mcts
-
 
 # --------------------------
 # Multithreading Operations
@@ -49,6 +39,7 @@ cores = multiprocessing.cpu_count()-1
 
 def gameWorker(i):
   score = p.runGame(i['black'], i['white'], i['gameOpt']).winner
+  print(score)
   return score
 
 # --------------------------
@@ -98,6 +89,17 @@ def create_csv(entry):
     csv_ent.append(ent)
   return csv_ent
 
+def printStatus(entry, startTime=None):
+  print('\033c', end=None)
+  for evaluate_id, _ in entry.items():
+    scoreboard = str(entry[evaluate_id]['wins']) + ":" + str(entry[evaluate_id]['losses'])+":"+str(entry[evaluate_id]['draws'])
+    print(evaluate_id, scoreboard)
+    print("Wins:", entry[evaluate_id]['wins'], "("+str(entry[evaluate_id]['win_ratio']) + "%", "-", entry[evaluate_id]['as_black']['wins'], "as black,", entry[evaluate_id]['as_white']['wins'] , "as white; FMA Ratio: ",entry[evaluate_id]['first_mover_advantage']['win_ratio'], ")" )
+    print("Losses:", entry[evaluate_id]['losses'], "("+str(entry[evaluate_id]['lose_ratio']) + "%", "-", entry[evaluate_id]['as_black']['losses'], "as black,", entry[evaluate_id]['as_white']['losses'] , "as white; FMA Ratio: ",entry[evaluate_id]['first_mover_advantage']['lose_ratio'], ")" )
+    print("Draws:", entry[evaluate_id]['draws'], "("+str(entry[evaluate_id]['draw_ratio']) + "%", "-", entry[evaluate_id]['as_black']['draws'], "as black,", entry[evaluate_id]['as_white']['draws'] , "as white; FMA Ratio: ",entry[evaluate_id]['first_mover_advantage']['draw_ratio'], ")" )
+    print("KD Ratio:",entry[evaluate_id]['kd_ratio'], "- Success Ratio:", entry[evaluate_id]['success_ratio'])
+    print()
+
 # iterate through the games.
 def evaluate(games, numberOfGames=10, filename='evaluations'):
   if verifyClasses(games):
@@ -140,7 +142,8 @@ def evaluate(games, numberOfGames=10, filename='evaluations'):
           gamePool.append({
             'black' : players[x[black]],
             'white' : players[x[white]],
-            'gameOpt' : gameOpt
+            'gameOpt' : gameOpt,
+            'entry' : entry
           })
 
         # create game pool.
@@ -160,6 +163,10 @@ def evaluate(games, numberOfGames=10, filename='evaluations'):
       entry[evaluate_id]['win_ratio'] = entry[evaluate_id]['wins']/numberOfGames * 100
       entry[evaluate_id]['lose_ratio'] = entry[evaluate_id]['losses']/numberOfGames * 100
       entry[evaluate_id]['draw_ratio'] = entry[evaluate_id]['draws']/numberOfGames * 100
+      try:
+        entry[evaluate_id]['kd_ratio'] =  entry[evaluate_id]['win_ratio']/entry[evaluate_id]['lose_ratio']
+      except:
+        entry[evaluate_id]['kd_ratio'] = '+inf'
       entry[evaluate_id]['success_ratio'] = 100 - entry[evaluate_id]['lose_ratio']
 
       bw_winratio, bw_loseratio, bw_drawratio = "-", "-", "-"
@@ -181,20 +188,19 @@ def evaluate(games, numberOfGames=10, filename='evaluations'):
         'lose_ratio' : bw_loseratio,
         'draw_ratio' : bw_drawratio
       }
-      print(entry) 
+      printStatus(entry)
+      
       # now write it to json.
       with open(filename + ".json", 'w') as outfile:
         json.dump(entry, outfile)
       # now we need to make a csv.
-    print("saving to csv..")
-    print()
-    csv_ent = create_csv(entry)
-    print(csv_ent)
-    print()
-    with open(filename + '.csv', 'w') as csvfile:
-      writer = csv.writer(csvfile)
-      for i in range(len(csv_ent)):
-        writer.writerow(csv_ent[i])
+      csv_ent = create_csv(entry)
+      # print(csv_ent)
+
+      with open(filename + '.csv', 'w') as csvfile:
+        writer = csv.writer(csvfile)
+        for i in range(len(csv_ent)):
+          writer.writerow(csv_ent[i])
     print("evaluations done; saved results to file.")
   else:
     print("Evaluations cancelled.")
