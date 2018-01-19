@@ -71,7 +71,7 @@ def generatePlayerOptions(plyCount=4):
             "description" : "Slowpoke is a bot. (Gen 77)",
             "class" : genSlowpokeishClass(plyCount)
         },
-        'slowerpoke' : {
+        'slowpoke_nosb' : {
             "description" : "Slowerpoke is a slowpoke that doesn't use subsquares.",
             "class" : genSlowpokeClass(plyCount)
         },
@@ -79,7 +79,7 @@ def generatePlayerOptions(plyCount=4):
             "description" : "This slowpoke uses a random set of weights. Also uses subsquares.",
             "class" : sp.Slowpoke(plyCount)
         },
-        'slowpokeMM' : {
+        'slowpoke_minimax' : {
             "description" : "This slowpoke is a GM, but uses minimax instead",
             "class" : genSlowpokeGMClassMM(plyCount)
         }
