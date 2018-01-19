@@ -53,7 +53,7 @@ def genSlowpokeClass(plyCount=4):
     bot.loadWeights(coef32)
     return bot
 
-def generatePlayerOptions(plyCount=4):
+def generatePlayerOptions(plyCount=6):
     playerTypes = {
         'magikarp' : {
             "description" : "It plays randomly.",
@@ -94,7 +94,6 @@ def loadPlayerClass(i, playerTypes = generatePlayerOptions(4)):
     try:
         title = i.replace("b=", "").lower()
         player = playerTypes[title]['class']
-        player = isSlowpoke(title,player)
         player = agent.Agent(player)
         return (player, title)
     except KeyError as e:
@@ -160,10 +159,7 @@ def loadPlayer(options={}):
             print(resp, "is not a recognised agent. Try again.")
 
     playerClass = playerTypes[player]['class']
-    # add coefficents if its a slowpoke.
-    playerClass = isSlowpoke(player,playerClass)
 
-    
     # load the agent who will play this.
     print()
     return (agent.Agent(playerClass), player)
@@ -175,7 +171,6 @@ def initiateAgents():
     blackAgent = loadPlayer({'colour':"Black"})
     whiteAgent = loadPlayer({'colour':"White"})
     return (blackAgent, whiteAgent)
-
 
 defaultOptions = {
     'show_dialog' : True,
