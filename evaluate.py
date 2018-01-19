@@ -62,14 +62,40 @@ def verifyClasses(games):
     print("Error:",e, "isn't a recognised player type. Here's a traceback:")
     return False
 
-# --------------------------
+def create_csv(entry):
+  csv_ent = []
+  # add entries for headings
+  for key, value in entry.items():
+    headings = []
+    headings.append("opponment")
+    for k, v in value.items():
+      if isinstance(v, dict):
+        for l, w in v.items():
+          headings.append(k + "_" + l)
+      else:
+        headings.append(k)
+    csv_ent.append(headings)
+    break
+
+  # add entries for values
+  for key, value in entry.items():
+    ent = []
+    ent.append(value)
+    for k, v in value.items():
+      if isinstance(v, dict):
+        for l, w in v.items():
+          headings.append(w)
+      else:
+        headings.append(v)
+    csv_ent.append(ent)
+  
+  return csv_ent
 
 # iterate through the games.
-def evaluate(games, numberOfGames=10, filename='evaluations.json'):
+def evaluate(games, numberOfGames=10, filename='evaluations'):
   if verifyClasses(games):
+    entry = {}
     for x in games:
-      entry = {}
-
       black, white = 0, 1
 
       evaluate_id = x[black] + "_vs_" + x[white]
@@ -84,10 +110,12 @@ def evaluate(games, numberOfGames=10, filename='evaluations.json'):
       for j in range(0,2):
         scores = []
         # make sure they switch for black and white
+        ent_string = "as_black"
         if j == 1:
           black, white = 1,0
-      
-        entry[evaluate_id][j] = {} 
+          ent_string = "as_white"
+
+        entry[evaluate_id][ent_string] = {} 
 
         gamePool = []
         for i in range(0,int(numberOfGames/2)):
@@ -103,23 +131,36 @@ def evaluate(games, numberOfGames=10, filename='evaluations.json'):
           scores = pool.map(gameWorker, gamePool)
         
         # count number of wins, losses, draws for given side.
-        entry[evaluate_id][j]['wins'] = scores.count(black)
-        entry[evaluate_id][j]['losses'] = scores.count(white)
-        entry[evaluate_id][j]['draws'] = scores.count(-1)
+        entry[evaluate_id][ent_string]['wins'] = scores.count(black)
+        entry[evaluate_id][ent_string]['losses'] = scores.count(white)
+        entry[evaluate_id][ent_string]['draws'] = scores.count(-1)
 
         # add to overall w/l/d
-        entry[evaluate_id]['wins'] += entry[evaluate_id][j]['wins']
-        entry[evaluate_id]['losses'] += entry[evaluate_id][j]['losses']
-        entry[evaluate_id]['draws'] += entry[evaluate_id][j]['draws']
+        entry[evaluate_id]['wins'] += entry[evaluate_id][ent_string]['wins']
+        entry[evaluate_id]['losses'] += entry[evaluate_id][ent_string]['losses']
+        entry[evaluate_id]['draws'] += entry[evaluate_id][ent_string]['draws']
       
       entry[evaluate_id]['win_ratio'] = entry[evaluate_id]['wins']/numberOfGames * 100
       entry[evaluate_id]['lose_ratio'] = entry[evaluate_id]['losses']/numberOfGames * 100
       entry[evaluate_id]['draw_ratio'] = entry[evaluate_id]['draws']/numberOfGames * 100
       entry[evaluate_id]['success_ratio'] = 100 - entry[evaluate_id]['lose_ratio']
+
+      entry[evaluate_id]['first_mover_advantage'] = {
+        'win_ratio' = entry[evaluate_id]["as_black"]['wins'] / entry[evaluate_id]["as_white"]['wins']
+        'lose_ratio' = entry[evaluate_id]["as_black"]['losses'] / entry[evaluate_id]["as_white"]['losses']
+        'draw_ratio' = entry[evaluate_id]["as_black"]['draws'] / entry[evaluate_id]["as_white"]['draws']
+      }
       print(entry)
       # now write it to json.
-      with open(filename, 'w') as outfile:
+      with open(filename + ".json", 'w') as outfile:
         json.dump(entry, outfile)
+    # now we need to make a csv.
+    csv_ent = create_csv(entry)
+    for i in csv_ent:
+      print(i)
+    print("evaluations done!")
+  else:
+    print("Evaluations cancelled.")
 
 if __name__ == "__main__":
-  evaluate(games, 10, 'evaluations.json')
+  evaluate(games, 2, 'evaluations.json')
