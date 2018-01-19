@@ -37,6 +37,12 @@ def genSlowpokeGMClass(plyCount=4):
     bot.loadWeights(coef91)
     return bot
 
+def genSlowpokeGMClassMM(plyCount=4):
+    bot = sp.Slowpoke(plyDepth=plyCount, minimax=True)
+    bot.loadWeights(coef91)
+    return bot
+
+
 def genSlowpokeishClass(plyCount=4):
     bot = sp.Slowpoke(plyDepth=plyCount)
     bot.loadWeights(coef91g77)
@@ -68,6 +74,14 @@ def generatePlayerOptions(plyCount=4):
         'slowerpoke' : {
             "description" : "Slowerpoke is a slowpoke that doesn't use subsquares.",
             "class" : genSlowpokeClass(plyCount)
+        },
+        'slowpoke0' : {
+            "description" : "This slowpoke uses a random set of weights. Also uses subsquares.",
+            "class" : sp.Slowpoke(plyCount)
+        },
+        'slowpokeMM' : {
+            "description" : "This slowpoke is a GM, but uses minimax instead",
+            "class" : genSlowpokeGMClassMM(plyCount)
         }
     }
     return playerTypes

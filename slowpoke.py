@@ -60,13 +60,14 @@ pieceWeights = {
 
 class Slowpoke:
   
-  def __init__(self, plyDepth=4, kingWeight=1.5, weights=[], layers=[91,40,10,1]):
+  def __init__(self, plyDepth=4, kingWeight=1.5, weights=[], layers=[91,40,10,1], minimax=False):
     """
     Initialise Agent
 
     Note that we keep the weights since it is
     essential for the bot to evaluate the board.
     """
+    self.chooseMinimax = minimax
     self.nn = False
     self.ply = plyDepth
     self.layers = layers
@@ -109,8 +110,10 @@ class Slowpoke:
     # Now we choose appropiately which outcome we want. From here, we add
     # that current board choice and the probability of it doing damage.
     # chance = chooseGameStage(chances, stage)
-    # return self.minimax(board, self.ply, colour)
-    return self.mcts(board, self.ply, colour)
+    if self.chooseMinimax:
+      return self.minimax(board, self.ply, colour)
+    else:
+      return self.mcts(board, self.ply, colour)
 
   def minimax(self, B, ply, colour):
     # We arbitrarily defined the value of a winning board as +1.0 and a losing board as −1.0. All other boards would receive values between −1.0 and +1.0, with a neural network favoring boards with higher values.
