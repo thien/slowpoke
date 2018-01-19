@@ -76,10 +76,20 @@ def generatePlayerOptions(plyCount=4):
 
 # load agents
 
+def loadPlayerClass(i, playerTypes = generatePlayerOptions(4)):
+    try:
+        title = i.replace("b=", "").lower()
+        player = playerTypes[title]['class']
+        player = isSlowpoke(title,player)
+        player = agent.Agent(player)
+        return (player, title)
+    except KeyError as e:
+        # print(KeyError)
+        print("Error:",e, "isn't a recognised player type. Here's a traceback:")
+
 def handleArguments():
     print(sys.argv)
     # check if "b=" is in one of the arguments
-
     blackPlayer = None
     whitePlayer = None
 
@@ -100,18 +110,10 @@ def handleArguments():
     for i in sys.argv:
         if "b=" in i:
             # black player detected
-            title = i.replace("b=", "").lower()
-            player = playerTypes[title]['class']
-            player = isSlowpoke(title,player)
-            player = agent.Agent(player)
-            blackPlayer = (player, title)
+            blackPlayer = loadPlayerClass(i)
         if "w=" in i:
             # white player detected
-            title = i.replace("w=", "").lower()
-            player = playerTypes[title]['class']
-            player = isSlowpoke(title,player)
-            player = agent.Agent(player)
-            whitePlayer = (player,title)
+            whitePlayer = loadPlayerClass(i)
             
     # check if they're still null values.
     if blackPlayer == None:
@@ -122,7 +124,6 @@ def handleArguments():
     return blackPlayer, whitePlayer
 
 def loadPlayer(options={}):
-    
     print("Who will be the", options['colour'], "player?")
     if options['colour'] == "Black":
         print("Note that Black plays first.")
@@ -161,15 +162,18 @@ def initiateAgents():
     whiteAgent = loadPlayer({'colour':"White"})
     return (blackAgent, whiteAgent)
 
-def runGame(blackAgent, whiteAgent):
+
+defaultOptions = {
+    'show_dialog' : True,
+    'show_board' : True,
+    'human_white' : False,
+    'human_black' : False    
+}
+
+def runGame(blackAgent, whiteAgent, options=defaultOptions):
     """
     To be called once players are generated.
     """
-    options = {
-        'show_board' : True,
-        'human_white' : False,
-        'human_black' : False    
-    }
     
     if blackAgent[1] == "human":
         options['human_black'] = True
@@ -179,15 +183,17 @@ def runGame(blackAgent, whiteAgent):
     # load the game
     board = game.playGame(blackAgent[0], whiteAgent[0], options)
 
-    if board.winner == 0:
-        print(blackAgent[1], "wins!")
-        print(whiteAgent[1], "loses.")
-    elif board.winner == 1:
-        print(whiteAgent[1], "wins!")
-        print(blackAgent[1], "loses.")
-    # print("This game was generated with a ply count of", ply)
-    print(board.pdn)
+    if options['show_dialog']:
+        if board.winner == 0:
+            print(blackAgent[1], "wins!")
+            print(whiteAgent[1], "loses.")
+        elif board.winner == 1:
+            print(whiteAgent[1], "wins!")
+            print(blackAgent[1], "loses.")
+        # print("This game was generated with a ply count of", ply)
+        print(board.pdn)
     # print(whiteAgent[0].bot.movesConsidered)
+    return board
 
 if __name__ == "__main__":
     ply = None

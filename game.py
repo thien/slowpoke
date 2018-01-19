@@ -23,6 +23,7 @@ def printStatus(B):
 
 
 baseOptions = {
+    'show_dialog' : True,
     'show_board' : True,
     'human_white' : False,
     'human_black' : False
@@ -65,22 +66,27 @@ def playGame(black_player, white_player, options=baseOptions):
     choice = 0
     # take as input agents.
     while not B.is_over():
-        printPerspectiveBoard(B, options)
+        if options['show_board']:
+            printPerspectiveBoard(B, options)
         if  B.turnCount % 2 != choice:
-            print("blacks turn")
+            if options['show_dialog']:
+                print("blacks turn")
             B.make_move(black_player.make_move(B, White))
         else:
-            print("whites turn")
+            if options['show_dialog']:
+                print("whites turn")
             B.make_move(white_player.make_move(B, Black))
         # If jumps remain, then the board will not update current player
         if B.active == current_player:
-            print ("Jumps must be taken.")
+            if options['show_dialog']:
+                print ("Jumps must be taken.")
             continue
         else:
             current_player = B.active
 
-    print (B)
-    B.getWinnerMessage()
+    if options['show_board']:
+        print (B)
+        B.getWinnerMessage()
     return B
 
 def debugPrint(check, msg):
