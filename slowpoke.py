@@ -231,7 +231,7 @@ class Slowpoke:
       random_rounds = 1
       # iterate some random amount of times.
       if self.ply > 0:
-        random_rounds = 100*self.ply
+        random_rounds = 300*self.ply
       
       for i in range(random_rounds):
         random_move = random.choice(moves)
