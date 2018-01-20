@@ -154,7 +154,7 @@ class CheckerBoard:
             self.multipleJumpStack.append(positions[0])
             self.multipleJumpStack.append(positions[1])
             if self.mandatoryJumps:
-                return
+                return self
         else:
             self.noEatCount += 1
 
@@ -175,6 +175,7 @@ class CheckerBoard:
         self.active, self.passive = self.passive, self.active
         # now we can update the state of the board.
         self.updateState()
+        return self
 
     """
     Updates the game state to reflect the effects of the input
@@ -402,6 +403,17 @@ class CheckerBoard:
         else:
             print ("Congrats White, you win!")
 
+    """
+    returns the current player.
+    """
+    def current_player(self,board=None):
+        if board:
+            return board.current_player()
+        else:
+            if self.turnCount % 2 == 0:
+                return Black
+            else:
+                return White
 
     """
     Returns a new board with the exact same state as the calling object.
@@ -652,6 +664,6 @@ class CheckerBoard:
     Prints out the checkerboard. Mapped to default __str__ value; use if needed.
     """
     def __str__(self):
-        print('\033c', end=None)
+        # print('\033c', end=None)
         return  "".join(map(lambda x: "".join(x), self.generateASCIIBoard()))
         # return self.generateASCIIBoard()
