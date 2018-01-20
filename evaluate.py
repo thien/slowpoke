@@ -6,12 +6,18 @@ import datetime
 
 # player classes we want to play with.
 players = {
-  'slowpoke' : p.loadPlayerClass('slowpoke'),
+  'slowpoke_gm' : p.loadPlayerClass('slowpoke'),
   'random' : p.loadPlayerClass('magikarp'),
-  'slowpoke_gen100' : p.loadPlayerClass('slowpokeish'),
+  'slowpoke_99' : p.loadPlayerClass('slowpoke_99'),
+  'slowpoke_149' : p.loadPlayerClass('slowpoke_149'),
   'slowpoke_no_subsquares' : p.loadPlayerClass('slowpoke_nosb'),
   'slowpoke_minimax' : p.loadPlayerClass('slowpoke_minimax'),
-  'slowpoke0' : p.loadPlayerClass('slowpoke0')
+  'slowpoke0' : p.loadPlayerClass('slowpoke_0'),
+  'slowpoke_r1' : p.loadPlayerClass('slowpoke_rand'),
+  'slowpoke_r2' : p.loadPlayerClass('slowpoke_rand'),
+  'slowpoke_r3' : p.loadPlayerClass('slowpoke_rand'),
+  'slowpoke_r4' : p.loadPlayerClass('slowpoke_rand'),
+  'slowpoke_r5' : p.loadPlayerClass('slowpoke_rand')
 }
 
 # configure game options so we don't print the game status
@@ -25,11 +31,18 @@ gameOpt = {
 # load the games we want to see.
 games = [
   ['random', 'random'],
-  ['slowpoke', 'random'],
-  ['slowpoke', 'slowpoke_gen100'],
-  ['slowpoke', 'slowpoke_no_subsquares'],
-  ['slowpoke', 'slowpoke0'],
-  ['slowpoke', 'slowpoke_minimax']
+  ['slowpoke_gm', 'random'],
+  ['slowpoke_gm', 'slowpoke0'],
+  ['slowpoke_gm', 'slowpoke_99'],
+  ['slowpoke_gm', 'slowpoke_149'],
+  ['slowpoke_gm', 'slowpoke_no_subsquares'],
+  ['slowpoke_gm', 'slowpoke_minimax'],
+  ['slowpoke_gm', 'slowpoke_r1'],
+  ['slowpoke_gm', 'slowpoke_r2'],
+  ['slowpoke_gm', 'slowpoke_r3'],
+  ['slowpoke_gm', 'slowpoke_r4'],
+  ['slowpoke_gm', 'slowpoke_r5'],
+  ['slowpoke_gm', 'slowpoke_gm']
 ]
 
 # --------------------------
