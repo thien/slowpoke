@@ -42,8 +42,10 @@
 import numpy as np
 import random
 import math
-
+import datetime
 from neural import NeuralNetwork
+from math import log, sqrt
+import json
 
 """
 Piece Weights
@@ -55,6 +57,13 @@ pieceWeights = {
   "blackKing" : -2,
   "whiteKing" : -3
 }
+
+# We arbitrarily defined the value of a winning board as +1.0 and a losing board as −1.0. All other boards would receive values between −1.0 and +1.0, with a neural network favoring boards with higher values.
+
+minimax_win = 1
+minimax_lose = -minimax_win
+minimax_draw = 0
+minimax_empty = -1
 
 # -----------------------------------------------------------
 
@@ -113,16 +122,13 @@ class Slowpoke:
     if self.chooseMinimax:
       return self.minimax(board, self.ply, colour)
     else:
-      return self.mcts(board, self.ply, colour)
+      # import mcts
+      # k = mcts.MonteCarlo(board)
+      # return k.get_play()
+      return self.mcts_code(board,self.ply, colour)
+      # return self.random_ts(board, self.ply, colour)
 
-  def minimax(self, B, ply, colour):
-    # We arbitrarily defined the value of a winning board as +1.0 and a losing board as −1.0. All other boards would receive values between −1.0 and +1.0, with a neural network favoring boards with higher values.
-    # print("Move Calculation")
-    minimax_win = 1
-    minimax_lose = -minimax_win
-    minimax_draw = 0
-    minimax_empty = -1
-    
+  def minimax(self, B, ply, colour):    
     self.counter = 0
 
     # start with flip being min
@@ -211,14 +217,23 @@ class Slowpoke:
     Make the bot think it's always playing from blacks perspective.
     """
 
-    # Get the current status of the board.
-    boardStatus = board.getBoardPosWeighted(colour, self.pieceWeights)
-    if self.layers[0] == 91:
-      boardStatus = self.nn.subsquares(boardStatus)
-    # Evaluate the board array using our CNN.
-    return self.nn.compute(boardStatus)
+    if board.is_over():
+      if board.winner != minimax_empty:
+        if board.winner == colour:
+          return minimax_win
+        else:
+          return minimax_lose
+      else:
+        return minimax_draw
+    else:
+      # Get the current status of the board.
+      boardStatus = board.getBoardPosWeighted(colour, self.pieceWeights)
+      if self.layers[0] == 91:
+        boardStatus = self.nn.subsquares(boardStatus)
+      # Evaluate the board array using our CNN.
+      return self.nn.compute(boardStatus)
 
-  def mcts(self, B, ply, colour):
+  def random_ts(self, B, ply, colour):
     moves = B.get_moves()
     best_move = moves[0]
     best_score = float('-inf')
@@ -247,11 +262,6 @@ class Slowpoke:
       return best_move
 
   def treesearch(self,B,ply,colour):
-    minimax_win = 1
-    minimax_lose = -minimax_win
-    minimax_draw = 0
-    minimax_empty = -1
-
     if B.is_over():
       if B.winner != minimax_empty:
         if B.winner == colour:
@@ -272,7 +282,193 @@ class Slowpoke:
     else:
       score = self.treesearch(HB, ply-1, colour)
     return score
-        
+
+  def mcts_code(self, B, ply, colour):
+    moves = B.get_moves()
+
+    # if theres only one move to make theres no point
+    # evaluating future moves.
+    if not moves:
+      return
+    if len(moves) == 1:
+      return moves[0]
+
+    self.mcts_plays, self.mcts_chances = {}, {}
+
+    seconds = 1
+    self.calculation_time = datetime.timedelta(seconds=seconds)
+
+    self.c = 1.4
+
+    # if the user adds some dud plycount default to 1 random round.
+    max_rounds = 1
+    if self.ply > 0:
+      max_rounds = 30*self.ply
+    
+    # begin mcts
+    begin = datetime.datetime.utcnow()
+    number_of_sims = 0
+    while datetime.datetime.utcnow() - begin < self.calculation_time:
+      movebases = self.mcts_simulate(B,ply,colour,max_rounds)
+      number_of_sims += 1
+  
+    print (number_of_sims, datetime.datetime.utcnow() - begin)
+
+    move_states = []
+    for i in moves:
+      bruh = B.copy()
+      bruh = bruh.make_move(i)
+      move_states.append((i, hash(bruh.pdn['FEN'])))
+
+    player = B.current_player()
+
+    # Display the stats for each possible play.
+    # for x in sorted(
+    #   ((100 * self.mcts_chances.get((player, S), 0) /
+    #     self.mcts_plays.get((player, S), 1),
+    #     self.mcts_chances.get((player, S), 0),
+    #     self.mcts_plays.get((player, S), 0), p)
+    #    for p, S in move_states),
+    #   reverse=True
+    # ):
+    #   # print ("{3}: {0:.2f}% ({1} / {2})".format(*x))
+    #   # print("{3}: ({1} / {2})".format(*x))
+
+    print ("Maximum depth searched:", ply)
+
+    # Pick the move with the highest percentage of winning chances divided by the number of games.
+    percent_winchance, best_move = max(
+      (self.mcts_chances.get((player, S), 0) /self.mcts_plays.get((player, S), 1),p)
+      for p, S in move_states
+    )
+    print(percent_winchance)
+
+    return best_move
+
+  def mcts_simulate(self,B,ply,colour,rounds):
+    """
+    For a given hypothetical move, this function simulates how good the game is.
+    It returns a percentage of how good it is. If it defaults to a winning game,
+    then it'll return with certainty.
+    """
+    moves = B.get_moves()
+
+    visited_states = set()
+    states_copy = [B.copy()]
+    state = states_copy[-1]
+    player = state.current_player()
+
+    expand = True
+
+    # loop through all the moves
+    for t in range(1, rounds+1):
+      # print("doing ", t)
+      legal_moves = state.get_moves()
+      # print(legal_moves)
+      # print(state.make_move(8704))
+      # print(state.make_move(17408))
+      # move_states = [(p, state.make_move(p)) for p in legal_moves]
+
+      move_states = []
+      for i in legal_moves:
+        bruh = state.copy()
+        bruh = bruh.make_move(i)
+        move_states.append((i, bruh))
+
+      if all(self.mcts_plays.get((player, S)) for p, S in move_states):
+        # if we have the statistics on all of the legal moves here, use them!
+
+        all_move_states = [mcts_plays[(player, S)] for p, S in move_states]
+        # print(len(all_move_states))
+        if len(all_move_states) > 0:
+          log_total = log(sum(all_move_states))
+          print(log_total)
+          value, move, state = max(
+            (
+              (
+                self.mcts_chances[(player, S)] / self.mcts_plays[(player, S)]
+              ) +
+              (self.c * sqrt(log_total / self.mcts_plays[(player, S)])), p, S
+            )
+            for p, S in move_states
+          )
+        # else:
+        #   move = random.choice(legal_moves)
+        #   state = states_copy[-1].make_move(move)
+      else:
+        move = random.choice(legal_moves)
+        state = states_copy[-1].make_move(move)
+    
+      # add current state to list of states
+      states_copy.append(state)
+
+      # `player` here and below refers to the player
+      # who moved into that particular state.
+    
+      # print(state.pdn['FEN'])
+      su = hash(state.pdn['FEN'])
+      if expand and (player, su) not in self.mcts_plays:
+        expand = False
+        self.mcts_plays[(player, su)] = 0
+        self.mcts_chances[(player, su)] = 0
+        if t > ply:
+          ply = t
+
+      visited_states.add((player, su))
+      player = state.current_player()
+      if state.is_over():
+        winner = state.winner
+        break
+      else:
+        winner = -1
+
+  
+      # print("calculating visited states")
+      for player, x in visited_states:
+
+        if (player, x) not in self.mcts_plays:
+          continue
+        # print("countin")
+
+        self.mcts_plays[(player, x)] += 1
+        self.mcts_chances[(player, x)] += self.evaluate_board(state, player)
+
+
+
+    # # loop through rounds.
+    # for i in range(rounds):
+    #   # iterate through a random move
+    #   move = random.choice(moves)
+    #   HB = B.copy()
+    #   HB.make_move(move)
+    #   if ply < 1:
+    #     score = self.evaluate_board(HB, colour)
+    #   else:
+    #     score = self.mcts_expand(HB, ply-1, colour)
+    # return score
+  
+  # def mcts_expand(self,B, remaining_ply, colour):
+  #   if B.is_over():
+  #     if B.winner != minimax_empty:
+  #       if B.winner == colour:
+  #         return minimax_win
+  #       else:
+  #         return minimax_lose
+  #     else:
+  #       return minimax_draw
+  #   # get moves
+  #   moves = B.get_moves()
+  #   # iterate through a random move
+  #   move = random.choice(moves)
+  
+  #   HB = B.copy()
+  #   HB.make_move(move)
+  #   if remaining_ply < 1:
+  #     score = self.evaluate_board(HB, colour)
+  #   else:
+  #     score = self.mcts_simulate(HB, remaining_ply-1, colour)
+  #   return score
+
   # """
   # Checks the current stage of the board.
   # """
