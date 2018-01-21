@@ -48,7 +48,6 @@ games = [
   ['slowpoke_r1', 'mcts']
 ]
 
-
 # --------------------------
 # Multithreading Operations
 
@@ -223,4 +222,7 @@ def evaluate(games, numberOfGames=10, filename='evaluations'):
     print("Evaluations cancelled.")
 
 if __name__ == "__main__":
-  evaluate(games, 10, 'evaluations')
+  cores > 64:
+    evaluate(games, 256, 'evaluations')
+  else:
+    evaluate(games, 2, 'evaluations')
