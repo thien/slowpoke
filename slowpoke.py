@@ -295,7 +295,7 @@ class Slowpoke:
 
     self.mcts_plays, self.mcts_chances = {}, {}
 
-    seconds = 2
+    seconds = 0.5*self.ply
     self.calculation_time = datetime.timedelta(seconds=seconds)
 
     self.c = 1.4
@@ -308,12 +308,11 @@ class Slowpoke:
     # begin mcts
     begin = datetime.datetime.utcnow()
     number_of_sims = 0
-    ply = 1000
     while datetime.datetime.utcnow() - begin < self.calculation_time:
       movebases = self.mcts_simulate(B,ply,colour,max_rounds)
       number_of_sims += 1
   
-    print (number_of_sims, datetime.datetime.utcnow() - begin)
+    # print (number_of_sims, datetime.datetime.utcnow() - begin)
 
     move_states = []
     for i in moves:
@@ -322,26 +321,34 @@ class Slowpoke:
       move_states.append((i, hash(bruh.pdn['FEN'])))
 
     # Pick the move with the highest percentage of winning chances divided by the number of games.
-    percent_winchance, best_move = max(
+    percent_winchance, best_move = None, None
+
+    if colour == 0:
+      percent_winchance, best_move = min(
+      (self.mcts_chances.get((colour, S), 0) /self.mcts_plays.get((colour, S), 1),p)
+      for p, S in move_states
+    )
+    else:
+      percent_winchance, best_move = max(
       (self.mcts_chances.get((colour, S), 0) /self.mcts_plays.get((colour, S), 1),p)
       for p, S in move_states
     )
     
-    # Display the stats for each possible play.
-    goods = sorted(
-      ((100 * self.mcts_chances.get((colour, S), 0) /
-        self.mcts_plays.get((colour, S), 1),
-        self.mcts_chances.get((colour, S), 0),
-        self.mcts_plays.get((colour, S), 0), p)
-       for p, S in move_states),
-      reverse=True
-    )
+    # # Display the stats for each possible play.
+    # goods = sorted(
+    #   ((100 * self.mcts_chances.get((colour, S), 0) /
+    #     self.mcts_plays.get((colour, S), 1),
+    #     self.mcts_chances.get((colour, S), 0),
+    #     self.mcts_plays.get((colour, S), 0), p)
+    #    for p, S in move_states),
+    #   reverse=True
+    # )
 
-    for i in goods:
-      print(i[3], "Moves:",i[2], "Good Moves",i[1], str(i[0]) + "%")
+    # for i in goods:
+    #   print(i[3], "Moves:",i[2], "Good Moves",i[1], str(i[0]) + "%")
 
-    print ("Maximum depth searched:", ply)
-    print(percent_winchance)
+    # print ("Maximum depth searched:", ply)
+    # print(percent_winchance)
 
     return best_move
 
@@ -383,7 +390,7 @@ class Slowpoke:
             )
             for p, S in move_states
           )
-          print(value, move, state)
+          # print(value, move, state)
       else:
         choice = random.choice(move_states)
         move, state = choice
@@ -415,11 +422,11 @@ class Slowpoke:
         self.mcts_plays[(player, x)] += 1
         # self.mcts_chances[(player, x)] += self.evaluate_board(state, player)
         # print(player, winner)
-        if player == winner:
-          # print("we is winner")
-          self.mcts_chances[(player, x)] += 1
+        # if player == winner:
+        #   # print("we is winner")
+        #   self.mcts_chances[(player, x)] += 1
         # else:
-        #   self.mcts_chances[(player, x)] += self.evaluate_board(state, player)
+        self.mcts_chances[(player, x)] += self.evaluate_board(state, player)
         # else:
         #   print("not winner", player, winner)
 
