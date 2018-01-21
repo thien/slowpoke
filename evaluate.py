@@ -222,7 +222,7 @@ def evaluate(games, numberOfGames=10, filename='evaluations'):
     print("Evaluations cancelled.")
 
 if __name__ == "__main__":
-  cores > 64:
+  if cores > 64:
     evaluate(games, 256, 'evaluations')
   else:
     evaluate(games, 2, 'evaluations')
