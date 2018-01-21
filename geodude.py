@@ -118,11 +118,11 @@ class Geodude:
       for p, S in move_states
     )
 
-    if colour == 0:
-      percent_winchance, best_move = min(
-      (self.mcts_chances.get((colour, S), 0) /self.mcts_plays.get((colour, S), 1),p)
-      for p, S in move_states
-    )
+    # if colour == 0:
+    #   percent_winchance, best_move = min(
+    #   (self.mcts_chances.get((colour, S), 0) /self.mcts_plays.get((colour, S), 1),p)
+    #   for p, S in move_states
+    # )
 
     
 

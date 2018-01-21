@@ -17,7 +17,8 @@ players = {
   'slowpoke_r2' : p.loadPlayerClass('slowpoke_rand'),
   'slowpoke_r3' : p.loadPlayerClass('slowpoke_rand'),
   'slowpoke_r4' : p.loadPlayerClass('slowpoke_rand'),
-  'slowpoke_r5' : p.loadPlayerClass('slowpoke_rand')
+  'slowpoke_r5' : p.loadPlayerClass('slowpoke_rand'),
+  'mcts' : p.loadPlayerClass('geodude')
 }
 
 # configure game options so we don't print the game status
@@ -29,20 +30,23 @@ gameOpt = {
 }
 
 # load the games we want to see.
+# games = [
+#   ['random', 'random'],
+#   ['slowpoke_gm', 'random'],
+#   ['slowpoke_gm', 'slowpoke0'],
+#   ['slowpoke_gm', 'slowpoke_99'],
+#   ['slowpoke_gm', 'slowpoke_149'],
+#   ['slowpoke_gm', 'slowpoke_no_subsquares'],
+#   ['slowpoke_gm', 'slowpoke_minimax'],
+#   ['slowpoke_gm', 'slowpoke_r1'],
+#   ['slowpoke_gm', 'slowpoke_r2'],
+#   ['slowpoke_gm', 'slowpoke_r3'],
+#   ['slowpoke_gm', 'slowpoke_r4'],
+#   ['slowpoke_gm', 'slowpoke_r5'],
+#   ['slowpoke_gm', 'slowpoke_gm']
+# ]
 games = [
-  ['random', 'random'],
-  ['slowpoke_gm', 'random'],
-  ['slowpoke_gm', 'slowpoke0'],
-  ['slowpoke_gm', 'slowpoke_99'],
-  ['slowpoke_gm', 'slowpoke_149'],
-  ['slowpoke_gm', 'slowpoke_no_subsquares'],
-  ['slowpoke_gm', 'slowpoke_minimax'],
-  ['slowpoke_gm', 'slowpoke_r1'],
-  ['slowpoke_gm', 'slowpoke_r2'],
-  ['slowpoke_gm', 'slowpoke_r3'],
-  ['slowpoke_gm', 'slowpoke_r4'],
-  ['slowpoke_gm', 'slowpoke_r5'],
-  ['slowpoke_gm', 'slowpoke_gm']
+  ['slowpoke_r1', 'mcts']
 ]
 
 # --------------------------
@@ -219,4 +223,4 @@ def evaluate(games, numberOfGames=10, filename='evaluations'):
     print("Evaluations cancelled.")
 
 if __name__ == "__main__":
-  evaluate(games, 2, 'evaluations')
+  evaluate(games, 10, 'evaluations')

@@ -1,5 +1,6 @@
 # import agents
 import slowpoke as sp
+import geodude as geo
 import magikarp as ma
 import human
 
@@ -48,6 +49,10 @@ def genSlowpokeClass(plyCount=4, bot_layers=[91,40,10,1], weights=[]):
 
 def generatePlayerOptions(plyCount=6):
     playerTypes = {
+        'geodude' : {
+            "description" : "Geodude plays with a pure MCTS approach.",
+            "class" : geo.Geodude()
+        },
         'magikarp' : {
             "description" : "It plays randomly.",
             "class" : ma.Magikarp()
@@ -93,10 +98,11 @@ def generatePlayerOptions(plyCount=6):
 
 def loadPlayerClass(i, playerTypes = generatePlayerOptions(4)):
     # try:
-    title = i.split("=")[1]
-    print(title)
-    title = title.lower()
-    print(title)
+    title = i
+    if "=" in i:
+        title = i.split("=")[1]
+        title = title.lower()
+
     player = playerTypes[title]['class']
     player = agent.Agent(player)
     return (player, title)
@@ -105,7 +111,6 @@ def loadPlayerClass(i, playerTypes = generatePlayerOptions(4)):
     #     print("Error:",e, "isn't a recognised player type. Here's a traceback:")
 
 def handleArguments():
-    print(sys.argv)
     # check if "b=" is in one of the arguments
     blackPlayer = None
     whitePlayer = None
@@ -114,12 +119,9 @@ def handleArguments():
     # here we loop once to find the ply if it exists.
     for i in sys.argv:
         if "ply=" in i:
-            # print("ply detected")
             custom_ply = int(i.replace("ply=", ""))
 
-            if custom_ply > 1:
-                # load it. 
-                print("Loading custom ply", custom_ply)
+            if custom_ply >= 1:
                 ply = custom_ply
 
     playerTypes = generatePlayerOptions(custom_ply)
@@ -127,10 +129,10 @@ def handleArguments():
     for i in sys.argv:
         if "b=" in i:
             # black player detected
-            blackPlayer = loadPlayerClass(i)
+            blackPlayer = loadPlayerClass(i, playerTypes)
         if "w=" in i:
             # white player detected
-            whitePlayer = loadPlayerClass(i)
+            whitePlayer = loadPlayerClass(i, playerTypes)
             
     # check if they're still null values.
     if blackPlayer == None:
