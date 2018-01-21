@@ -347,15 +347,15 @@ class Slowpoke:
     percent_winchance, best_move = None, None
 
  
-    percent_winchance, best_move = min(
+    percent_winchance, best_move = max(
       (self.mcts_chances.get((colour, S), 0) /self.mcts_plays.get((colour, S), 1),p)
       for p, S in move_states
     )
 
-    move_string = None
-    for i in range(len(B.get_move_strings())):
-      if moves[i] == best_move:
-        move_string = B.get_move_strings()[i]
+    # move_string = None
+    # for i in range(len(B.get_move_strings())):
+    #   if moves[i] == best_move:
+    #     move_string = B.get_move_strings()[i]
   
     
     # # Display the stats for each possible play.
@@ -374,7 +374,7 @@ class Slowpoke:
     # print ("Maximum depth searched:", ply)
     # print(percent_winchance, best_move, move_string)
 
-    # # input()
+    # input()
     return best_move
 
   def mcts_simulate(self,B,ply,colour,rounds):
@@ -436,6 +436,7 @@ class Slowpoke:
 
       visited_states.add((player, su))
       player = state.current_player()
+      # print(player)
       winner = -1
       if state.is_over():
         winner = state.winner
@@ -452,7 +453,7 @@ class Slowpoke:
         #   # print("we is winner")
           # self.mcts_chances[(player, x)] += 1
         # else:
-        self.mcts_chances[(player, x)] += self.evaluate_board(state, base_player)
+        self.mcts_chances[(player, x)] += self.evaluate_board(state, player)
         # else:
         #   print("not winner", player, winner)
 
