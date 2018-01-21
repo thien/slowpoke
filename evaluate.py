@@ -30,24 +30,24 @@ gameOpt = {
 }
 
 # load the games we want to see.
-# games = [
-#   ['random', 'random'],
-#   ['slowpoke_gm', 'random'],
-#   ['slowpoke_gm', 'slowpoke0'],
-#   ['slowpoke_gm', 'slowpoke_99'],
-#   ['slowpoke_gm', 'slowpoke_149'],
-#   ['slowpoke_gm', 'slowpoke_no_subsquares'],
-#   ['slowpoke_gm', 'slowpoke_minimax'],
-#   ['slowpoke_gm', 'slowpoke_r1'],
-#   ['slowpoke_gm', 'slowpoke_r2'],
-#   ['slowpoke_gm', 'slowpoke_r3'],
-#   ['slowpoke_gm', 'slowpoke_r4'],
-#   ['slowpoke_gm', 'slowpoke_r5'],
-#   ['slowpoke_gm', 'slowpoke_gm']
-# ]
 games = [
+  ['random', 'random'],
+  ['slowpoke_gm', 'random'],
+  ['slowpoke_gm', 'slowpoke0'],
+  ['slowpoke_gm', 'slowpoke_99'],
+  ['slowpoke_gm', 'slowpoke_149'],
+  ['slowpoke_gm', 'slowpoke_no_subsquares'],
+  ['slowpoke_gm', 'slowpoke_minimax'],
+  ['slowpoke_gm', 'slowpoke_r1'],
+  ['slowpoke_gm', 'slowpoke_r2'],
+  ['slowpoke_gm', 'slowpoke_r3'],
+  ['slowpoke_gm', 'slowpoke_r4'],
+  ['slowpoke_gm', 'slowpoke_r5'],
+  ['slowpoke_gm', 'slowpoke_gm'],
+  ['slowpoke_gm', 'mcts'],
   ['slowpoke_r1', 'mcts']
 ]
+
 
 # --------------------------
 # Multithreading Operations
