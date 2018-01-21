@@ -81,11 +81,11 @@ class Slowpoke:
     self.ply = plyDepth
     self.layers = layers
     self.pieceWeights = {
-      "Black" : -1,
-      "White" : 1,
+      "Black" : 1,
+      "White" : -1,
       "empty" : 0,
-      "blackKing" : -kingWeight,
-      "whiteKing" : kingWeight
+      "blackKing" : kingWeight,
+      "whiteKing" : -kingWeight
     }
 
     # Once we have everything we are ready to initiate
@@ -220,14 +220,20 @@ class Slowpoke:
     if board.is_over():
       if board.winner != minimax_empty:
         if board.winner == colour:
+          # print(board)
+          # print(colour, ", you is winner")
+          # input()
           return minimax_win
         else:
           return minimax_lose
       else:
         return minimax_draw
     else:
+      # print("you are", colour)
       # Get the current status of the board.
       boardStatus = board.getBoardPosWeighted(colour, self.pieceWeights)
+
+      
       if self.layers[0] == 91:
         boardStatus = self.nn.subsquares(boardStatus)
       # Evaluate the board array using our CNN.
@@ -284,6 +290,23 @@ class Slowpoke:
     return score
 
   def mcts_code(self, B, ply, colour):
+    # if colour == 1:
+    #   print("you are black")
+    # else:
+    #   print("you are white")
+    # # print("you are", colour)
+    # # Get the current status of the board.
+    # lol = B.AIBoardPos.copy()
+    # if colour == 0: #reverse if current player is white
+    #   lol.reverse()
+    # lol = np.array([self.pieceWeights[n] if n in pieceWeights else n for n in lol],dtype=np.float32)
+    # print("before", lol)
+
+    # boardStatus = B.getBoardPosWeighted(colour, self.pieceWeights)
+    # # print("before",B.AIBoardPos)
+    # print("after ",boardStatus)
+    
+    # ----------------------------------------------------------
     moves = B.get_moves()
 
     # if theres only one move to make theres no point
@@ -323,16 +346,17 @@ class Slowpoke:
     # Pick the move with the highest percentage of winning chances divided by the number of games.
     percent_winchance, best_move = None, None
 
-    if colour == 0:
-      percent_winchance, best_move = min(
+ 
+    percent_winchance, best_move = min(
       (self.mcts_chances.get((colour, S), 0) /self.mcts_plays.get((colour, S), 1),p)
       for p, S in move_states
     )
-    else:
-      percent_winchance, best_move = max(
-      (self.mcts_chances.get((colour, S), 0) /self.mcts_plays.get((colour, S), 1),p)
-      for p, S in move_states
-    )
+
+    move_string = None
+    for i in range(len(B.get_move_strings())):
+      if moves[i] == best_move:
+        move_string = B.get_move_strings()[i]
+  
     
     # # Display the stats for each possible play.
     # goods = sorted(
@@ -346,10 +370,11 @@ class Slowpoke:
 
     # for i in goods:
     #   print(i[3], "Moves:",i[2], "Good Moves",i[1], str(i[0]) + "%")
-
+  
     # print ("Maximum depth searched:", ply)
-    # print(percent_winchance)
+    # print(percent_winchance, best_move, move_string)
 
+    # # input()
     return best_move
 
   def mcts_simulate(self,B,ply,colour,rounds):
@@ -364,6 +389,7 @@ class Slowpoke:
     state_stack = [B.copy()] # iterate a tree of moves stack style!
     state = state_stack[-1]
     player = colour
+    base_player = colour
 
     expand = True
 
@@ -424,9 +450,9 @@ class Slowpoke:
         # print(player, winner)
         # if player == winner:
         #   # print("we is winner")
-        #   self.mcts_chances[(player, x)] += 1
+          # self.mcts_chances[(player, x)] += 1
         # else:
-        self.mcts_chances[(player, x)] += self.evaluate_board(state, player)
+        self.mcts_chances[(player, x)] += self.evaluate_board(state, base_player)
         # else:
         #   print("not winner", player, winner)
 

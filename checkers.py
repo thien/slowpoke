@@ -572,18 +572,18 @@ class CheckerBoard:
     Same as above, but option to convert weights.
     """
     def getBoardPosWeighted(self, colour, weights):
-        results = []
+        results = self.AIBoardPos.copy()
+        rep = {
+            Black:weights['Black'], 
+            White:weights['White'], 
+            empty:weights['empty'], 
+            whiteKing:weights['whiteKing'], 
+            blackKing:weights['blackKing']
+        }
         if colour == White:
-            # perform ugly position swap
-            self.AIBoardPos.reverse()
-            results = self.AIBoardPos
-            self.AIBoardPos.reverse()
-        else:
-            results = self.AIBoardPos
-        # initiate pythonic conversion
-
-        rep = {}
-        if colour == White:
+            # swap board and change weights so we always
+            # evaluate from black's perspective.
+            results.reverse()
             rep = {
                 Black:weights['White'], 
                 White:weights['Black'], 
@@ -591,15 +591,6 @@ class CheckerBoard:
                 whiteKing:weights['blackKing'], 
                 blackKing:weights['whiteKing']
             }
-        else:
-            rep = {
-                Black:weights['Black'], 
-                White:weights['White'], 
-                empty:weights['empty'], 
-                whiteKing:weights['whiteKing'], 
-                blackKing:weights['blackKing']
-            }
-        # return manipulated list
         return np.array([rep[n] if n in rep else n for n in results],dtype=np.float32)
 
     
