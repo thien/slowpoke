@@ -1,7 +1,8 @@
 import core.checkers as checkers
 import agents.agent as agent
+import core.mongo as mongo
+
 import sys
-import mongo
 
 Black, White, empty = 0, 1, -1
 

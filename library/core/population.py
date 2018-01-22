@@ -1,9 +1,10 @@
-import slowpoke as sp
-import agent
+import agents.slowpoke as sp
+import agents.agent as agent
+import core.mongo as mongo
+
 import math
 import random
 import numpy as np
-import mongo
 import json
 import operator
 import os

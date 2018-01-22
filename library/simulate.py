@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import tournament
+import core.tournament as tournament
 import sys
 
 # print ('Number of arguments:', len(sys.argv), 'arguments.')

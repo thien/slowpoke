@@ -4,7 +4,7 @@ import core.game as game
 
 import agents.slowpoke as sp
 import agents.agent as agent
-import mongo
+import core.mongo as mongo
 
 # import libraries
 import datetime
