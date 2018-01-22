@@ -1,0 +1,1 @@
+{"random_vs_random": {"wins": 2, "losses": 0, "draws": 0, "as_black": {"wins": 1, "losses": 0, "draws": 0}, "as_white": {"wins": 1, "losses": 0, "draws": 0}, "win_ratio": 100.0, "lose_ratio": 0.0, "draw_ratio": 0.0, "kd_ratio": "+inf", "success_ratio": 100.0, "first_mover_advantage": {"win_ratio": 1.0, "lose_ratio": "-", "draw_ratio": "-"}}}

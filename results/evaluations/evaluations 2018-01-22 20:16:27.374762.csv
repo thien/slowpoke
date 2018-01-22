@@ -1,0 +1,2 @@
+player,opponment,wins,losses,draws,as_black_wins,as_black_losses,as_black_draws,as_white_wins,as_white_losses,as_white_draws,win_ratio,lose_ratio,draw_ratio,kd_ratio,success_ratio,first_mover_advantage_win_ratio,first_mover_advantage_lose_ratio,first_mover_advantage_draw_ratio
+random,random,1,1,0,1,0,0,0,1,0,50.0,50.0,0.0,1.0,50.0,-,0.0,-
