@@ -29,7 +29,8 @@ class Population:
     self.numberOfWeights = self.players[0].bot.nn.lenCoefficents
     self.tau = 1 / math.sqrt( 2 * math.sqrt(self.numberOfWeights))
 
-    self.folderDirectory = os.getcwd() + "/champions/"
+    savepath =  os.path.join("..","..", "results", "champions")
+    self.folderDirectory = savepath
     # check save directory exists prior to saving
     if not os.path.isdir(self.folderDirectory):
       os.makedirs(self.folderDirectory)
@@ -201,7 +202,7 @@ class Population:
 
   # Done
   def saveChampionsToFile(self, datepath="today"):
-    folderDirectory = os.path.join(os.getcwd(),"champions",datepath)
+    folderDirectory = os.path.join("..","..", "results", "champions", datepath)
       # check save directory exists prior to saving
     if not os.path.isdir(folderDirectory):
       os.makedirs(folderDirectory)
