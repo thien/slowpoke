@@ -38,7 +38,7 @@ coef32 = np.array(
 # Helper functions
 
 def genSlowpokeMiniMax(plyCount=4):
-    bot = sp.Slowpoke(plyDepth=plyCount, minimax=True)
+    bot = sp.Slowpoke(plyDepth=plyCount, isminimax=True)
     bot.loadWeights(coef_91_gm)
     return bot
 
