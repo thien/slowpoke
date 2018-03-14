@@ -101,8 +101,9 @@ def generateDebugMsg(debug, moveCount, B):
 def tournamentMatch(blackCPU, whiteCPU, gameID="NULL", dbURI=False, debug=False, multiProcessing=False):
     # initiate connection to mongoDB
     # this is needed because pymongo screams if you init prior fork.
-    db = mongo.Mongo()
+    db = None
     if dbURI != False:
+        db = mongo.Mongo()
         db.initiate(dbURI)
 
     # assign colours
@@ -116,7 +117,8 @@ def tournamentMatch(blackCPU, whiteCPU, gameID="NULL", dbURI=False, debug=False,
     B.setColours(blackCPU.id, whiteCPU.id)
 
     # add the game to mongo.
-    mongoGame_id = db.write('games', B.pdn)
+    if dbURI != False:
+        mongoGame_id = db.write('games', B.pdn)
 
     # set game settings
     current_player = B.active

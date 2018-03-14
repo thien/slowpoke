@@ -8,6 +8,7 @@ import sys
 def train():
     options = {}
     readyBool = False
+    verifiedBool = False
     # Check for arguments
     if len(sys.argv) > 1:
         # check arguments
@@ -21,28 +22,35 @@ def train():
                 'printStatus' : True,
                 'connectMongo' : False
             }
+            verifiedBool = True
 
         elif "heavy" in sys.argv:
             print("You are about to load a heavy simulation.")
             options = {
                 'mongoConfigPath':'config2.json',
-                'plyDepth' : 6,
-                'NumberOfGenerations' : 200,
+                'plyDepth' : 5,
+                'NumberOfGenerations' : 100,
                 'Population' : 15,
                 'printStatus' : True,
                 'connectMongo' : False
             }
+            verifiedBool = True
         
         # check for user input
-        print("Are you ready to run? Y/N")
-        k = input()
-        
-        if k.upper() == "Y":
-            print("dank")
-            readyBool = True
+        if verifiedBool:
+            print("Are you ready to run? Y/N")
+            k = input()
+            
+            if k.upper() == "Y":
+                print("dank")
+                readyBool = True
+        else:
+            print("You didn't use an available option.")
+            print("There are two options: light, heavy")
     else:
         # no arguments loaded; ask user for load type.
-        input()
+        print("You'll need to load some argument into this file. for instance:")
+        print("     python3 simulate.py light")
     # run tournament
     if readyBool:
         t = tournament.Generator(options)

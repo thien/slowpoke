@@ -1,4 +1,4 @@
-from pymongo import MongoClient
+# from pymongo import MongoClient
 """
 Helper Functions for MongoDB.
 
@@ -20,6 +20,8 @@ class Mongo:
         to display analytics related to slowpoke.
         """
         try:
+            from pymongo import MongoClient
+
             mongo = MongoClient(filepath)
             self.db = mongo.zephyr
             print(self.db)
