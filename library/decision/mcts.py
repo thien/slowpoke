@@ -3,10 +3,11 @@ import random
 
 class MCTS:
 
-    def __init__(self, ply, evaluator=None):
+    def __init__(self, ply, evaluator=None, debug=False):
         self.ply = ply
         self.evaluator = evaluator
         self.c = 1.4
+        self.debug = debug
         
     def Decide(self, B, colour):
         return self.mcts_code(B, self.ply, colour)
@@ -58,21 +59,22 @@ class MCTS:
         for p, S in move_states
       )
 
-      # # Display the stats for each possible play.
-      # goods = sorted(
-      #   ((100 * self.mcts_chances.get((colour, S), 0) /
-      #     self.mcts_plays.get((colour, S), 1),
-      #     self.mcts_chances.get((colour, S), 0),
-      #     self.mcts_plays.get((colour, S), 0), p)
-      #    for p, S in move_states),
-      #   reverse=True
-      # )
+      if self.debug:
+        # Display the stats for each possible play.
+        goods = sorted(
+          ((100 * self.mcts_chances.get((colour, S), 0) /
+            self.mcts_plays.get((colour, S), 1),
+            self.mcts_chances.get((colour, S), 0),
+            self.mcts_plays.get((colour, S), 0), p)
+           for p, S in move_states),
+          reverse=True
+        )
 
-      # for i in goods:
-      #   print(i[3], "Moves:",i[2], "Good Moves",i[1], str(i[0]) + "%")
+        for i in goods:
+          print(i[3], "Moves:",i[2], "Good Moves",i[1], str(i[0]) + "%")
 
-      # print ("Maximum depth searched:", ply)
-      # print(percent_winchance)
+        print ("Maximum depth searched:", ply)
+        print(percent_winchance)
 
       return best_move
 
