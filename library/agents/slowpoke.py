@@ -55,8 +55,11 @@ class Slowpoke:
     self.initiateNeuralNetwork(layers, weights)
     self.movesConsidered = []
 
-    self.decisionFunction = minimax.MiniMax(self.ply, self.evaluate_board)
-    # self.decisionFunction = mcts.MCTS(self.ply,self.evaluate_board)
+    self.decisionFunction = None
+    if isminimax:
+      self.decisionFunction = minimax.MiniMax(self.ply, self.evaluate_board)
+    else:
+      self.decisionFunction = mcts.MCTS(self.ply,self.evaluate_board)
 
   def initiateNeuralNetwork(self, layers, weights=[]):
     """
