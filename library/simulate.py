@@ -28,8 +28,8 @@ def train():
             print("You are about to load a heavy simulation.")
             options = {
                 'mongoConfigPath':'config2.json',
-                'plyDepth' : 5,
-                'NumberOfGenerations' : 100,
+                'plyDepth' : 6,
+                'NumberOfGenerations' : 200,
                 'Population' : 15,
                 'printStatus' : True,
                 'connectMongo' : False
