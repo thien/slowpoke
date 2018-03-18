@@ -75,8 +75,8 @@ def playGame(black_player, white_player, options=baseOptions):
     while not B.is_over():
         if options['show_board']:
             printPerspectiveBoard(B, options)
-            print(B.pdn['Moves'])
-            print(B.moves)
+            # print(B.pdn['Moves'])
+            # print(B.moves)
             # print(B.moves)
         if  B.turnCount % 2 != choice:
             if options['show_dialog']:
