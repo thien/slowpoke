@@ -81,11 +81,11 @@ def playGame(black_player, white_player, options=baseOptions):
         if  B.turnCount % 2 != choice:
             if options['show_dialog']:
                 print("blacks turn")
-            B.make_move(black_player.make_move(B, White))
+            B.make_move(black_player.make_move(B, Black))
         else:
             if options['show_dialog']:
                 print("whites turn")
-            B.make_move(white_player.make_move(B, Black))
+            B.make_move(white_player.make_move(B, White))
         # If jumps remain, then the board will not update current player
         if B.active == current_player:
             if options['show_dialog']:

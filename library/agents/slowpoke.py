@@ -7,6 +7,7 @@ import json
 import sys
 sys.path.insert(0, '..')
 import decision.mcts as mcts
+import decision.tmcts as tmcts
 import decision.minimax as minimax
 
 """
@@ -59,7 +60,7 @@ class Slowpoke:
     if isminimax:
       self.decisionFunction = minimax.MiniMax(self.ply, self.evaluate_board)
     else:
-      self.decisionFunction = mcts.MCTS(self.ply,self.evaluate_board)
+      self.decisionFunction = tmcts.TMCTS(self.ply,self.evaluate_board)
 
   def initiateNeuralNetwork(self, layers, weights=[]):
     """
