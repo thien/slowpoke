@@ -18,6 +18,7 @@
 import numpy as np
 import datetime
 from termcolor import colored
+from itertools import groupby
 
 ### CONSTANTS
 
@@ -27,7 +28,8 @@ empty = -1
 blackKing = 2
 whiteKing = 3
 boringNoEatLimit = 50
-
+# handles n/2 repeated move limits
+repetitionLimits = 12
 # The IBM704 had 36-bit words. Arthur Samuel used the extra bits to
 # ensure that every normal move could be performed by flipping the
 # original bit and the bit either 4 or 5 bits away, in the cases of
@@ -72,11 +74,11 @@ class CheckerBoard:
     Prints the PGN of the game.
     """
     def setID(self, game_id):
-        self.pdn['_id'] = game_id
+        self.pdn["_id"] = game_id
 
     def setColours(self, blackID, whiteID):
-        self.pdn['Black'] = blackID
-        self.pdn['White'] = whiteID
+        self.pdn["Black"] = blackID
+        self.pdn["White"] = whiteID
     
     """
     Resets current state to new game.
@@ -105,6 +107,7 @@ class CheckerBoard:
         self.state = []
         self.winner = None
         self.noEatCount = 0
+        self.altMoveStack = []
         self.moves = []
 
     """
@@ -166,11 +169,19 @@ class CheckerBoard:
 
         # need to add the move to the list of moves.
         if len(self.multipleJumpStack) > 0:
-            # concatenate the move attack into one string.
-            self.pdn["Moves"].append("x".join(self.multipleJumpStack))
+            if len(self.multipleJumpStack) > 2:
+                # concatenate the move attack into one string, removing duplicates
+                jumpStacks = [x[0] for x in groupby(self.multipleJumpStack)]
+                self.pdn["Moves"].append("x".join(jumpStacks))
+            else:
+                self.pdn["Moves"].append("x".join(self.multipleJumpStack))
+            # empty the stack when done
             self.multipleJumpStack = []
         else:
             self.pdn["Moves"].append(moveString)
+        # add to move stacks (for the bot to decide on historical moves)
+        self.altMoveStack.append((active, move))
+        self.moves.append((active, move))
         # reset the number of jumps, switch players and continue.
         self.jump = 0
         self.active, self.passive = self.passive, self.active
@@ -364,18 +375,20 @@ class CheckerBoard:
                 return True
             # if they're still playing
             # check if there is threefold repetition
-            # get the last 6 moves and see if they're repeated
-            recents = 12
-            lastmoves = self.pdn['Moves'][-recents:]
+            # get the last n moves and see if they're repeated
+            lastmoves = self.altMoveStack[-repetitionLimits:]
             # print(lastmoves)
-            if len(lastmoves) == recents:
+            if len(lastmoves) == repetitionLimits:
                 p1_list = lastmoves[0::2]
                 p2_list = lastmoves[1::2]
                 # count unique moves
                 p1_recent = set(p1_list)
                 p2_recent = set(p2_list)
                 if len(p1_recent) <4 and len(p2_recent) <4:
+                    print("OH NODES")
                     return True
+                else:
+                    return False
             else:
                 return False
 
@@ -434,7 +447,8 @@ class CheckerBoard:
         B.passive = self.passive
         B.pieces = [x for x in self.pieces]
         B.noEatCount = self.noEatCount
-        B.pdn = self.pdn
+        # B.pdn = self.pdn
+        B.altMoveStack = self.altMoveStack[-repetitionLimits+2:]
         return B
 
     """
