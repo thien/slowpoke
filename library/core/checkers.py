@@ -124,9 +124,8 @@ class CheckerBoard:
         moveBitPosition = legalMoves.index(move)
         # load the possible moves from the string text
         moveString = self.get_move_strings()[moveBitPosition]
-        
         # ---
-
+        
         # perform move action below
         active = self.active
         passive = self.passive
@@ -148,6 +147,11 @@ class CheckerBoard:
 
         destination = move & self.pieces[active]
         self.empty = unusedBits ^ (2**36 - 1) ^ (self.pieces[Black] | self.pieces[White])
+        
+        # add to move stacks (for the bot to decide on historical moves)
+        self.altMoveStack.append((active, moveString))
+        self.moves.append((active, moveString))
+
 
         # if theres a jump, see if the user needs to make more jumps.
         if self.jump:
@@ -179,9 +183,7 @@ class CheckerBoard:
             self.multipleJumpStack = []
         else:
             self.pdn["Moves"].append(moveString)
-        # add to move stacks (for the bot to decide on historical moves)
-        self.altMoveStack.append((active, move))
-        self.moves.append((active, move))
+        
         # reset the number of jumps, switch players and continue.
         self.jump = 0
         self.active, self.passive = self.passive, self.active
@@ -363,34 +365,32 @@ class CheckerBoard:
 
     # returns true if there are no more possible moves to make
     def is_over(self):
+        itHas = False
         # If there's enough moves where nobody is being jumped on, 
         # then call it a draw.
         if self.noEatCount == boringNoEatLimit:
-            self.checkWinner()
-            return True
+            itHas = True
         else:
             # maybe someone has actually lost.
             if len(self.get_moves()) == 0:
-                self.checkWinner()
-                return True
-            # if they're still playing
-            # check if there is threefold repetition
-            # get the last n moves and see if they're repeated
-            lastmoves = self.altMoveStack[-repetitionLimits:]
-            # print(lastmoves)
-            if len(lastmoves) == repetitionLimits:
-                p1_list = lastmoves[0::2]
-                p2_list = lastmoves[1::2]
-                # count unique moves
-                p1_recent = set(p1_list)
-                p2_recent = set(p2_list)
-                if len(p1_recent) <4 and len(p2_recent) <4:
-                    print("OH NODES")
-                    return True
-                else:
-                    return False
+                itHas = True
             else:
-                return False
+                # if they're still playing, check if there is 
+                # threefold repetition.
+                lastmoves = self.altMoveStack[-repetitionLimits:]
+                if len(lastmoves) == repetitionLimits:
+                    p1_list = lastmoves[0::2]
+                    p2_list = lastmoves[1::2]
+                    # count unique moves
+                    p1_recent = set(p1_list)
+                    p2_recent = set(p2_list)
+                    if len(p1_recent) <4 and len(p2_recent) <4:
+                        itHas = True      
+        if itHas:
+            self.checkWinner()
+            return itHas
+        else:
+            return itHas
 
     # Checks for a winner.
     def checkWinner(self):
@@ -415,6 +415,7 @@ class CheckerBoard:
                     self.winner = White
                     self.pdn["Winner"] = White
                     self.pdn["Result"] = "0-1"
+        self.pdn['replay'] = self.moves
 
     # Prints winner message (when needed)
     def getWinnerMessage(self):
