@@ -87,16 +87,15 @@ class TMCTS:
                 HB = B.copy()
                 HB.make_move(move)
                 # check if that move ended the game
-                isOver = self.isOver(B, colour)
+                isOver = self.isOver(HB, colour)
                 if isOver[0]:
                     return isOver[1]
                 else:
                     # get moves
                     moves = HB.get_moves()
-                    if moves:
+                    if len(moves) > 0:
                         # choose random player move
                         move = random.choice(moves)
-                        HB = HB.copy()
                         HB.make_move(move)
                         # traverse, moving down the player ply
                         return self.treesearch(HB, ply-1, colour)
