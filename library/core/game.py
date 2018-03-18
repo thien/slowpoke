@@ -160,9 +160,9 @@ def tournamentMatch(blackCPU, whiteCPU, gameID="NULL", dbURI=False, debug=False,
         if debug != False:
             debugPrint(debug['printBoard'], B)
         # store the game to MongoDB.
-        db.update('games', mongoGame_id, B.pdn)
+        # db.update('games', mongoGame_id, B.pdn)
     # once game is done, update the pdn with the results and return it.
-    db.update('games', mongoGame_id, B.pdn)
+    # db.update('games', mongoGame_id, B.pdn)
     return B.pdn
 
 # -----------
