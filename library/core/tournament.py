@@ -68,6 +68,7 @@ class Generator:
     self.RecentChampionScores = 0
     self.playPreviousChampCount = 5
     self.champGamesRoundsCount = 6 # should always be even and at least 2.
+    self.NumberOfGamesPerPlayer = options['NumberOfGamesPerPlayer']
     self.progress = []
 
     self.previousGenerationRankings = None
@@ -115,7 +116,7 @@ class Generator:
     gamePool = []
     # initiate game results round robin style (where each player plays as b and w)
     for player_id in self.population.currentPopulation:
-      for x in range(0,5):
+      for x in range(self.NumberOfGamesPerPlayer):
         oppoment_id = player_id
         while oppoment_id == player_id:
           oppoment_id = random.choice(self.population.currentPopulation)
@@ -149,10 +150,13 @@ class Generator:
 
     self.population.sortCurrentPopulationByPoints()
     self.population.addChampion()
-    return self.population
+    return (self.population, results)
 
+
+  """
+  This function is called for every generation.
+  """
   def runGenerations(self):
-    datetime_str = self.cleanDate(self.StartTime, True)
     # loop through the generations.
     for i in range(self.generations):
       # increment generation count
@@ -196,7 +200,7 @@ class Generator:
     for x in range(len(stats)):
        for y in range(len(stats[x]['stats'])):
            stats[x]['stats'][y] = (stats[x]['stats'][y][0], str(stats[x]['stats'][y][1]))
-    
+
     filename = 'statistics.json'
     with open(os.path.join(saveLocation, filename), 'w') as outfile:
       json.dump(stats, outfile)
@@ -375,7 +379,7 @@ class Generator:
         k = datetime.datetime.fromtimestamp(timestamp)
         magic = k - start
         return magic
-    except Exception as e:
+    except:
       return 0
   
   @staticmethod
