@@ -191,11 +191,11 @@ class Generator:
     # check save directory exists prior to saving
     if not os.path.isdir(saveLocation):
       os.makedirs(saveLocation)
+
     # make sure you convert all the stats into strings
-    statistics = stats['stats']
-    for x in statistics:
-      statistics[x] = (statistics[x][0], str(statistics[x][1]))
-    stats['stats'] = statistics
+    for x in range(len(stats)):
+       for y in range(len(stats[x]['stats'])):
+           stats[x]['stats'][y] = (stats[x]['stats'][y][0], str(stats[x]['stats'][y][1]))
     
     filename = 'statistics.json'
     with open(os.path.join(saveLocation, filename), 'w') as outfile:
@@ -336,9 +336,6 @@ class Generator:
     debugList.append(["Mean Game Time", self.cleanDate(averageGenTimeLength)])
     debugList.append(["Gen. Progress*", str(round(PercentageEst*100,2))+"%"])
     debugList.append(["Remaining Gen. Time*", self.cleanDate(remainingGenTime)])
-    # current Generation Info
-    # debugList.append([" ", " "])
-    # debugList.append(["No. of games computed", str(self.GamesFinished)+"/"+str(self.GamesQueued)])
     # champion info
     debugList.append([" ", " "])
     debugList.append(["Champions Currently Playing?", self.AreChampionsPlaying])
