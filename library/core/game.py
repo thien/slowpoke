@@ -145,11 +145,9 @@ def tournamentMatch(blackCPU, whiteCPU, gameID="NULL", dbURI=False, debug=False,
 
         # game loop!
         if  B.turnCount % 2 != choice:
-            botMove = blackCPU.make_move(B, Black)
-            B.make_move(botMove)
+            B.make_move(blackCPU.make_move(B, Black))
         else:
-            botMove = whiteCPU.make_move(B, White)
-            B.make_move(botMove)
+            B.make_move(whiteCPU.make_move(B, White))
         if B.active == current_player:
             # Jumps must be taken; don't assign the next player.
             continue
