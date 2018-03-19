@@ -11,10 +11,11 @@ import datetime
 import numpy as np
 import random
 import multiprocessing
+import os
+import json
 
 # Piece values on board
 Black, White, empty = 0, 1, -1
-
 # Blondie was 1,0,-2
 WinPt, DrawPt, LosePt = 2, 0, -1
 ChampWinPt, ChampDrawPt, ChampLosePt = 1,0,-1
@@ -27,7 +28,9 @@ def optionDefaults(options):
     'NumberOfGenerations' : 200,
     'Population' : 15,
     'printStatus' : True,
-    'connectMongo' : False
+    'connectMongo' : False,
+    'NumberOfGamesPerPlayer' : 5,
+    'resultsLocation' : os.path.join("..", "results")
   }
   for i in defaultOptions.keys():
     if i not in options:
@@ -79,6 +82,10 @@ class Generator:
     self.gameIDCounter = 0
     # once we have the config file we can proceed and initiate our MongoDB connection.
     self.initiateMongoConnection()
+    # we also want to save the stats offline
+    self.generationStats = []
+    self.saveLocation = os.path.join(options['resultsLocation'],self.cleanDate(self.StartTime, True))
+    
 
   def loadJSONConfig(self, filepath):
     """
@@ -157,21 +164,42 @@ class Generator:
       # initiate timestamp
       startTime = datetime.datetime.now()
       # make bots play each other.
-      self.population = self.Tournament()
+      self.population, generationResults = self.Tournament()
       self.previousGenerationRankings = self.population.printCurrentPopulationByPoints()
       # print(self.population.printCurrentPopulationByPoints())
       # compute champion games (runs independently of others)
       self.runChampions()
       # save champions to file
-      self.population.saveChampionsToFile(datetime_str)
+      self.population.saveChampionsToFile(self.saveLocation)
       # save genomic details
-      self.population.savePopulationGenomes(datetime_str)
+      self.population.savePopulationGenomes(self.saveLocation)
       # get the best players and generate a new population from them.
       self.population.generateNextPopulation()
       self.populationSize = self.population.count
       # initiate end timestamp and add time difference length to list.
       timeDifference = (datetime.datetime.now() - startTime).total_seconds()
       self.GenerationTimeLengths = np.hstack((self.GenerationTimeLengths, timeDifference))
+      # need to store the results of this into a json file!
+      self.generationStats.append({
+        'stats' : self.debugInfo(),
+        'games' : generationResults,
+        'durationInSeconds' : timeDifference
+      })
+      self.saveTrainingStatsToJSON(self.saveLocation, self.generationStats)
+
+  def saveTrainingStatsToJSON(self, saveLocation, stats):
+    # check save directory exists prior to saving
+    if not os.path.isdir(saveLocation):
+      os.makedirs(saveLocation)
+    # make sure you convert all the stats into strings
+    statistics = stats['stats']
+    for x in statistics:
+      statistics[x] = (statistics[x][0], str(statistics[x][1]))
+    stats['stats'] = statistics
+    
+    filename = 'statistics.json'
+    with open(os.path.join(saveLocation, filename), 'w') as outfile:
+      json.dump(stats, outfile)
 
   def poolChampGame(self, info):
     self.displayDebugInfo()
@@ -259,13 +287,14 @@ class Generator:
 
   def gameWorker(self,i):
     self.displayDebugInfo()
+    timeStart = datetime.datetime.now().timestamp()
     results = game.tournamentMatch(i['black'], i['white'], i['game_id'], i['dbURI'], i['debug'])
     data = {
       'game' : results,
       'black' : i['black'].id,
-      'white':  i['white'].id
+      'white':  i['white'].id,
+      'duration' : self.cleanDate(datetime.datetime.now().timestamp() - timeStart)
     }
-    self.GamesFinished += 1
     self.displayDebugInfo()
     return data
 

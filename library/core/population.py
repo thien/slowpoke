@@ -196,13 +196,8 @@ class Population:
     self.setWeights(cpu, weights)
 
   # Done
-  def storeCurrentChampionStats(self,stats):
-    self.generation
-    championJson[i]
-
-  # Done
-  def saveChampionsToFile(self, datepath="today"):
-    folderDirectory = os.path.join("..","..", "results", "champions", datepath)
+  def saveChampionsToFile(self, folderDirectory):
+    folderDirectory = os.path.join(folderDirectory, "champions")
       # check save directory exists prior to saving
     if not os.path.isdir(folderDirectory):
       os.makedirs(folderDirectory)
@@ -218,16 +213,15 @@ class Population:
     championJson[i]['champRange'] = self.players[championID].champRange
     championJson[i]['champScore'] = self.players[championID].champScore
   
-    filename = datepath + " - " + str(i) + ".json"
+    filename = str(i) + ".json"
     with open(os.path.join(folderDirectory, filename), 'w') as outfile:
       json.dump(championJson, outfile)
     
       # append to file.
     print("saved champs to ",filename)
 
-  def savePopulationGenomes(self, datepath):
-    folderDirectory = os.getcwd() + "/champions/" + datepath + "/"
-      # check save directory exists prior to saving
+  def savePopulationGenomes(self, folderDirectory):
+    # check save directory exists prior to saving
     if not os.path.isdir(folderDirectory):
       os.makedirs(folderDirectory)
 
@@ -239,7 +233,8 @@ class Population:
       agent[i]['origin'] = self.players[i].origin
       agent[i]['parents'] = self.players[i].parents
   
-    with open(folderDirectory + datepath + " - genomes.json", 'w') as outfile:
+    filename = "genomes.json"
+    with open(os.path.join(folderDirectory, filename), 'w') as outfile:
       json.dump(agent, outfile)
     
       # append to file.

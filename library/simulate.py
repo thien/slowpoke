@@ -1,12 +1,19 @@
 #!/usr/bin/python
 import core.tournament as tournament
 import sys
-
+import os
+import datetime
 # print ('Number of arguments:', len(sys.argv), 'arguments.')
 # print ('Argument List:', str(sys.argv))
 
 def train():
-    options = {}
+    options = {
+        'mongoConfigPath':'config2.json',
+        'Population' : 15,
+        'printStatus' : True,
+        'connectMongo' : False,
+        'resultsLocation' : os.path.join("..", "results")
+    }
     readyBool = False
     verifiedBool = False
     # Check for arguments
@@ -14,26 +21,14 @@ def train():
         # check arguments
         if "light" in sys.argv:
             print("You are about to load a light simulation.")
-            options = {
-                'mongoConfigPath':'config2.json',
-                'plyDepth' : 1,
-                'NumberOfGenerations' : 100,
-                'Population' : 15,
-                'printStatus' : True,
-                'connectMongo' : False
-            }
+            options['plyDepth'] = 1
+            options['NumberOfGenerations'] = 100
             verifiedBool = True
 
         elif "heavy" in sys.argv:
             print("You are about to load a heavy simulation.")
-            options = {
-                'mongoConfigPath':'config2.json',
-                'plyDepth' : 6,
-                'NumberOfGenerations' : 200,
-                'Population' : 15,
-                'printStatus' : True,
-                'connectMongo' : False
-            }
+            options['plyDepth'] = 6
+            options['NumberOfGenerations'] = 200
             verifiedBool = True
         
         # check for user input
