@@ -53,8 +53,8 @@ class TMCTS:
                 self.movesets[random_move]['chances'] += self.treesearch(HB,ply,colour)
                 self.movesets[random_move]['plays'] += 1
 
-            bestChance = -1
-            bestMove = 0
+            bestChance = -1000
+            bestMove = moves[0]
             for m in self.movesets:
                 moveIndex = B.get_moves().index(m)
                 moveString =  B.get_move_strings()[moveIndex]
