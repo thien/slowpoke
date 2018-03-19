@@ -185,9 +185,9 @@ class Generator:
       self.GenerationTimeLengths = np.hstack((self.GenerationTimeLengths, timeDifference))
       # need to store the results of this into a json file!
       self.generationStats.append({
-        'stats' : self.debugInfo(),
+        'stats' : [(str(i[0]), str(i[1])) for i in self.debugInfo()],
         'games' : generationResults,
-        'durationInSeconds' : timeDifference
+        'durationInSeconds' : str(timeDifference)
       })
       self.saveTrainingStatsToJSON(self.saveLocation, self.generationStats)
 
@@ -195,11 +195,6 @@ class Generator:
     # check save directory exists prior to saving
     if not os.path.isdir(saveLocation):
       os.makedirs(saveLocation)
-
-    # make sure you convert all the stats into strings
-    for x in range(len(stats)):
-       for y in range(len(stats[x]['stats'])):
-           stats[x]['stats'][y] = (stats[x]['stats'][y][0], str(stats[x]['stats'][y][1]))
 
     filename = 'statistics.json'
     with open(os.path.join(saveLocation, filename), 'w') as outfile:
@@ -297,7 +292,7 @@ class Generator:
       'game' : results,
       'black' : i['black'].id,
       'white':  i['white'].id,
-      'duration' : self.cleanDate(datetime.datetime.now().timestamp() - timeStart)
+      'duration' : str(self.cleanDate(datetime.datetime.now().timestamp() - timeStart))
     }
     self.displayDebugInfo()
     return data
