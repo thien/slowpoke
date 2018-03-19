@@ -6,6 +6,7 @@ from matplotlib import cm
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import ast
+import time, datetime
 
 class Statistics:
   def __init__(self, date, defaultResultsPath=None):
@@ -16,6 +17,7 @@ class Statistics:
     self.statistics = {}
     self.directory = os.path.join(self.path, self.date)
     leaderboards = []
+    self.saveChartsToImages = True
   
   def loadStatisticsFile(self, filename="statistics.json"):
     filepath = os.path.join(self.directory, filename)
@@ -30,14 +32,24 @@ class Statistics:
     for gen in self.statistics:
       pass
 
-  def saveChartToFile(self, plt, title):
-    savefig('foo.png', bbox_inches='tight')
+  def saveChartToFile(self, title, chart, filetype="eps"):
+    directory = os.path.join(self.directory,"charts")
+    if not os.path.isdir(directory):
+      os.makedirs(directory)
+    filename = title + "." + filetype
+    filepath = os.path.join(directory, filename)
+    chart.savefig(filepath, bbox_inches='tight')
+    print("saved",filename)
 
   """
   Gets tournament timing information
   """
   def timeStatsPerGeneration(self):
-    x = []
+    sx = []
+    plotx = []
+    ploty = []
+    means = []
+    medians = []
     for i in range(len(self.statistics)):
       times = {
         'gameDurations' : []
@@ -46,13 +58,59 @@ class Statistics:
       times["duration"] = self.statistics[i]['durationInSeconds']
       # get individual game lengths
       for j in self.statistics[i]['games']:
-        times['gameDurations'].append(j['duration'])
+        timestamp = j['duration']
+        x = time.strptime(timestamp,'%H:%M:%S.%f')
+        su = datetime.timedelta(hours=x.tm_hour,minutes=x.tm_min,seconds=x.tm_sec).total_seconds()
+        # print(timestamp,su)
+        times['gameDurations'].append(su)
+        plotx.append(i)
+        ploty.append(su)
       # sort the duration times
       times['gameDurations'] = sorted(times['gameDurations'])
-      x.append(times)
+      mean = sum(times['gameDurations']) / float(len(times['gameDurations']))
+      # print(i, "Mean:", round(mean,2), "S:", moveCounts[0], "L:", moveCounts[-1])
+      means.append(mean)
+      medians.append(max(set(times['gameDurations']), key=times['gameDurations'].count))
+      sx.append(times)
 
     # generate a graph for this
-    return x
+    # for i in sx:
+    #   print(i['duration'])
+
+    simRuntimes = [float(i['duration']) for i in sx]
+    # for i in range(len(sx)):
+    plotx.append(1)
+    ploty.append(max(simRuntimes)+10)
+    # print(simRuntimes)
+    mean_colour = "red"
+    net_colour = "pink"
+    # add legend
+    mean_patch = mpatches.Patch(color=mean_colour, label='Mean')
+    gen_patch = mpatches.Patch(color=net_colour, label='CPU Runtime')
+    plt.legend(handles=[mean_patch, gen_patch])
+
+    # plot 2d histogram
+    plt.hist2d(plotx, ploty, bins=50)
+    # plot line graph of means
+    plt.plot(means, '--', linewidth=2, color=mean_colour)
+    # plot overall sim time
+    plt.plot(simRuntimes, '--', linewidth=2, color=net_colour)
+    # plt.plot(medians, '--', linewidth=2, color=median_colour)
+    # needs title
+    plt.ylabel('Seconds')
+    plt.xlabel('Generation')
+    plt.suptitle('Game Run Time Over Generations')
+    # plt.colorbar()
+    # set axis
+    x1,x2,y1,y2 = plt.axis() # get current axis
+    plt.axis((x1,x2,y1,max(simRuntimes)))
+
+    # plt.show()
+    if self.saveChartsToImages:
+      self.saveChartToFile("simulation_timings",plt)
+    plt.close()
+
+    return sx
 
   """
   Calculates the average number of moves per generation.
@@ -94,12 +152,18 @@ class Statistics:
     # needs title
     plt.ylabel('Number of Moves')
     plt.xlabel('Generation')
+    plt.suptitle('Move Count Distribution Over Generations')
     plt.colorbar()
 
-    plt.show()
-
+    # plt.show()
+    if self.saveChartsToImages:
+      self.saveChartToFile("moves",plt)
+    plt.close()
     return means
 
+  """
+  Calculates the scores and learning rates
+  """
   def getLearningRate(self):
     scores = []
     cummulative = []
@@ -126,20 +190,36 @@ class Statistics:
       for j in range(len(li)):
         li[j] = float(li[j])
       champRange[i] = li
-    
-    # for i in champRange:
-    #   print(i)
 
     # plot cummulative graph
+    plt.axhline(0, color='grey')
     plt.plot(cummulative, '--', linewidth=2, color='blue')
     # needs title
-    plt.ylabel('Learning Rate')
+    plt.suptitle('Cummulative Learning Rate Over Generations')
+    plt.ylabel('Learning Rate (Cummulative)')
     plt.xlabel('Generation')
-    plt.show()
+    # plt.show()
+    if self.saveChartsToImages:
+      self.saveChartToFile("cummulative_growth", plt)
+    plt.close()
+
+    # plot standard point range
+    plt.axhline(0, color='grey')
+    plt.plot(scores, '--', linewidth=2, color='blue')
+    # needs title
+    plt.suptitle('Champion Scores Over Generations')
+    plt.ylabel('Scores')
+    plt.xlabel('Generation')
+    # plt.show()
+    if self.saveChartsToImages:
+      self.saveChartToFile("champ_scores", plt)
+    plt.close()
+
 
 if __name__ == '__main__':
   date = "2018-03-19 16:42:47"
   s = Statistics(date)
   s.loadStatisticsFile()
-  # s.averageNumMovesPerGeneration()
+  s.averageNumMovesPerGeneration()
   s.getLearningRate()
+  s.timeStatsPerGeneration()
