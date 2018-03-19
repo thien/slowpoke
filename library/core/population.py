@@ -251,16 +251,16 @@ class Population:
     """
     return False
 
-  def savePopulationToDB(self):
+  def savePopulationToDB(self, db):
     population = self.currentPopulation
     """
     Stores the population into Mongo. 
     """
     keys = []
-    if self.db.connected:
+    if db.connected:
       for i in population:
-        if self.db.checkPlayerExists(i.id) == False:
-          entry = self.db.write('players', i.getDict())
+        if db.checkPlayerExists(i.id) == False:
+          entry = db.write('players', i.getDict())
           keys.append(entry)
         else:
           keys.append(i.id)
@@ -297,14 +297,14 @@ class Population:
     for i in parentIDs:
        self.players[botID].parents.append(i)
 
-  # Done
-  @staticmethod
-  def randomPlayerID(val):
-    # choose a random number between 1 and the number of players. checks that it isn't the same number as val.
-    rand = randint(0, self.count-1)
-    while (rand == val):
-      rand = randint(0, self.count-1)
-    return rand
+  # # Done
+  # @staticmethod
+  # def randomPlayerID(val):
+  #   # choose a random number between 1 and the number of players. checks that it isn't the same number as val.
+  #   rand = random.randint(0, self.count-1)
+  #   while (rand == val):
+  #     rand = random.randint(0, self.count-1)
+  #   return rand
 
 
   # def roulette(self, players):
