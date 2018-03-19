@@ -51,7 +51,7 @@ class Population:
     This is only called at the beginning of the genetic algorithm.
     """
     players = []
-    for i in range(count):
+    for _ in range(count):
       # generate a new human
       human = self.generatePlayer()
       # add it to the list of players
@@ -67,7 +67,7 @@ class Population:
     # sort list of tuples
     output = ""
     for i in points:
-      player_id = i[0]
+      # i[0] is the player ID, i[1] is the player's score.
       output += "Player "+str(i[0])+ "\t" + str(i[1])+"\n"
     return output
 
