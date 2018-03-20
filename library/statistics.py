@@ -1,7 +1,6 @@
 import json
 import os
 import numpy as np
-import seaborn as sns
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
