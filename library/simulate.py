@@ -3,6 +3,8 @@ import core.tournament as tournament
 import sys
 import os
 import datetime
+import evaluator
+import statistics
 # print ('Number of arguments:', len(sys.argv), 'arguments.')
 # print ('Argument List:', str(sys.argv))
 
@@ -50,6 +52,26 @@ def train():
     if readyBool:
         t = tournament.Generator(options)
         t.runGenerations()
+        date = t.cleanDate(t.StartTime, True)
+        # create statistics
+        stats = statistics.Statistics(date)
+        stats.loadStatisticsFile()
+        stats.saveCharts()
+        # stats.averageNumMovesPerGeneration()
+        # stats.getLearningRate()
+        # stats.timeStatsPerGeneration()
+
+        # evaluate performance
+        su = evaluator.Evaluate(date,options['plyDepth'])
+        su.loadChampions()
+        games = su.createGames()
+        su.evaluate(games)
+
+        # create statistics of Gold Master
+        stats.loadGMFile()
+        stats.analyseGM()
+        # print that we're done.
+        print("DONE!")
     else:
         print("Terminating.")
 
