@@ -35,12 +35,12 @@ class Evaluate:
     # cpu information
     self.cores = multiprocessing.cpu_count()
     # simulation specific information
-    self.numberOfGames = 4
-    if self.cores > 64: self.numberOfGames = 256
+    self.numberOfGames = 10
+    if self.cores > 64: self.numberOfGames = 250
 
     self.ply = ply
     # split to every nth parttioned player.
-    self.choiceRange = 5
+    self.choiceRange = 6
     # file save information
     self.filename = "gm_stats"
 
