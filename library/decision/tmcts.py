@@ -15,6 +15,7 @@ class TMCTS:
     def __init__(self, ply, evaluator):
         self.ply = ply
         self.evaluator = evaluator
+        self.baseRound = 300
 
     def Decide(self, B, colour):
         self.movesets = {}
@@ -31,11 +32,15 @@ class TMCTS:
         if len(moves) == 1:
             return moves[0]
         else:
+            # expand the depth if there is a limited set of moves to
+            # choose from!
+            if len(moves) < 4:
+                ply = ply + len(moves) 
             # if the user adds some dud plycount default to 1 random round.
             random_rounds = 1
             # iterate some random amount of times.
-            if self.ply > 0:
-                random_rounds = 300*self.ply
+            if ply > 0:
+                random_rounds = self.baseRound * ply
             
             # set up moves
             for move in moves:
