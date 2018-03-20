@@ -1,6 +1,6 @@
 import datetime
 import random
-
+import math
 class MCTS:
 
     def __init__(self, ply, evaluator=None, debug=False):
@@ -13,8 +13,14 @@ class MCTS:
         return self.mcts_code(B, self.ply, colour)
 
     def mcts_code(self, B, ply, colour):
+      # if colour == 1:
+      #   colour = 0
+      # else:
+      #   colour = 1
+      if self.debug:
+        print("I AM:", colour)
+      # get the current set of moves
       moves = B.get_moves()
-
       # if theres only one move to make theres no point
       # evaluating future moves.
       if not moves:
@@ -23,9 +29,7 @@ class MCTS:
         return moves[0]
 
       self.mcts_plays, self.mcts_chances = {}, {}
-
       seconds = self.ply
-
       self.calculation_time = datetime.timedelta(seconds=seconds)
 
       # if the user adds some dud plycount default to 1 random round.
@@ -38,8 +42,12 @@ class MCTS:
       number_of_sims = 0
       ply = 100*self.ply
       while datetime.datetime.utcnow() - begin < self.calculation_time:
-        movebases = self.mcts_simulate(B,ply,colour,max_rounds)
+        self.mcts_simulate(B.copy(),ply,colour,max_rounds)
         number_of_sims += 1
+        if self.debug:
+          print("sims:", number_of_sims, "\r", end="")
+      if self.debug:
+        print("sims:", number_of_sims)
     
       move_states = []
       for i in moves:
@@ -84,8 +92,6 @@ class MCTS:
       It returns a percentage of how good it is. If it defaults to a winning game,
       then it'll return with certainty.
       """
-      moves = B.get_moves()
-
       visited_states = set()
       state_stack = [B.copy()] # iterate a tree of moves stack style!
       state = state_stack[-1]
@@ -103,21 +109,21 @@ class MCTS:
         if all(self.mcts_plays.get((player, S)) for p, S in move_states):
           # if we have the statistics on all of the legal moves here, use them!
           # print("god a thing")
-          all_move_states = [mcts_plays[(player, S)] for p, S in move_states]
+          all_move_states = [self.mcts_plays[(player, S)] for p, S in move_states]
           if len(all_move_states) > 0:
             print("23443w87t5yfewah")
-            log_total = log(sum(all_move_states))
+            log_total = math.log(sum(all_move_states))
 
             value, move, state = max(
               (
                 (
                   self.mcts_chances[(player, S)] / self.mcts_plays[(player, S)]
                 ) +
-                (self.c * sqrt(log_total / self.mcts_plays[(player, S)])), p, S
+                (self.c * math.sqrt(log_total / self.mcts_plays[(player, S)])), p, S
               )
               for p, S in move_states
             )
-            # print(value, move, state)
+            print(value, move, state)
         else:
           choice = random.choice(move_states)
           move, state = choice
