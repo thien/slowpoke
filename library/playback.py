@@ -17,7 +17,7 @@ class Playback:
 		self.debug = True
 		self.loadGM = True
 		# display options
-		self.timeDelay = 0.1
+		self.timeDelay = 0.5
 		self.loadHowManyGames = 8
 
 	def loadChampGames(self, genObj, champ):
@@ -85,7 +85,7 @@ class Playback:
 			print("The Champion is: Player", self.getChampion(l))
 		return l
 	
-	def runReplayProgramme(self,gameMoves,champ=None):
+	def runReplayProgramme(self,gameMoves,champ=None,gen=None):
 		B = checkers.CheckerBoard()
 		# get some of the games.
 		games = gameMoves[:self.loadHowManyGames]
@@ -99,8 +99,8 @@ class Playback:
 			if max_game_length < gameLength:
 				max_game_length = gameLength
 
-
-
+		title = "GENERATION "+str(gen+1)
+		lineSeparator = " "
 		# this is for a specific game.
 			# someGame = gameMoves[0]
 			# # now we need to create the gameboards that we play
@@ -123,8 +123,7 @@ class Playback:
 			board_display = []
 			# iterate through each game and make a move.
 			for game in range(len(games)):
-				# check if the game has finished already:
-				# if not games[game]['Board'].is_over():
+				# check if the game has finished already
 				replayLen = len(games[game]['replay'])
 				if replayLen > i:
 					replayMove = games[game]['replay'][i][1]
@@ -137,13 +136,12 @@ class Playback:
 				gameBoard = games[game]['Board'].generateASCIIBoard()
 				gameBoard.insert(0,self.addStaticBoardInfo(games[game],i,champ))
 				board_display.append(gameBoard)
-			self.processBoardDisplays(board_display)
+			# compile the boards together.
+			boardPrints = self.processBoardDisplays(board_display)
+			# Print!
+			print("\n"+title,"\n"+lineSeparator,"\n"+boardPrints)
 			time.sleep(self.timeDelay) 
-
-
-			# clear the boards
-			# break
-		return False
+		return True
 
 
 
@@ -181,8 +179,7 @@ class Playback:
 					mega_row = mega_row + board_row
 				master.append(mega_row)
 			master.append(["\n"])
-		print(self.printBoard(master))
-
+		return self.printBoard(master)
 
 	@staticmethod
 	def addStaticBoardInfo(gameInfo, replayLen, champID=None):
@@ -214,7 +211,11 @@ class Playback:
 				gameStatus = "W"
 			else:
 				gameStatus = "L"
-		gameStatus = colored(gameStatus, 'magenta')
+		
+		if gameStatus == "W":
+			gameStatus = colored(gameStatus, 'green')
+		elif gameStatus == "L":
+			gameStatus = colored(gameStatus, 'magenta')
 
 		# inp = "abcdefghijklmnopqrstuvwxyzabcdefghijk"
 		inp = black_player + "  " + White_player + "  "+ gameStatus+"   " + gameLength
@@ -236,11 +237,12 @@ if __name__ == '__main__':
 	foldername = "2018-03-19 16:42:47"
 	s = Playback(foldername)
 	s.loadStatisticsFile()
-	genID = 2
-	generation = s.loadGeneration(genID)
-	leaderboard = s.processLeaderboard(generation['stats'])
-	champ = s.getChampion(leaderboard)
-	# find games played by the champ
-	gameMoves = s.loadChampGames(generation,champ)
-	s.runReplayProgramme(gameMoves,champ=champ)
-	# s.loadChampGames(1)
+	
+	for genID in range(0,5):
+		generation = s.loadGeneration(genID)
+		leaderboard = s.processLeaderboard(generation['stats'])
+		champ = s.getChampion(leaderboard)
+		# find games played by the champ
+		gameMoves = s.loadChampGames(generation,champ)
+		s.runReplayProgramme(gameMoves,champ=champ,gen=genID)
+		# s.loadChampGames(1)
