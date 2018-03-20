@@ -54,7 +54,9 @@ class Evaluate:
     gmID = items[-1]
     agentCount = len(items)
 
-    tests = [items[0]]
+    tests = []
+    if self.choiceRange > 0:
+      tests.append(items[0])
     for i in range(self.choiceRange-1):
       tests.append(int(agentCount*((i+1))/self.choiceRange))
 
@@ -65,18 +67,21 @@ class Evaluate:
     # load the opponments
     for i in tests:
       # create agentString
-      agent_ID = "generation-" + str(i)
+      agent_ID = "gen-" + str(i)
       # load that agent
       self.agents[agent_ID] = self.loadAgentFile(self.ply, i, champsPath)
 
     if extensions:
-      # let's import other agents too
-      self.agents['random'] = p.loadPlayerClass('magikarp')
-      self.agents['pure_mcts'] = p.loadPlayerClass('geodude')
+      self.loadOtherAgents()
 
     # now, we're done!
     print("Done.")
     print("There are", len(self.agents.keys()), "loaded.")
+
+  def loadOtherAgents(self):
+    # let's import other agents too
+    self.agents['random'] = p.loadPlayerClass('magikarp')[0]
+    self.agents['pure_mcts'] = p.loadPlayerClass('geodude')[0]
 
   def createGames(self):
     # we'll make a list of games that the GM will play against.
@@ -95,6 +100,8 @@ class Evaluate:
       print("Calculating",ev_ID)
       # create score container
       ent[ev_ID] = {
+        'player' : x[black],
+        'opp' : x[white],
         'wins' : 0,
         'losses' : 0,
         'draws' : 0,
