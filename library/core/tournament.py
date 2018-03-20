@@ -14,6 +14,8 @@ import multiprocessing
 import os
 import json
 
+import statistics
+
 # Piece values on board
 Black, White, empty = 0, 1, -1
 # Blondie was 1,0,-2
@@ -86,7 +88,8 @@ class Generator:
     # we also want to save the stats offline
     self.generationStats = []
     self.saveLocation = os.path.join(options['resultsLocation'],self.cleanDate(self.StartTime, True))
-    
+    # generate charts as we go?
+    self.generateChartsEveryRound = True
 
   def loadJSONConfig(self, filepath):
     """
@@ -190,6 +193,16 @@ class Generator:
         'durationInSeconds' : str(timeDifference)
       })
       self.saveTrainingStatsToJSON(self.saveLocation, self.generationStats)
+      if self.generateChartsEveryRound:
+        self.generateStats()
+        
+  def generateStats(self):
+    date = self.cleanDate(self.StartTime, True)
+    # create statistics
+    stats = statistics.Statistics(date)
+    stats.loadStatisticsFile()
+    stats.saveCharts()
+    print("I made some charts!")
 
   def saveTrainingStatsToJSON(self, saveLocation, stats):
     # check save directory exists prior to saving

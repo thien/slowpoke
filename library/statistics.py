@@ -315,8 +315,8 @@ class Statistics:
 if __name__ == '__main__':
   date = "2018-03-19 16:42:47"
   s = Statistics(date)
-  # s.loadStatisticsFile()
-  # s.saveCharts()
+  s.loadStatisticsFile()
+  s.saveCharts()
   s.loadGMFile()
   s.analyseGM()
   # s.averageNumMovesPerGeneration()
