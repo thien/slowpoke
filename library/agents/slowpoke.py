@@ -62,6 +62,10 @@ class Slowpoke:
     else:
       self.decisionFunction = tmcts.TMCTS(self.ply,self.evaluate_board)
 
+    # optional cache
+    self.cache = {}
+    self.enableCache = True
+
   def initiateNeuralNetwork(self, layers, weights=[]):
     """
     This function initiates the neural network and adds it
@@ -108,8 +112,15 @@ class Slowpoke:
       if self.layers[0] == 91:
         boardStatus = self.nn.subsquares(boardStatus)
       # Evaluate the board array using our CNN.
-      return self.nn.compute(boardStatus)
-
+      hashd = None
+      if self.enableCache:
+        hashd = tuple(boardStatus)
+        if hashd in self.cache:
+          return self.cache[hashd]
+      val = self.nn.compute(boardStatus)
+      if self.enableCache:
+        self.cache[hashd] = val
+      return val
 
   # """
   # Checks the current stage of the board.
