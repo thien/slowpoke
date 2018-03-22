@@ -35,7 +35,10 @@ class Population:
     if not os.path.isdir(self.folderDirectory):
       os.makedirs(self.folderDirectory)
 
-  # Done
+  """
+  Generates an individual player. This is only called in the
+  generatePlayers() function!
+  """
   def generatePlayer(self):
     bot = sp.Slowpoke(self.plyDepth)
     human = agent.Agent(bot)
@@ -44,12 +47,11 @@ class Population:
     self.playerCounter += 1
     return human
 
-  # Done
+  """
+  Generates Players to participate in the tournament.
+  This is only called at the beginning of the genetic algorithm.
+  """
   def generatePlayers(self, count):
-    """
-    Generates Players to participate in the tournament.
-    This is only called at the beginning of the genetic algorithm.
-    """
     players = []
     for _ in range(count):
       # generate a new human
@@ -60,7 +62,10 @@ class Population:
       players.append(human.id)
     return players
 
-  # Done
+  """
+  Self explanatory, prints the current population in order of
+  how good they are (in terms of points)
+  """
   def printCurrentPopulationByPoints(self):
     print("Current Population:",self.currentPopulation)
     points = list(map(lambda x: (x,self.players[x].points), self.currentPopulation))
@@ -71,11 +76,10 @@ class Population:
       output += "Player "+str(i[0])+ "\t" + str(i[1])+"\n"
     return output
 
-  # Done
+  """
+  order the players by how good they are.
+  """
   def sortCurrentPopulationByPoints(self):
-    """
-    order the players by how good they are.
-    """
     # create tuple of players and their points
     points = list(map(lambda x: (x,self.players[x].points), self.currentPopulation))
     # sort list of tuples
@@ -83,13 +87,12 @@ class Population:
     # assign back the first half of the tuples to the list of players.
     self.currentPopulation = [x[0] for x in points]
 
-  # Done
+  """
+  Generate new population based on the player performance.
+  Input: list of player ID's.
+  Output: a new list of players.
+  """
   def generateNextPopulation(self):
-    """
-    Generate new population based on the player performance.
-    Input: list of player ID's.
-    Output: a new list of players.
-    """
     # increment generation count
     self.generation += 1
     # start with the top 5 players from the previous generation
@@ -149,7 +152,10 @@ class Population:
     self.currentPopulation = offsprings
     self.count = len(offsprings)
   
-  # Done
+  """
+  Crossover mechanism for creating offspring children
+  Input: two parents, two children, two indexes to swap from
+  """
   def crossOver(self, cpu1, cpu2, child1, child2, index1, index2):
     """
     Basic Crossover Algorithm for the GA.
@@ -168,7 +174,9 @@ class Population:
     # return the pair of children
     return (child1,child2)  
 
-  # Done
+  """
+  Mutate the weights of the neural network.
+  """
   def mutate(self,cpu):
     """
     Mutate the weights of the neural network.
@@ -195,7 +203,9 @@ class Population:
     weights=np.clip(weights, -1, 1)
     self.setWeights(cpu, weights)
 
-  # Done
+  """
+  Saves champions to a file.
+  """
   def saveChampionsToFile(self, folderDirectory):
     folderDirectory = os.path.join(folderDirectory, "champions")
       # check save directory exists prior to saving
@@ -220,6 +230,12 @@ class Population:
       # append to file.
     print("saved champs to ",filename)
 
+  """
+  Saves genomic properties to a file. Each champion's properties
+  gets saved in this file, such as whether they were made from
+  mutation, their parents IDs, whether crossovers were used 
+  and so on.
+  """
   def savePopulationGenomes(self, folderDirectory):
     # check save directory exists prior to saving
     if not os.path.isdir(folderDirectory):
@@ -240,12 +256,9 @@ class Population:
       # append to file.
     print("saved players genomic info.")     
 
-  def savePopulation(self):
-    """
-    Saves population to file, and also to database if needed.
-    """
-    return False
-
+  """
+  NOT USED
+  """
   def savePopulationToDB(self, db):
     population = self.currentPopulation
     """
@@ -261,9 +274,10 @@ class Population:
           keys.append(i.id)
     return keys
 
-  # Done
+  """
+  Allocates points to players based on the game outcomes
+  """
   def allocatePoints(self, results, black, white):
-    # allocates points to players dependent on the game results.
     if results["Winner"] == Black:
       self.players[black].points += WinPt
       self.players[white].points += LosePt
@@ -271,11 +285,15 @@ class Population:
       self.players[black].points += LosePt
       self.players[white].points += WinPt
 
-  # Done
+  """
+  Adds the champion to the list of champions
+  """
   def addChampion(self):
     self.champions.append(self.currentPopulation[0])
 
-  # Done
+  """
+  Assign weights to a bot's neural net.
+  """
   def setWeights(self,botID, weights):
     self.players[botID].bot.nn.loadCoefficents(weights)
 
