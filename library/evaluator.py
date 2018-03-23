@@ -36,7 +36,7 @@ class Evaluate:
     self.cores = multiprocessing.cpu_count()
     # simulation specific information
     self.numberOfGames = 10
-    if self.cores > 64: self.numberOfGames = 250
+    if self.cores > 64: self.numberOfGames = 128
 
     self.ply = ply
     # split to every nth parttioned player.
@@ -93,6 +93,7 @@ class Evaluate:
 
   def evaluate(self,games):
     ent = {}
+    players = {}
     for x in games:
       # set colour codes
       black, white = 0,1
@@ -132,8 +133,8 @@ class Evaluate:
         for i in range(0,int(self.numberOfGames/2)):
           # add game to list of games to play
           gamePool.append({
-            'black' : self.initAgentClass(x[black], self.agents[x[black]]),
-            'white' : self.initAgentClass(x[white], self.agents[x[white]]),
+            'black' : x[black],
+            'white' : x[white],
             'gameOpt' : self.gameOpts
           })
 
@@ -168,9 +169,10 @@ class Evaluate:
   """
   This gets called by the map (as part of multithread)
   """
-  @staticmethod
-  def gameWorker(i):
-    return p.runGame(i['black'], i['white'], i['gameOpt']).winner
+  def gameWorker(self,i):
+    black = self.initAgentClass(i['black'], self.agents[i['black']])
+    white = self.initAgentClass(i['white'], self.agents[i['white']])
+    return p.runGame(black,white, i['gameOpt']).winner
 
   @staticmethod
   def loadAgentFile(ply,pID,location):
@@ -189,8 +191,8 @@ class Evaluate:
     return (agent.Agent(bot),id)
 
 if __name__ == '__main__':
-  date = "2018-03-19 16:42:47"
-  ply = 1
+  date = "2018-03-21 18:41:51"
+  ply = 3
   s = Evaluate(date,ply)
   s.loadChampions()
   games = s.createGames()
