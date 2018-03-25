@@ -1,5 +1,7 @@
 import matplotlib
-matplotlib.use('Agg')
+import multiprocessing
+# dirty mira check
+if multiprocessing.cpu_count() > 10: matplotlib.use('Agg')
 
 import json
 import os
@@ -10,6 +12,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import ast
 import time, datetime
+import hashlib
+import random
 
 class Statistics:
   def __init__(self, date, defaultResultsPath=None):
@@ -57,8 +61,8 @@ class Statistics:
     self.leaderboards = leaderboards.copy()
     # lets do some processing of the leaderboards.
     stats = {
-      "persistentChampion" : [],
-      "elites" : [],
+      "persistent Champion" : [],
+      "elite" : [],
       "mutation" : [],
       "crossover" : []
     }
@@ -77,10 +81,10 @@ class Statistics:
 
       if lb['champion'] == next_lb['champion']:
         # if the following generation's champion remains the same
-        stats["persistentChampion"].append(i+1)
+        stats["persistent Champion"].append(i+1)
       elif next_lb['champion'] in lb['players']:
         # if the following generation is from the previous leaderboard
-        stats['elites'].append(i+1)
+        stats['elite'].append(i+1)
       elif sorted_scores[-10:].index(int(next_lb['champion'])) < 5:
         # if its in the first 5 agents of the offspring then its crossed over
         stats['crossover'].append(i+1)
@@ -107,6 +111,61 @@ class Statistics:
       mean = round(sums/size, 5)
       print(mean)
 
+    syu = [scoreStats[s] for s in scoreStats]
+    xlabels = [x.title() for x in scoreStats]
+    print(syu)
+    # plotScoreStats = np.concatenate((spread, center, flier_high, flier_low), 0)
+    plt.figure()
+    plt.boxplot(syu,showfliers=False)
+    plt.xticks([i+1 for i in range(len(scoreStats))],xlabels)
+    # add zeroline
+    plt.axhline(0, color='grey')
+    # add jitter to boxplot
+    jitterx = []
+    jittery = []
+
+    for i in range(len(syu)):
+      values = syu[i]
+      x = np.random.normal(i+1, 0.07, size=len(values))
+      for v in range(len(values)):
+        jitterx.append(x[v])
+        jittery.append(values[v])
+        
+    plt.scatter(jitterx,jittery,c='r', zorder=10, alpha=0.25)
+
+    t = "Distribution of Champion Learning Rates by Agent Type"
+    if self.enableTitles:
+      plt.suptitle(t)
+    if self.saveChartsToImages:
+      self.saveChartToFile("champ_score_distribution", plt)
+    # plt.show()
+    plt.close()
+
+    # now we create a chart of champion distributions.
+    labels = xlabels
+    sizes = [sum(stats[x]) for x in [y for y in scoreStats]]
+    explode = (0, 0.1, 0, 0)  # only "explode" the 2nd slice (i.e. 'Hogs')
+    colors = [self.string2HexColor(x) for x in xlabels]
+    _, ax1 = plt.subplots()
+    ax1.pie(sizes, explode=explode, labels=labels, colors=colors, autopct='%1.1f%%',
+            shadow=False, startangle=90)
+    ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    t = "Generation Champion Distribution"
+    if self.enableTitles:
+      plt.suptitle(t)
+    if self.saveChartsToImages:
+      self.saveChartToFile("champ_gen_dist", plt)
+      # plt.show()
+    plt.close()
+
+    print("DONE")
+
+  @staticmethod
+  def string2HexColor(string):
+    hex = hashlib.sha224(string.encode("utf-8")).hexdigest()
+    # randomint = random.randint(1,len(hex)-6)
+    randomint = 5
+    return "#" + hashlib.sha224(string.encode("utf-8")).hexdigest()[randomint:randomint+6]
 
   def saveChartToFile(self, title, chart, filetype="eps"):
     directory = os.path.join(self.directory,"charts")
@@ -225,7 +284,7 @@ class Statistics:
     plt.hist2d(graphData['x'], graphData['y'], bins=50)
     # plot line graph of means
     plt.plot(means, '--', linewidth=2, color=mean_colour)
-    plt.plot(medians, '--', linewidth=2, color=median_colour)
+    # plt.plot(medians, '--', linewidth=2, color=median_colour)
     # needs title
     plt.ylabel('Number of Moves')
     plt.xlabel('Generation')
@@ -391,6 +450,7 @@ class Statistics:
     self.averageNumMovesPerGeneration()
     self.getLearningRate()
     self.timeStatsPerGeneration()
+    self.parseLeaderboards()
 
 def batchRun():
   """
@@ -415,13 +475,13 @@ def batchRun():
           s.analyseGM()
 
 if __name__ == '__main__':
-  # batchRun()
-  foldername = "2018-03-20 01:48:19 (6ply 180 generations)"
-  s = Statistics(foldername)
-  s.saveChartsToImages = False
-  s.loadStatisticsFile()
-  s.getLearningRate()
-  s.parseLeaderboards()
+  batchRun()
+  # foldername = "2018-03-19 16:42:47 (1ply 100 generations)"
+  # s = Statistics(foldername)
+  # s.saveChartsToImages = False
+  # s.loadStatisticsFile()
+  # s.getLearningRate()
+  # s.parseLeaderboards()
   # s.saveCharts()
   # s.loadGMFile()
   # s.analyseGM()
