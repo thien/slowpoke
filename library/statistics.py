@@ -19,7 +19,7 @@ class Statistics:
       self.path = defaultResultsPath
     self.statistics = {}
     self.directory = os.path.join(self.path, self.date)
-    leaderboards = []
+    self.leaderboards = []
     self.saveChartsToImages = True
     self.gmFilename = "gm_stats.json"
     self.enableTitles = True
@@ -34,8 +34,79 @@ class Statistics:
     print("Loaded Stats File!")
 
   def parseLeaderboards(self):
-    for gen in self.statistics:
-      pass
+    leaderboards = []
+    for i in range(len(self.statistics)):
+      lbEntry = {}
+      lb = None
+      for k in range(len(self.statistics[i]['stats'])):
+        j = self.statistics[i]['stats'][k]
+        if j[0] == "Previous Scoreboard":
+          lb = self.statistics[i]['stats'][k+1][0]
+      lb = lb.split("\n")
+      # empty item in the list; remove that
+      lb.pop()
+      for p in range(len(lb)):
+        lb[p] = lb[p].split("\t")
+        lb[p][0]=lb[p][0].replace("Player ", "")
+      # add results into the dict.
+      lbEntry['champion'] = lb[0][0]
+      lbEntry['scores'] = lb
+      lbEntry['players'] = [lb[i][0] for i in range(len(lb))]
+      # print(lb)
+      leaderboards.append(lbEntry)
+    self.leaderboards = leaderboards.copy()
+    # lets do some processing of the leaderboards.
+    stats = {
+      "persistentChampion" : [],
+      "elites" : [],
+      "mutation" : [],
+      "crossover" : []
+    }
+    # copy the keys to make scoreStats
+    scoreStats = {}
+    for key in stats.keys():
+      scoreStats[key] = []
+
+    for i in range(1,len(leaderboards)):
+      lb = leaderboards[i-1]
+      # print(i)
+      next_lb = leaderboards[i]
+      # print(i+1,sorted(int(next_lb['players'])))
+      sorted_scores = sorted([int(i) for i in next_lb['players']])
+      # print(i+1,sorted_scores[-10:])
+
+      if lb['champion'] == next_lb['champion']:
+        # if the following generation's champion remains the same
+        stats["persistentChampion"].append(i+1)
+      elif next_lb['champion'] in lb['players']:
+        # if the following generation is from the previous leaderboard
+        stats['elites'].append(i+1)
+      elif sorted_scores[-10:].index(int(next_lb['champion'])) < 5:
+        # if its in the first 5 agents of the offspring then its crossed over
+        stats['crossover'].append(i+1)
+      else:
+        stats['mutation'].append(i+1)
+    # print(stats)
+  
+    # add score stats
+    for i in range(0,len(self.scores['scores'])):
+      score = self.scores['scores'][i]
+      for key in stats:
+        if i in stats[key]:
+          # print(i, "is in", key, "and its score is",score)
+          scoreStats[key].append(score)
+    
+    
+    # iterate through the 
+    for playerType in stats:
+      # print(scoreStats[playerType])
+      print(playerType, len(stats[playerType]))
+      sums = sum(scoreStats[playerType])
+      size = len(scoreStats[playerType])
+      # calculate the score mean
+      mean = round(sums/size, 5)
+      print(mean)
+
 
   def saveChartToFile(self, title, chart, filetype="eps"):
     directory = os.path.join(self.directory,"charts")
@@ -198,6 +269,12 @@ class Statistics:
         li[j] = float(li[j])
       champRange[i] = li
 
+    self.scores = {
+      "scores":scores,
+      "cummulative":cummulative,
+      "champRange": champRange
+    }
+
     # plot cummulative graph
     plt.axhline(0, color='grey')
     plt.plot(cummulative, '--', linewidth=2, color='blue')
@@ -223,7 +300,6 @@ class Statistics:
     if self.saveChartsToImages:
       self.saveChartToFile("champ_scores", plt)
     plt.close()
-
 
   """
   Load GM file
@@ -316,13 +392,39 @@ class Statistics:
     self.getLearningRate()
     self.timeStatsPerGeneration()
 
+def batchRun():
+  """
+  Loads all the files in the repo and creates charts for all files if
+  it can.
+  """
+  path = os.path.join("..", "results")
+  folders = os.listdir(path)
+  # s = Statistics()
+  for folder in folders:
+    newPath = os.path.join(path, folder)
+    verify = os.path.isdir(newPath)
+    if verify:
+      # check if theres a statistics.json.
+      if "statistics.json" in os.listdir(newPath):
+        print("Running stats for", folder)
+        s = Statistics(folder)
+        s.loadStatisticsFile()
+        s.saveCharts()
+        if "gm_stats.json" in os.listdir(newPath):
+          s.loadGMFile()
+          s.analyseGM()
+
 if __name__ == '__main__':
-  date = "2018-03-19 16:42:47"
-  s = Statistics(date)
+  # batchRun()
+  foldername = "2018-03-20 01:48:19 (6ply 180 generations)"
+  s = Statistics(foldername)
+  s.saveChartsToImages = False
   s.loadStatisticsFile()
-  s.saveCharts()
-  s.loadGMFile()
-  s.analyseGM()
+  s.getLearningRate()
+  s.parseLeaderboards()
+  # s.saveCharts()
+  # s.loadGMFile()
+  # s.analyseGM()
   # s.averageNumMovesPerGeneration()
   # s.getLearningRate()
   # s.timeStatsPerGeneration()
