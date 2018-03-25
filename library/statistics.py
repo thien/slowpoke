@@ -104,16 +104,16 @@ class Statistics:
     # iterate through the 
     for playerType in stats:
       # print(scoreStats[playerType])
-      print(playerType, len(stats[playerType]))
+      # print(playerType, len(stats[playerType]))
       sums = sum(scoreStats[playerType])
       size = len(scoreStats[playerType])
       # calculate the score mean
       mean = round(sums/size, 5)
-      print(mean)
+      # print(mean)
 
     syu = [scoreStats[s] for s in scoreStats]
     xlabels = [x.title() for x in scoreStats]
-    print(syu)
+    # print(syu)
     # plotScoreStats = np.concatenate((spread, center, flier_high, flier_low), 0)
     plt.figure()
     plt.boxplot(syu,showfliers=False)
@@ -158,16 +158,14 @@ class Statistics:
       # plt.show()
     plt.close()
 
-    print("DONE")
-
   @staticmethod
   def string2HexColor(string):
     hex = hashlib.sha224(string.encode("utf-8")).hexdigest()
     # randomint = random.randint(1,len(hex)-6)
     randomint = 5
-    return "#" + hashlib.sha224(string.encode("utf-8")).hexdigest()[randomint:randomint+6]
+    return "#" + hex[randomint:randomint+6]
 
-  def saveChartToFile(self, title, chart, filetype="eps"):
+  def saveChartToFile(self, title, chart, filetype="pdf"):
     directory = os.path.join(self.directory,"charts")
     if not os.path.isdir(directory):
       os.makedirs(directory)
@@ -468,6 +466,7 @@ def batchRun():
       if "statistics.json" in os.listdir(newPath):
         print("Running stats for", folder)
         s = Statistics(folder)
+        s.enableTitles = False
         s.loadStatisticsFile()
         s.saveCharts()
         if "gm_stats.json" in os.listdir(newPath):
