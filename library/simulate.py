@@ -29,8 +29,8 @@ def train():
 
         elif "heavy" in sys.argv:
             print("You are about to load a heavy simulation.")
-            options['plyDepth'] = 6
-            options['NumberOfGenerations'] = 200
+            options['plyDepth'] = 3
+            options['NumberOfGenerations'] = 100
             verifiedBool = True
         
         # check for user input
