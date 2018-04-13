@@ -70,7 +70,7 @@ class Statistics:
     # lets do some processing of the leaderboards.
     stats = {
       "persistent" : [],
-      "elite" : [],
+      "elitism" : [],
       "mutation" : [],
       "crossover" : []
     }
@@ -92,7 +92,7 @@ class Statistics:
         stats["persistent"].append(i+1)
       elif next_lb['champion'] in lb['players']:
         # if the following generation is from the previous leaderboard
-        stats['elite'].append(i+1)
+        stats['elitism'].append(i+1)
       elif sorted_scores[-10:].index(int(next_lb['champion'])) < 5:
         # if its in the first 5 agents of the offspring then its crossed over
         stats['crossover'].append(i+1)
