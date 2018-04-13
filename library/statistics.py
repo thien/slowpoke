@@ -6,6 +6,7 @@ if multiprocessing.cpu_count() > 10: matplotlib.use('Agg')
 import json
 import os
 import numpy as np
+import sys
 
 from matplotlib import cm
 import matplotlib.pyplot as plt
@@ -27,15 +28,22 @@ class Statistics:
     self.saveChartsToImages = True
     self.gmFilename = "gm_stats.json"
     self.enableTitles = True
+    self.debug = True
   
   def loadStatisticsFile(self, filename="statistics.json"):
     filepath = os.path.join(self.directory, filename)
-    print("Loading Statistics from file:")
-    print("\t", filepath)
-    f = open(filepath, 'r')
-    self.statistics = json.load(f)
-    f.close()
-    print("Loaded Stats File!")
+    if self.debug:
+      print("Loading Statistics from file:")
+      print("\t", filepath)
+    try:
+      f = open(filepath, 'r')
+      self.statistics = json.load(f)
+      f.close()
+      if self.debug:
+        print("Loaded Stats File!")
+        return True
+    except:
+      return False
 
   def parseLeaderboards(self):
     leaderboards = []
@@ -61,7 +69,7 @@ class Statistics:
     self.leaderboards = leaderboards.copy()
     # lets do some processing of the leaderboards.
     stats = {
-      "persistent Champion" : [],
+      "persistent" : [],
       "elite" : [],
       "mutation" : [],
       "crossover" : []
@@ -81,7 +89,7 @@ class Statistics:
 
       if lb['champion'] == next_lb['champion']:
         # if the following generation's champion remains the same
-        stats["persistent Champion"].append(i+1)
+        stats["persistent"].append(i+1)
       elif next_lb['champion'] in lb['players']:
         # if the following generation is from the previous leaderboard
         stats['elite'].append(i+1)
@@ -146,16 +154,20 @@ class Statistics:
     sizes = [sum(stats[x]) for x in [y for y in scoreStats]]
     explode = (0, 0.1, 0, 0)  # only "explode" the 2nd slice (i.e. 'Hogs')
     colors = [self.string2HexColor(x) for x in xlabels]
+    # plot subplots
     _, ax1 = plt.subplots()
-    ax1.pie(sizes, explode=explode, labels=labels, colors=colors, autopct='%1.1f%%',
-            shadow=False, startangle=90)
+    # generate pie chart
+    ax1.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
+            shadow=False, startangle=90, pctdistance=0.5, labeldistance=0.8)
     ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
     t = "Generation Champion Distribution"
+
+    # save chart
     if self.enableTitles:
       plt.suptitle(t)
+    plt.show()
     if self.saveChartsToImages:
       self.saveChartToFile("champ_gen_dist", plt)
-      # plt.show()
     plt.close()
 
   @staticmethod
@@ -172,7 +184,8 @@ class Statistics:
     filename = title + "." + filetype
     filepath = os.path.join(directory, filename)
     chart.savefig(filepath, bbox_inches='tight')
-    print("saved",filename)
+    if self.debug:
+      print("saved",filename)
 
   """
   Gets tournament timing information
@@ -244,13 +257,19 @@ class Statistics:
       self.saveChartToFile("simulation_timings",plt)
     plt.close()
 
+    self.timings = {
+      "sx" : sx,
+      "plotx" : plotx,
+      "ploty" : ploty
+    }
     return sx
 
   """
   Calculates the average number of moves per generation.
   """
   def averageNumMovesPerGeneration(self):
-    print("Calculating Move Counts (Per Generation)")
+    if self.debug:
+      print("Calculating Move Counts (Per Generation)")
     means = []
     medians = []
     graphData = {
@@ -275,8 +294,9 @@ class Statistics:
     median_colour = "yellow"
     # add legend
     mean_patch = mpatches.Patch(color=mean_colour, label='Mean')
-    median_patch = mpatches.Patch(color=median_colour, label='Median')
-    plt.legend(handles=[mean_patch,median_patch])
+    # median_patch = mpatches.Patch(color=median_colour, label='Median')
+    plt.figure(num=None, figsize=(5,6), facecolor='w', edgecolor='k')
+    plt.legend(handles=[mean_patch])
 
     # plot 2d histogram
     plt.hist2d(graphData['x'], graphData['y'], bins=50)
@@ -288,7 +308,7 @@ class Statistics:
     plt.xlabel('Generation')
     if self.enableTitles:
       plt.suptitle('Move Count Distribution Over Generations')
-    plt.colorbar()
+    plt.colorbar(orientation="horizontal", shrink=0.8, pad=0.1)
 
     # plt.show()
     if self.saveChartsToImages:
@@ -303,7 +323,8 @@ class Statistics:
     scores = []
     cummulative = []
     champRange = []
-    print("Getting learning Rate..")
+    if self.debug:
+      print("Getting learning Rate..")
     for i in range(len(self.statistics)):
       for j in self.statistics[i]['stats']:
         if j[0] == "Recent Scores":
@@ -363,12 +384,14 @@ class Statistics:
   """
   def loadGMFile(self):
     filepath = os.path.join(self.directory, self.gmFilename)
-    print("Loading Statistics from file:")
-    print("\t", filepath)
+    if self.debug:
+      print("Loading Statistics from file:")
+      print("\t", filepath)
     f = open(filepath, 'r')
     self.gm_stats = json.load(f)
     f.close()
-    print("Loaded GM Stats File!")
+    if self.debug:
+      print("Loaded GM Stats File!")
 
   """
   Parse the GM performance
@@ -379,21 +402,36 @@ class Statistics:
     aw_w, aw_l, aw_d = [],[],[]
     ab_w, ab_l, ab_d = [],[],[]
 
+    gameKeys = list(self.gm_stats.keys())
+    ints = []
+    elses = []
+    for i in range(len(gameKeys)):
+      if("mcts" not in gameKeys[i]) and ("random" not in gameKeys[i]):
+        inty = ''.join(x for x in gameKeys[i] if x.isdigit())
+        ints.append(int(inty))
+      else:
+        elses.append(gameKeys[i])
+    ints = sorted(ints)
+    for i in range(len(ints)):
+      ints[i] = "gm_vs_gen-"+str(ints[i])
+    ints = ints + elses
+    
     # load the gm_stats file.load
-    for i in self.gm_stats.keys():
-      intel = self.gm_stats[i]
-      # print(intel)
-      opp_name = intel['opp'].upper().replace("ERATION", "")
-      opp_names.append(opp_name)
-      w.append(intel['wins'])
-      l.append(intel['losses'])
-      d.append(intel['draws'])
-      aw_w.append(intel['as_white']['wins'])
-      aw_l.append(intel['as_white']['losses'])
-      aw_d.append(intel['as_white']['draws'])
-      ab_w.append(intel['as_black']['wins'])
-      ab_l.append(intel['as_black']['losses'])
-      ab_d.append(intel['as_black']['draws'])
+    for i in ints:
+      if "mcts" not in i:
+        intel = self.gm_stats[i]
+        # print(intel)
+        opp_name = intel['opp'].upper().replace("ERATION", "")
+        opp_names.append(opp_name)
+        w.append(intel['wins'])
+        l.append(intel['losses'])
+        d.append(intel['draws'])
+        aw_w.append(intel['as_white']['wins'])
+        aw_l.append(intel['as_white']['losses'])
+        aw_d.append(intel['as_white']['draws'])
+        ab_w.append(intel['as_black']['wins'])
+        ab_l.append(intel['as_black']['losses'])
+        ab_d.append(intel['as_black']['draws'])
     
     # for i in range(len(opp_names)):
     #   print(ab_w[i], aw_w[i], ab_d[i], aw_d[i], ab_l[i], aw_l[i])
@@ -425,21 +463,30 @@ class Statistics:
     # plot
     names = opp_names
     # Create green Bars
-    plt.bar(r, wb, color='#27375a', edgecolor='white',  label="Win (Black)")
-    plt.bar(r, ww, bottom=wb, color='#377bae', edgecolor='white',  label="Win (White)")
+    plt.bar(r, wb, color='#96c611', edgecolor='white',  label="Win (Black)")
+    plt.bar(r, ww, bottom=wb, color='#7dd168', edgecolor='white',  label="Win (White)")
     # Create orange Bars
-    plt.bar(r, db, bottom=[i+j for i,j in zip(wb,ww)], color='#c340a9', edgecolor='white',  label="Draw (Black)")
-    plt.bar(r, dw, bottom=[i+j+k for i,j,k in zip(wb,ww,db)], color='#9310ab', edgecolor='white',  label="Draw (White)")
+    plt.bar(r, db, bottom=[i+j for i,j in zip(wb,ww)], color='#c69c11', edgecolor='white',  label="Draw (Black)")
+    plt.bar(r, dw, bottom=[i+j+k for i,j,k in zip(wb,ww,db)], color='#fcde7e', edgecolor='white',  label="Draw (White)")
     # Create blue Bars
-    plt.bar(r, lb, bottom=[i+j+k+l for i,j,k,l in zip(wb,ww,db,dw)], color='#d3d460', edgecolor='white',  label="Loss (Black)")
-    plt.bar(r, lw, bottom=[i+j+k+l+m for i,j,k,l,m in zip(wb,ww,db,dw,lb)], color='#eeac0e', edgecolor='white',  label="Loss (White)")
+    plt.bar(r, lb, bottom=[i+j+k+l for i,j,k,l in zip(wb,ww,db,dw)], color='#c64211', edgecolor='white',  label="Loss (Black)")
+    plt.bar(r, lw, bottom=[i+j+k+l+m for i,j,k,l,m in zip(wb,ww,db,dw,lb)], color='#fc9f7e', edgecolor='white',  label="Loss (White)")
     
     # Custom x axis
     plt.xticks(r, names)
     plt.xlabel("Opponments")
     plt.ylabel("Percentage")
 
-    plt.legend(loc='upper left', bbox_to_anchor=(1,1), ncol=1)
+    # box = plt.get_position()
+    # plt.set_position([box.x0, box.y0 + box.height * 0.1,
+    #                 box.width, box.height * 0.9])
+
+    # Put a legend below current axis
+    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+              fancybox=True, shadow=True, ncol=3)
+
+
+    # plt.legend(loc='upper left', bbox_to_anchor=(1,1), ncol=1)
     if self.enableTitles:
       if title:
         plt.suptitle(title)
@@ -457,6 +504,8 @@ def batchRun():
   """
   path = os.path.join("..", "results")
   folders = os.listdir(path)
+  stats = []
+  times = []
   # s = Statistics()
   for folder in folders:
     newPath = os.path.join(path, folder)
@@ -466,15 +515,155 @@ def batchRun():
       if "statistics.json" in os.listdir(newPath):
         print("Running stats for", folder)
         s = Statistics(folder)
+        s.saveChartsToImages = True
         s.enableTitles = False
+        s.debug = False
         s.loadStatisticsFile()
         s.saveCharts()
         if "gm_stats.json" in os.listdir(newPath):
           s.loadGMFile()
           s.analyseGM()
+        stats.append({
+          "folder":folder,
+          "ob":s
+        })
+  runBatchCummulativeChart(stats)
+  # measureBatchTimings(stats)
+
+def measureBatchTimings(stats):
+  timings ={}
+  for ob in stats:
+    folderName = ob['folder'][20:].replace(" generations)","")
+    folderName = folderName.split("ply")
+    folderName[0] = int(folderName[0][1])
+    folderName[1] = int(folderName[1])
+    timings[tuple(folderName)] = ob['ob'].timings
+
+  # init timings graph
+  s = Statistics("General")
+  s.enableTitles = False
+  plt.close()
+
+  colours = []
+  labels = []
+  # iterate through the items
+  for i in sorted(list(timings)):
+    print("NEW")
+    batchx = []
+    batchy = []
+    count = 1
+    for round in timings[i]['sx']:
+      cpuDuration = float(round['duration'])
+      games = round['gameDurations']
+      batchy.append(cpuDuration)
+      batchx.append(count)
+      count += 1
+    # print(batchy)
+    hexColour = s.string2HexColor(str(i))
+    colours.append(hexColour)
+    keyString = str(i[0]) + " Ply"
+
+    for i in range(1,len(batchy)):
+      batchy[i] = batchy[i]+batchy[i-1]
+    print(keyString, batchy[-1])
+    print("runtime",str(datetime.timedelta(seconds=batchy[-1])))
+    print("mean",str(datetime.timedelta(seconds=batchy[-1]/len(batchx))))
+
+    su = plt.plot(batchx, batchy, "-", linewidth=2, color=hexColour, label=keyString)
+  # plt.legend(handles=su, labels = labels)
+
+  # if s.enableTitles:
+  #   plt.suptitle('Cummulative Learning Rate Over Generations')
+
+  # plt.ylabel('Learning Rate (Cummulative)')
+  # plt.xlabel('Generation')
+  plt.show()
+
+
+def runBatchCummulativeChart(stats):
+  print("-----------")
+  # parse the stats objects to get the cummulative items
+  cummulatives = {}
+  for ob in stats:
+    folderName = ob['folder'][20:].replace(" generations)","")
+    folderName = folderName.split("ply")
+    folderName[0] = int(folderName[0][1])
+    folderName[1] = int(folderName[1])
+    cummulatives[tuple(folderName)] = ob['ob'].scores['cummulative']
+    
+
+  s = Statistics("General")
+  s.enableTitles = False
+  # iterate through the keys
+  colours = []
+  charts = []
+  labels = []
+
+  plt.close()
+  plt.figure(num=None, figsize=(10,4), facecolor='w', edgecolor='k')
+  plt.axhline(0, color='grey')
+  
+  for cum in sorted(list(cummulatives)):
+    hexColour = s.string2HexColor(str(cum))
+    colours.append(hexColour)
+    keyString = str(cum[0]) + " Ply"
+    su = plt.plot(cummulatives[cum], "-", linewidth=2, color=hexColour, label=keyString)
+    charts.append(su)
+    # calculate the trend line
+    y = cummulatives[cum]
+    x = [x for x in range(len(y))]
+    z = np.polyfit(x, y, 1)
+    p = np.poly1d(z)
+    plt.plot(p(x), "r--",color=hexColour)
+    
+
+  plt.legend(handles=su, labels = labels)
+  
+
+  if s.enableTitles:
+    plt.suptitle('Cummulative Learning Rate Over Generations')
+
+  plt.ylabel('Learning Rate (Cummulative)')
+  plt.xlabel('Generation')
+  # plt.show()
+  # if self.saveChartsToImages:
+  #   self.saveChartToFile("cummulative_growth", plt)
+  title = "combined_cummulative"
+  s.saveChartToFile(title, plt)
+  plt.close()
+  
+def handleArguments():
+  for i in range(1,len(sys.argv)):
+    entry = sys.argv[i]
+    maxSize = len(sys.argv)-1
+    # look at flags
+    if (entry == "-folder") or (entry == "-f"):
+      if i != maxSize:
+        foldername = sys.argv[i+1]
+        # check if this foldername is actually a directory.
+        s = Statistics(foldername)
+        s.saveChartsToImages = False
+        check = s.loadStatisticsFile()
+        if check:
+          s.getLearningRate()
+          s.parseLeaderboards()
+          s.saveCharts()
+          s.loadGMFile()
+          s.analyseGM()
+          s.averageNumMovesPerGeneration()
+          s.getLearningRate()
+          s.timeStatsPerGeneration()
+        else:
+          print("The folder either does not exist or a statistics.json is not found.")
+      else:
+        print("You didn't add a folder name. Please try again.")
+    elif entry == "-batch":
+      batchRun()
+  
 
 if __name__ == '__main__':
-  batchRun()
+  # batchRun()
+  handleArguments()
   # foldername = "2018-03-19 16:42:47 (1ply 100 generations)"
   # s = Statistics(foldername)
   # s.saveChartsToImages = False
