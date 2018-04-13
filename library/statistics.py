@@ -157,8 +157,11 @@ class Statistics:
     # plot subplots
     _, ax1 = plt.subplots()
     # generate pie chart
-    ax1.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
+    _, texts, autotexts = ax1.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
             shadow=False, startangle=90, pctdistance=0.5, labeldistance=0.8)
+    fontsize = 13
+    texts = [ _.set_fontsize(fontsize) for _ in texts]
+    autotexts = [ _.set_fontsize(fontsize) for _ in autotexts]
     ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
     t = "Generation Champion Distribution"
 
