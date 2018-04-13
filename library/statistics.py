@@ -168,7 +168,7 @@ class Statistics:
     # save chart
     if self.enableTitles:
       plt.suptitle(t)
-    plt.show()
+    # plt.show()
     if self.saveChartsToImages:
       self.saveChartToFile("champ_gen_dist", plt)
     plt.close()
@@ -439,8 +439,8 @@ class Statistics:
     # for i in range(len(opp_names)):
     #   print(ab_w[i], aw_w[i], ab_d[i], aw_d[i], ab_l[i], aw_l[i])
 
-    # create overal wld chart
-    t = "Overall Game Statistics Against All Opponments"
+    # create overall wld chart
+    t = "Overall Game Statistics Against All Opponents"
     data = [aw_w, aw_d, aw_l, ab_w, ab_d, ab_l]
     self.createWDLChart(opp_names,data,t)
     # plt.show()
@@ -464,16 +464,24 @@ class Statistics:
     r = [x for x in range(len(opp_names))]
 
     # plot
+    colours = {
+      "lose_white" : "#B80021",
+      "lose_black" : "#540000",
+      "draw_white" : "#FBDF1A",
+      "draw_black" : "#DE9400",
+      "win_white" : "#99B800",
+      "win_black" : "#3A6100"
+    }
     names = opp_names
     # Create green Bars
-    plt.bar(r, wb, color='#96c611', edgecolor='white',  label="Win (Black)")
-    plt.bar(r, ww, bottom=wb, color='#7dd168', edgecolor='white',  label="Win (White)")
+    plt.bar(r, wb, color=colours['win_black'], edgecolor='white',  label="Win (Black)")
+    plt.bar(r, ww, bottom=wb, color=colours['win_white'], edgecolor='white',  label="Win (White)")
     # Create orange Bars
-    plt.bar(r, db, bottom=[i+j for i,j in zip(wb,ww)], color='#c69c11', edgecolor='white',  label="Draw (Black)")
-    plt.bar(r, dw, bottom=[i+j+k for i,j,k in zip(wb,ww,db)], color='#fcde7e', edgecolor='white',  label="Draw (White)")
+    plt.bar(r, db, bottom=[i+j for i,j in zip(wb,ww)], color=colours['draw_black'], edgecolor='white',  label="Draw (Black)")
+    plt.bar(r, dw, bottom=[i+j+k for i,j,k in zip(wb,ww,db)], color=colours['draw_white'], edgecolor='white',  label="Draw (White)")
     # Create blue Bars
-    plt.bar(r, lb, bottom=[i+j+k+l for i,j,k,l in zip(wb,ww,db,dw)], color='#c64211', edgecolor='white',  label="Loss (Black)")
-    plt.bar(r, lw, bottom=[i+j+k+l+m for i,j,k,l,m in zip(wb,ww,db,dw,lb)], color='#fc9f7e', edgecolor='white',  label="Loss (White)")
+    plt.bar(r, lb, bottom=[i+j+k+l for i,j,k,l in zip(wb,ww,db,dw)], color=colours['lose_black'], edgecolor='white',  label="Loss (Black)")
+    plt.bar(r, lw, bottom=[i+j+k+l+m for i,j,k,l,m in zip(wb,ww,db,dw,lb)], color=colours['lose_white'], edgecolor='white',  label="Loss (White)")
     
     # Custom x axis
     plt.xticks(r, names)
@@ -484,15 +492,58 @@ class Statistics:
     # plt.set_position([box.x0, box.y0 + box.height * 0.1,
     #                 box.width, box.height * 0.9])
 
-    # Put a legend below current axis
-    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
-              fancybox=True, shadow=True, ncol=3)
-
 
     # plt.legend(loc='upper left', bbox_to_anchor=(1,1), ncol=1)
     if self.enableTitles:
       if title:
         plt.suptitle(title)
+
+    # now we attempt to create a trendline
+    overall_wins = [i+j for i,j in zip(ww,wb)]
+    overall_draws = [i+j for i,j in zip(dw,db)]
+    overall_losses = [i+j for i,j in zip(lw,lb)]
+
+    # trendlines (3rd degree polynonial i.e cubic trendline)
+    z = np.polyfit(r, overall_wins, 3)
+    p1 = np.poly1d(z)
+    z = np.polyfit(r, overall_draws, 3)
+    p2 = np.poly1d(z)
+    z = np.polyfit(r, overall_losses, 3)
+    p3 = np.poly1d(z)
+    overall_wins = p1(r)
+    overall_draws = p2(r)
+    overall_losses = p3(r)
+
+    # print(overall_wins)
+    r = r[0:-1]
+    su = plt.plot(r,overall_wins[0:-1], "--", linewidth=2, label="Overall Wins", color=self.hexMedian(colours['win_black'], colours['win_white']))
+    su = plt.plot(r,overall_draws[0:-1], "-.", linewidth=2, label="Overall Draws", color=self.hexMedian(colours['draw_black'], colours['draw_white']))
+    su = plt.plot(r,overall_losses[0:-1], ":", linewidth=2, label="Overall Losses", color=self.hexMedian(colours['lose_black'], colours['lose_white']))
+    # print(self.hexMedian(colours['win_black'], colours['win_white']))
+
+    # Put a legend below current axis
+    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+              fancybox=True, shadow=True, ncol=3)
+
+
+  @staticmethod
+  def hexMedian(a,b):
+    a = a[1:]
+    b = b[1:]
+    colour = ""
+    # colour wise split
+    for i in range(0,6,2):
+      na = int("0x" + a[i:i+2], 16)
+      nb = int("0x" + b[i:i+2], 16)
+      # find the median colour between the two.
+      c = int((na + nb) / 2)
+      # darken the colour a bit
+      c = int(c*0.7)
+      col = hex(c)[2:]
+      if len(col) == 1:
+        col = "0" + col
+      colour = colour + col
+    return "#" + colour
 
   def saveCharts(self):
     self.averageNumMovesPerGeneration()
