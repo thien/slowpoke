@@ -45,7 +45,7 @@ class Statistics:
     except:
       return False
 
-  def parseLeaderboards(self):
+  def parseLeaderboards(self): 
     leaderboards = []
     for i in range(len(self.statistics)):
       lbEntry = {}
@@ -633,7 +633,6 @@ def measureBatchTimings(stats):
   # plt.xlabel('Generation')
   plt.show()
 
-
 def runBatchCummulativeChart(stats):
   print("-----------")
   # parse the stats objects to get the cummulative items
@@ -699,14 +698,9 @@ def handleArguments():
         s.saveChartsToImages = False
         check = s.loadStatisticsFile()
         if check:
-          s.getLearningRate()
-          s.parseLeaderboards()
           s.saveCharts()
           s.loadGMFile()
           s.analyseGM()
-          s.averageNumMovesPerGeneration()
-          s.getLearningRate()
-          s.timeStatsPerGeneration()
         else:
           print("The folder either does not exist or a statistics.json is not found.")
       else:
