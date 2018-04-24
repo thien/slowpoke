@@ -224,9 +224,8 @@ class Generator:
       self.population[i].bot.cache = {}    
     
   def generateStats(self):
-    date = self.cleanDate(self.StartTime, True)
     # create statistics
-    stats = statistics.Statistics(date)
+    stats = statistics.Statistics(self.folderName)
     stats.loadStatisticsFile()
     stats.saveCharts()
     print("I made some charts!")
@@ -304,6 +303,8 @@ class Generator:
     
       with multiprocessing.Pool(processes=threadCount) as pool:
         results = pool.map(self.poolChampGame, champGames)
+        pool.close()
+        pool.join()
 
       # split results into equal segments
       l = results
@@ -363,7 +364,10 @@ class Generator:
   def statusInfo(self):
     currentTime = datetime.datetime.now().timestamp()
     recent_scores = self.progress[-7:]
-    averageGenTimeLength = np.mean(self.GenerationTimeLengths)
+    
+    averageGenTimeLength = 1
+    if len(self.GenerationTimeLengths) > 0:
+      averageGenTimeLength = np.mean(self.GenerationTimeLengths)
 
     PercentageEst = 0
     if np.isnan(averageGenTimeLength) == False:
@@ -387,7 +391,6 @@ class Generator:
     messsages.append(["Ply Depth", self.plyDepth])
     messsages.append(["Connected To Mongo", self.mongoConnected])
     messsages.append(["Cores Utilised", self.processors])
-    messsages.append(["Debug Mode:", self.isDebugMode])
     # start and end dates
     messsages.append([" ", " "])
     messsages.append(["Test Start Date", self.cleanDate(self.StartTime, True)])
@@ -404,7 +407,11 @@ class Generator:
     messsages.append(["Champions Currently Playing?", self.AreChampionsPlaying])
     messsages.append(["Previous Score", self.LastChampionScore])
     messsages.append(["Cummulative Score", self.cummulativeScore])
-    messsages.append(["Average Growth", np.mean(recent_scores)])
+
+    avgRecentScores = 0
+    if len(recent_scores) > 0:
+      avgRecentScores = np.mean(recent_scores)
+    messsages.append(["Average Growth", avgRecentScores])
     try:
       messsages.append(["Recent Scores", [ "{:0.2f}".format(x) for x in recent_scores ]])
       messsages.append(["Prev. Champ Point Range",[ "{:0.2f}".format(x) for x in self.previousChampPointList ]])
@@ -413,6 +420,8 @@ class Generator:
     messsages.append([" ", " "])
     messsages.append(["Previous Scoreboard", " "])
     messsages.append([self.previousGenerationRankings, ""])
+    messsages.append(["",""])
+    messsages.append(["Debug Mode:", self.isDebugMode])
     
     return messsages
 
