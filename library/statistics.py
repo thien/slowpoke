@@ -153,7 +153,18 @@ class Statistics:
     labels = xlabels
     sizes = [sum(stats[x]) for x in [y for y in scoreStats]]
     explode = (0, 0.1, 0, 0)  # only "explode" the 2nd slice (i.e. 'Hogs')
-    colors = [self.string2HexColor(x) for x in xlabels]
+
+    cols = {
+      'Persistent' : "#FF4E50", 
+      'Elitism' : "#FC913A", 
+      'Mutation' : "#B9D7D9",
+      'Crossover' : "#99B898"
+    }
+
+      #  colors = [self.string2HexColor(x) for x in xlabels]
+    colors = [cols[x] for x in xlabels]
+    # print(colors, xlabels)
+    # input()
     # plot subplots
     _, ax1 = plt.subplots()
     # generate pie chart
@@ -175,7 +186,7 @@ class Statistics:
 
   @staticmethod
   def string2HexColor(string):
-    hex = hashlib.sha224(string.encode("utf-8")).hexdigest()
+    hex = hashlib.md5(string.encode("utf-8")).hexdigest()
     # randomint = random.randint(1,len(hex)-6)
     randomint = 5
     return "#" + hex[randomint:randomint+6]
@@ -516,9 +527,9 @@ class Statistics:
 
     # print(overall_wins)
     r = r[0:-1]
-    su = plt.plot(r,overall_wins[0:-1], "--", linewidth=2, label="Overall Wins", color=self.hexMedian(colours['win_black'], colours['win_white']))
-    su = plt.plot(r,overall_draws[0:-1], "-.", linewidth=2, label="Overall Draws", color=self.hexMedian(colours['draw_black'], colours['draw_white']))
-    su = plt.plot(r,overall_losses[0:-1], ":", linewidth=2, label="Overall Losses", color=self.hexMedian(colours['lose_black'], colours['lose_white']))
+    su = plt.plot(r,overall_wins[0:-1], "--", linewidth=2, label="Win Trend", color=self.hexMedian(colours['win_black'], colours['win_white']))
+    su = plt.plot(r,overall_draws[0:-1], "-.", linewidth=2, label="Draw Trend", color=self.hexMedian(colours['draw_black'], colours['draw_white']))
+    su = plt.plot(r,overall_losses[0:-1], ":", linewidth=2, label="Loss Trend", color=self.hexMedian(colours['lose_black'], colours['lose_white']))
     # print(self.hexMedian(colours['win_black'], colours['win_white']))
 
     # Put a legend below current axis
@@ -657,6 +668,7 @@ def runBatchCummulativeChart(stats):
   plt.axhline(0, color='grey')
   
   for cum in sorted(list(cummulatives)):
+    print(cum)
     hexColour = s.string2HexColor(str(cum))
     colours.append(hexColour)
     keyString = str(cum[0]) + " Ply"
@@ -667,7 +679,7 @@ def runBatchCummulativeChart(stats):
     x = [x for x in range(len(y))]
     z = np.polyfit(x, y, 1)
     p = np.poly1d(z)
-    plt.plot(p(x), "r--",color=hexColour)
+    plt.plot(p(x), "r-.",color=hexColour, label=keyString + " Trend")
     
 
   plt.legend(handles=su, labels = labels)
@@ -705,8 +717,12 @@ def handleArguments():
           print("The folder either does not exist or a statistics.json is not found.")
       else:
         print("You didn't add a folder name. Please try again.")
-    elif entry == "-batch":
+    elif (entry == "-batch") or (entry == "-b"):
       batchRun()
+    else:
+      print("You need some arguments:")
+      print("-b : Batch run all the folders with statistics inside")
+      print('-f "foldername" : Generate statistics in one folder')
   
 
 if __name__ == '__main__':
