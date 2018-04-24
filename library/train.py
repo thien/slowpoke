@@ -30,7 +30,7 @@ def train():
             verifiedBool = True
 
         elif "medium" in sys.argv:
-            print("You are about to load a light simulation.")
+            print("You are about to load a medium simulation.")
             options['plyDepth'] = 3
             options['NumberOfGenerations'] = 200
             verifiedBool = True
@@ -39,6 +39,12 @@ def train():
             print("You are about to load a heavy simulation.")
             options['plyDepth'] = 6
             options['NumberOfGenerations'] = 200
+            verifiedBool = True
+
+        elif "ohno" in sys.argv:
+            print("You are about to load a really heavy simulation.")
+            options['plyDepth'] = 8
+            options['NumberOfGenerations'] = 1500
             verifiedBool = True
 
         if "debug" in sys.argv:
@@ -58,7 +64,7 @@ def train():
                 readyBool = True
         else:
             print("You didn't use an available option.")
-            print("There are two options: light, medium, heavy")
+            print("options: light, medium, heavy, debug, ohno")
     else:
         # no arguments loaded; ask user for load type.
         print("You'll need to load some argument into this file. for instance:")
