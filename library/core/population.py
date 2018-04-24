@@ -35,13 +35,8 @@ class Population:
     self.numberOfWeights = self.players[0].bot.nn.lenCoefficents
     self.tau = 1 / math.sqrt( 2 * math.sqrt(self.numberOfWeights))
 
-    savepath =  os.path.join("..","results","champions")
-    self.folderDirectory = savepath
-    # check save directory exists prior to saving
-    if not os.path.isdir(self.folderDirectory):
-      os.makedirs(self.folderDirectory)
     # if safe mutations are enabled, we use it.
-    self.safeMutations = False
+    self.safeMutations = True
     # create reference neural network
     self.nn = NeuralNetwork(self.players[0].bot.layers)
     # debug flag
@@ -197,6 +192,9 @@ class Population:
     end = datetime.datetime.now() - start
     if self.debug:
       print("DONE, that took", end)
+
+    self.killCaches()
+
     print("Successfully computed offsprings for the next generation.")
 
   """
@@ -240,6 +238,8 @@ class Population:
     print("Crossover Successful.")
     # return the pair of children
     return (child1,child2)  
+
+
 
   """
   Mutate the weights of the neural network.
@@ -447,6 +447,15 @@ class Population:
       return self.players[botID].bot.cache
     else:
       return False
+
+  """
+  Kill the caches when we're done with mutations or whatever.
+  This is really important!
+  """
+  def killCaches(self):
+    for i in range(self.playerCounter):
+      self.players[i].bot.cache = {}
+    print("Killed all caches.")
 
   # Done
   def addOrigins(self,botID, values):
