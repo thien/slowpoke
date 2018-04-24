@@ -14,6 +14,9 @@ import multiprocessing
 import os
 import json
 
+# ignore runtime warnings
+np.warnings.filterwarnings('ignore')
+
 import statistics
 
 # Piece values on board
@@ -365,9 +368,7 @@ class Generator:
     currentTime = datetime.datetime.now().timestamp()
     recent_scores = self.progress[-7:]
     
-    averageGenTimeLength = 1
-    if len(self.GenerationTimeLengths) > 0:
-      averageGenTimeLength = np.mean(self.GenerationTimeLengths)
+    averageGenTimeLength = np.mean(self.GenerationTimeLengths)
 
     PercentageEst = 0
     if np.isnan(averageGenTimeLength) == False:

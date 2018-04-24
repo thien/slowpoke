@@ -28,7 +28,6 @@ class Population:
     self.players = {}       # this is a list of players (all players)
     self.champions = []     # here we list the champions
     self.playerCounter = 0    # used to create playerID's.
-    self.ting = "234234"
     # generate an initial population
     self.currentPopulation = self.generatePlayers(self.count)
 
