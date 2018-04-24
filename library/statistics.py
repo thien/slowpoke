@@ -116,7 +116,9 @@ class Statistics:
       sums = sum(scoreStats[playerType])
       size = len(scoreStats[playerType])
       # calculate the score mean
-      mean = round(sums/size, 5)
+      mean = 0
+      if (sums + size > 0):
+        mean = round(sums/size, 5)
       # print(mean)
 
     syu = [scoreStats[s] for s in scoreStats]
