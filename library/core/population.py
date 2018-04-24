@@ -172,10 +172,19 @@ class Population:
       print("offsprings:",offsprings)
    
     # mutate the offsprings. we should parallelise this.
-    cores = multiprocessing.cpu_count()
     mutations = []
-    with multiprocessing.Pool(processes=cores) as pool:
+    print("Computing Mutations..")
+    threadCount = multiprocessing.cpu_count()
+    if len(offsprings) < threadCount:
+      threadCount = len(offsprings)
+    with multiprocessing.Pool(processes=threadCount) as pool:
       mutations = pool.map(self.mutate, offsprings)
+      pool.close()
+      pool.join()
+    
+    # for i in offsprings:
+    #   mutations.append(self.mutate(i))
+    print("Finished computing mutations.")
 
     # now that we have the mutations, load them to each agent.
     for mutation in mutations:
@@ -188,6 +197,7 @@ class Population:
     end = datetime.datetime.now() - start
     if self.debug:
       print("DONE, that took", end)
+    print("Successfully computed offsprings for the next generation.")
 
   """
   Crossover mechanism for creating offspring children
@@ -206,15 +216,14 @@ class Population:
       for _ in range(10):
         # generate a random index and swap genes
         index = random.randint(0, self.numberOfWeights)
-        genome_m = mother[index]
-        genome_f = father[index]
+        genome_m,genome_f = mother[index],father[index]
         mother[index] = genome_m
         father[index] = genome_f
       self.setWeights(child1, mother)
       self.setWeights(child2, father)
     
     else:
-      # generate random cutoff positions
+      # generate random cutoff positions, 
       index1 = random.randint(0, self.numberOfWeights)
       index2 = random.randint(0, self.numberOfWeights)
       # check the order of the indexes to make sure they make sense.
@@ -228,7 +237,7 @@ class Population:
       self.setWeights(child1, child1W)
       self.setWeights(child2, child2W)
     
-    print("Done.")
+    print("Crossover Successful.")
     # return the pair of children
     return (child1,child2)  
 
@@ -267,6 +276,7 @@ class Population:
   Static function to create safe mutations
   """
   def safeMutation(self, cpu, static=False):
+    print("Computing Safe Mutations..")
     cache = self.getMoveCache(cpu)
     curreneWeight1D = self.players[cpu].bot.nn.getAllCoefficents()
 
@@ -449,52 +459,6 @@ class Population:
 
   def inheritCache(self,botID,parentID):
     self.players[botID].bot.cache = self.players[parentID].bot.cache
-  # # Done
-  # @staticmethod
-  # def randomPlayerID(val):
-  #   # choose a random number between 1 and the number of players. checks that it isn't the same number as val.
-  #   rand = random.randint(0, self.count-1)
-  #   while (rand == val):
-  #     rand = random.randint(0, self.count-1)
-  #   return rand
-
-
-  # def roulette(self, players):
-  #   """
-  #   Roulette algorithm for parent selection.
-  #   """
-  #   chosen = None
-  #   overallFitness = 0
-  #   superEqual = False
-  #   # calculate the overall fitness
-  #   for i in players:
-  #     overallFitness += i.points
-  #   # check if overall fitness is zer0
-  #   if overallFitness == 0:
-  #     overallFitness = len(players)
-  #     superEqual = True
-  #   # randomly shuffle the players around.
-  #   random.shuffle(players)
-  #   # initiate a list of probablities
-  #   probabilities = []
-  #   # calculate probabllities for each player.
-  #   for i in players:
-  #     if not superEqual:
-  #       probability = i.points / overallFitness
-  #     else:
-  #       probability = 1 / overallFitness
-  #     if len(probabilities) > 1:
-  #       probability = probability + probabilities[-1]
-  #     probabilities.append(probability)
-  #   # generate a random number
-  #   number = random.random()
-  #   # find a player.
-  #   for i in range(len(probabilities)):
-  #     if number < probabilities[i]:
-  #       # we have chosen a player.
-  #       chosen = players[i]
-  #       break
-  #   return chosen
 
   @staticmethod
   def generateRandomWeights(weights=None):
@@ -524,7 +488,7 @@ class Population:
     # get a copy of the current nn coefs.
     coefs = nn.getAllCoefficents()
     # return this.
-    print("Done.")
+    print("Generated Fake moves.")
     return (fakeMoves, coefs)
     
 
