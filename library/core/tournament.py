@@ -25,6 +25,7 @@ ChampWinPt, ChampDrawPt, ChampLosePt = 1,0,-1
 def optionDefaults(options):
   # adds default options if they are absent from options.
   defaultOptions = {
+    'debug' : False,
     'mongoConfigPath' : 'config.json',
     'plyDepth' : 4,
     'NumberOfGenerations' : 200,
@@ -43,13 +44,13 @@ class Generator:
   def __init__(self, options):
     # initialise default variables when needed.
     options = optionDefaults(options)
-
+    self.isDebugMode = options['debug']
     # Declare base information
     self.plyDepth = options['plyDepth']
     self.generations = options['NumberOfGenerations']
     self.populationSize = options['Population'] #number of players
     # generate the initial population.
-    self.population = pop.Population(self.populationSize, self.plyDepth)
+    self.population = pop.Population(self.populationSize, self.plyDepth, self.isDebugMode)
     # time handlers
     self.StartTime = datetime.datetime.now().timestamp()
     self.AverageGameTime = 0
@@ -136,7 +137,7 @@ class Generator:
             'black' : self.population.players[player_id],   
             'white' : self.population.players[oppoment_id],
             'dbURI' : False,
-            'debug' : False,
+            'debugInfo' : False,
           }
           # add it to the list of games that need to be played.
           gamePool.append(game)
@@ -145,11 +146,21 @@ class Generator:
     # close number of processes when map is done.
     with multiprocessing.Pool(processes=self.processors) as pool:
       results = pool.map(self.gameWorker, gamePool)
-    self.displayDebugInfo()
+    self.displayStatusInfo()
 
     # when the pool is done with processing, process the results.
-    for i in results:
-      self.population.allocatePoints(i['game'], i['black'], i['white'])
+    for i in range(len(results)):
+      self.population.allocatePoints(results[i]['game'], results[i]['black'], results[i]['white'])
+      # merge winning players move caches
+      if results[i]['game']['Winner'] == Black:
+        bCache = self.population.players[results[i]['black']].bot.cache
+        self.population.players[results[i]['black']].bot.cache = self.merge_dicts(bCache, results[i]['black_cache'])
+      elif results[i]['game']['Winner'] == White:
+        wCache = self.population.players[results[i]['white']].bot.cache
+        self.population.players[results[i]['white']].bot.cache = self.merge_dicts(wCache, results[i]['white_cache'])
+      # nullify the cache since its not needed anymore
+      results[i]['black_cache'] = None
+      results[i]['white_cache'] = None
 
     self.population.sortCurrentPopulationByPoints()
     self.population.addChampion()
@@ -162,6 +173,7 @@ class Generator:
   def runGenerations(self):
     # loop through the generations.
     for i in range(self.generations):
+      print("Initiating generation",i)
       # increment generation count
       self.currentGeneration = i
       self.currentGenStartTime = datetime.datetime.now().timestamp()
@@ -171,8 +183,10 @@ class Generator:
       # initiate timestamp
       startTime = datetime.datetime.now()
       # make bots play each other.
+      print("READY")
       self.population, generationResults = self.Tournament()
       self.previousGenerationRankings = self.population.printCurrentPopulationByPoints()
+      
       # print(self.population.printCurrentPopulationByPoints())
       # compute champion games (runs independently of others)
       self.runChampions()
@@ -188,14 +202,18 @@ class Generator:
       self.GenerationTimeLengths = np.hstack((self.GenerationTimeLengths, timeDifference))
       # need to store the results of this into a json file!
       self.generationStats.append({
-        'stats' : [(str(i[0]), str(i[1])) for i in self.debugInfo()],
+        'stats' : [(str(i[0]), str(i[1])) for i in self.statusInfo()],
         'games' : generationResults,
         'durationInSeconds' : str(timeDifference)
       })
       self.saveTrainingStatsToJSON(self.saveLocation, self.generationStats)
       if self.generateChartsEveryRound:
         self.generateStats()
-        
+
+  def nukeCache(self):
+    for i in self.population:
+      self.population[i].bot.cache = {}    
+    
   def generateStats(self):
     date = self.cleanDate(self.StartTime, True)
     # create statistics
@@ -214,7 +232,7 @@ class Generator:
       json.dump(stats, outfile)
 
   def poolChampGame(self, info):
-    self.displayDebugInfo()
+    self.displayStatusInfo()
     blackPlayer = self.population.players[info['Players'][0]]
     whitePlayer = self.population.players[info['Players'][1]]
     results = game.tournamentMatch(blackPlayer,whitePlayer)
@@ -225,7 +243,7 @@ class Generator:
       return ChampDrawPt
     else:
       return ChampLosePt
-    self.displayDebugInfo()
+    self.displayStatusInfo()
 
   def createChampGames(self):
     currentChampID = self.population.champions[-1]
@@ -261,7 +279,7 @@ class Generator:
     and are used to determine the progress of the bots.
     """
     self.AreChampionsPlaying = True
-    self.displayDebugInfo()
+    self.displayStatusInfo()
 
     # check if theres more than 5 champions.
     if len(self.population.champions) > 2:
@@ -295,22 +313,39 @@ class Generator:
       # theres only one champion, don't play.
       self.progress.append(0)
     self.AreChampionsPlaying = False
-    self.displayDebugInfo()
+    self.displayStatusInfo()
 
   def gameWorker(self,i):
-    self.displayDebugInfo()
+    self.displayStatusInfo()
     timeStart = datetime.datetime.now().timestamp()
-    results = game.tournamentMatch(i['black'], i['white'], i['game_id'], i['dbURI'], i['debug'])
+    results = game.tournamentMatch(i['black'], i['white'], i['game_id'], i['dbURI'], i['debugInfo'])
+    bSubset = {}
+    wSubset = {}  
+    # get a subset of the caches
+    if i['black'].bot.enableCache:
+      bCache = i['black'].bot.cache
+      wCache = i['white'].bot.cache
+      for _ in range(100):
+        randb = random.choice(list(bCache.keys()))
+        bSubset[randb] = bCache[randb]
+        randw = random.choice(list(wCache.keys()))
+        wSubset[randw] = wCache[randw]
+      # nuke cache
+      i['black'].bot.cache = {}
+      i['white'].bot.cache = {}
     data = {
       'game' : results,
       'black' : i['black'].id,
       'white':  i['white'].id,
+      'black_cache' : bSubset,
+      'white_cache' : wSubset,
       'duration' : str(self.cleanDate(datetime.datetime.now().timestamp() - timeStart))
     }
-    self.displayDebugInfo()
+    self.displayStatusInfo()
+    # print(i['black'].bot.cache)
     return data
 
-  def debugInfo(self):
+  def statusInfo(self):
     currentTime = datetime.datetime.now().timestamp()
     recent_scores = self.progress[-7:]
     averageGenTimeLength = np.mean(self.GenerationTimeLengths)
@@ -330,49 +365,48 @@ class Generator:
 
     EstEndDate = EstRemainingTime + self.StartTime + currentRunTime.total_seconds()
 
-    debugList = []
+    messsages = []
 
-    debugList.append(["Generation", str(numGens)+"/"+str(self.generations)])
-    debugList.append(["Population", self.populationSize])
-    debugList.append(["Ply Depth", self.plyDepth])
-    debugList.append(["Connected To Mongo", self.mongoConnected])
-    debugList.append(["Cores Utilised", self.processors])
+    messsages.append(["Generation", str(numGens)+"/"+str(self.generations)])
+    messsages.append(["Population", self.populationSize])
+    messsages.append(["Ply Depth", self.plyDepth])
+    messsages.append(["Connected To Mongo", self.mongoConnected])
+    messsages.append(["Cores Utilised", self.processors])
     # start and end dates
-    debugList.append([" ", " "])
-    debugList.append(["Test Start Date", self.cleanDate(self.StartTime, True)])
-    debugList.append(["Current Runtime", currentRunTime])
-    debugList.append(["Test End Date*", self.cleanDate(EstEndDate,True)])
-    debugList.append(["Remaining Test Time*", self.cleanDate(EstRemainingTime)])
+    messsages.append([" ", " "])
+    messsages.append(["Test Start Date", self.cleanDate(self.StartTime, True)])
+    messsages.append(["Current Runtime", currentRunTime])
+    messsages.append(["Test End Date*", self.cleanDate(EstEndDate,True)])
+    messsages.append(["Remaining Test Time*", self.cleanDate(EstRemainingTime)])
     # Time info
-    debugList.append([" ", " "])
-    debugList.append(["Mean Game Time", self.cleanDate(averageGenTimeLength)])
-    debugList.append(["Gen. Progress*", str(round(PercentageEst*100,2))+"%"])
-    debugList.append(["Remaining Gen. Time*", self.cleanDate(remainingGenTime)])
+    messsages.append([" ", " "])
+    messsages.append(["Mean Game Time", self.cleanDate(averageGenTimeLength)])
+    messsages.append(["Gen. Progress*", str(round(PercentageEst*100,2))+"%"])
+    messsages.append(["Remaining Gen. Time*", self.cleanDate(remainingGenTime)])
     # champion info
-    debugList.append([" ", " "])
-    debugList.append(["Champions Currently Playing?", self.AreChampionsPlaying])
-    debugList.append(["Previous Score", self.LastChampionScore])
-    debugList.append(["Cummulative Score", self.cummulativeScore])
-    debugList.append(["Average Growth", np.mean(recent_scores)])
+    messsages.append([" ", " "])
+    messsages.append(["Champions Currently Playing?", self.AreChampionsPlaying])
+    messsages.append(["Previous Score", self.LastChampionScore])
+    messsages.append(["Cummulative Score", self.cummulativeScore])
+    messsages.append(["Average Growth", np.mean(recent_scores)])
     try:
-      debugList.append(["Recent Scores", [ "{:0.2f}".format(x) for x in recent_scores ]])
-      debugList.append(["Prev. Champ Point Range",[ "{:0.2f}".format(x) for x in self.previousChampPointList ]])
+      messsages.append(["Recent Scores", [ "{:0.2f}".format(x) for x in recent_scores ]])
+      messsages.append(["Prev. Champ Point Range",[ "{:0.2f}".format(x) for x in self.previousChampPointList ]])
     except:
       pass
-    debugList.append([" ", " "])
-    debugList.append(["Previous Scoreboard", " "])
-    debugList.append([self.previousGenerationRankings, ""])
+    messsages.append([" ", " "])
+    messsages.append(["Previous Scoreboard", " "])
+    messsages.append([self.previousGenerationRankings, ""])
     
-    return debugList
+    return messsages
 
-  def displayDebugInfo(self):
-    debugList = self.debugInfo()
+  def displayStatusInfo(self):
     # # clear screen
     # print(chr(27) + "[2J")
     print('\033c', end=None)
     print("SLOWPOKE")
     print("----------------------")
-    for i in debugList:
+    for i in self.statusInfo():
       print("{0:30} {1}".format(str(i[0]), str(i[1])))
     print("----------------------")
 
@@ -397,3 +431,8 @@ class Generator:
     game_id = IDPadding + cpu1.id + cpu2.id
     return game_id
 
+  @staticmethod
+  def merge_dicts(x, y):
+    z = x.copy()   # start with x's keys and values
+    z.update(y)    # modifies z with y's keys and values & returns None
+    return z
