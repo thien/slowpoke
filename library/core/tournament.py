@@ -25,7 +25,7 @@ ChampWinPt, ChampDrawPt, ChampLosePt = 1,0,-1
 def optionDefaults(options):
   # adds default options if they are absent from options.
   defaultOptions = {
-    'debug' : False,
+    'debugMode' : False,
     'mongoConfigPath' : 'config.json',
     'plyDepth' : 4,
     'NumberOfGenerations' : 200,
@@ -44,7 +44,7 @@ class Generator:
   def __init__(self, options):
     # initialise default variables when needed.
     options = optionDefaults(options)
-    self.isDebugMode = options['debug']
+    self.isDebugMode = options['debugMode']
     # Declare base information
     self.plyDepth = options['plyDepth']
     self.generations = options['NumberOfGenerations']
@@ -88,7 +88,9 @@ class Generator:
     self.initiateMongoConnection()
     # we also want to save the stats offline
     self.generationStats = []
-    self.saveLocation = os.path.join(options['resultsLocation'],self.cleanDate(self.StartTime, True))
+    self.folderName = str(self.cleanDate(self.StartTime, True)) +" " + str(self.plyDepth) + "ply"
+    self.saveLocation = os.path.join(options['resultsLocation'],self.folderName)
+    # self.saveLocation = os.path.join(options['resultsLocation'],self.cleanDate(self.StartTime, True))
     # generate charts as we go?
     self.generateChartsEveryRound = True
 
@@ -144,8 +146,15 @@ class Generator:
     # run game simulations.
     results = []
     # close number of processes when map is done.
-    with multiprocessing.Pool(processes=self.processors) as pool:
+    threadCount = self.processors
+    if self.processors > len(gamePool):
+      threadCount = len(gamePool)
+    with multiprocessing.Pool(processes=threadCount) as pool:
       results = pool.map(self.gameWorker, gamePool)
+      pool.close()
+      pool.join()
+  
+
     self.displayStatusInfo()
 
     # when the pool is done with processing, process the results.
@@ -287,7 +296,13 @@ class Generator:
       champGames = self.createChampGames()
       # close number of processes when map is done.
       results = []
-      with multiprocessing.Pool(processes=self.processors) as pool:
+
+      numberOfChampgames = len(champGames)
+      threadCount = self.processors
+      if self.processors > numberOfChampgames:
+        threadCount = numberOfChampgames
+    
+      with multiprocessing.Pool(processes=threadCount) as pool:
         results = pool.map(self.poolChampGame, champGames)
 
       # split results into equal segments
@@ -372,6 +387,7 @@ class Generator:
     messsages.append(["Ply Depth", self.plyDepth])
     messsages.append(["Connected To Mongo", self.mongoConnected])
     messsages.append(["Cores Utilised", self.processors])
+    messsages.append(["Debug Mode:", self.isDebugMode])
     # start and end dates
     messsages.append([" ", " "])
     messsages.append(["Test Start Date", self.cleanDate(self.StartTime, True)])
