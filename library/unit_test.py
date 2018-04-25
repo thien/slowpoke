@@ -84,6 +84,33 @@ def Testing():
   p.generateNextPopulation()
   print(p.currentPopulation)
 
+
+def testCrossover():
+  p = population.Population(15, 1)
+  p.safeMutations = True
+  
+  (fakeMoves, coefs) = p.generateFakeMoves()
+  
+  for player_id in p.currentPopulation:
+    # overload their neural net with fake coef and moves
+    p.players[player_id].bot.nn.loadCoefficents(coefs)
+    p.players[player_id].bot.cache = fakeMoves
+  # overload fake tournament results
+  for _ in range(0,10):
+    k = random.choice(p.currentPopulation)
+    l = random.choice(p.currentPopulation)
+    # some fake result
+    res = {"Winner" : k}
+    p.allocatePoints(res, k,l)
+  p.sortCurrentPopulationByPoints()
+  # print(p.printCurrentPopulationByPoints())
+  p.addChampion()
+  # generate the next population
+  # p.generateNextPopulation()
+  # print(p.currentPopulation)
+  p.heuristicCrossover(1,2,3,4)
+
 if __name__ == '__main__':
   # unittest.main()
-  Testing()
+  # Testing()
+  testCrossover()

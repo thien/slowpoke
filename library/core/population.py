@@ -40,8 +40,8 @@ class Population:
     self.nn = NeuralNetwork(self.players[0].bot.layers)
     # debug flag
     self.debug = False
-    # flag to handle crossover method
-    self.crossoverMethod = 1
+    # flag to handle crossover method; if 2 do heuristic method
+    self.crossoverMethod = 2
 
   """
   Generates an individual player. This is only called in the
@@ -196,6 +196,46 @@ class Population:
 
     print("Successfully computed offsprings for the next generation.")
 
+
+  def heuristicCrossover(self,cpu1,cpu2,child1,child2):
+    print("Processing Crossover")
+    mother = self.players[cpu1].bot.nn.weights
+    father = self.players[cpu2].bot.nn.weights
+
+    randomlayer = random.randint(0,len(mother)-1)
+    lenWeightsRandlayer = len(father[randomlayer])
+    maxLim = int(0.4*lenWeightsRandlayer)
+    randWeightIndexes = list(set([random.randint(0,lenWeightsRandlayer-1) for i in range(maxLim)]))
+
+    newWeightSetA = []
+    newWeightSetB = []
+
+    for i in range(lenWeightsRandlayer):
+      if i in randWeightIndexes:
+        newWeightSetA.append(father[randomlayer][i].tolist()[0])
+        newWeightSetB.append(mother[randomlayer][i].tolist()[0])
+      else:
+        newWeightSetA.append(mother[randomlayer][i].tolist()[0])
+        newWeightSetB.append(father[randomlayer][i].tolist()[0])
+
+    # turn back into matrix
+    newWeightSetA = np.matrix(newWeightSetA)
+    newWeightSetB = np.matrix(newWeightSetB)
+
+    # for i in newWeightSetA:
+    #   print(i)
+
+    # now to load them to the offspring
+    self.setWeights(child1, self.getWeights(cpu1))
+    self.setWeights(child2, self.getWeights(cpu2))
+
+    self.players[child2].bot.nn.weights[randomlayer] = newWeightSetA
+    self.players[child2].bot.nn.weights[randomlayer] = newWeightSetB
+
+    print("Crossover Successful.")
+    # return the pair of children
+    return (child1,child2)
+    
   """
   Crossover mechanism for creating offspring children
   Input: two parents, two children, two indexes to swap from
@@ -209,6 +249,7 @@ class Population:
     mother = self.getWeights(cpu1)
     father = self.getWeights(cpu2)
     
+    
     if self.crossoverMethod == 0:
       for _ in range(10):
         # generate a random index and swap genes
@@ -218,7 +259,8 @@ class Population:
         father[index] = genome_f
       self.setWeights(child1, mother)
       self.setWeights(child2, father)
-    
+    elif self.crossOver == 2:
+      self.heuristicCrossover(cpu1,cpu2,child1,child2)
     else:
       # generate random cutoff positions, 
       index1 = random.randint(0, self.numberOfWeights)
@@ -503,3 +545,4 @@ class Population:
 if __name__ == '__main__':
   # we can use this to test out the population program
   pass
+  # x = Population(15,1)
