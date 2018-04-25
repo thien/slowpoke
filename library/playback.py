@@ -7,13 +7,8 @@ import core.checkers as checkers
 from termcolor import colored
 
 class Playback:
-	def __init__(self,folderName,defaultResultsPath=None):
-		self.foldername = folderName
-		self.path = os.path.join("..", "results")
-		if defaultResultsPath:
-			self.path = defaultResultsPath
+	def __init__(self,defaultResultsPath=None):
 		self.games = {}
-		self.directory = os.path.join(self.path, self.foldername)
 		self.debug = True
 		self.loadGM = True
 		# display options
@@ -49,17 +44,6 @@ class Playback:
 			print("Here's a game move distribution.")
 			print(gameMoveDistribution)
 		return champGames
-
-	def loadStatisticsFile(self, filename="statistics.json"):
-		filepath = os.path.join(self.directory, filename)
-		if self.debug:
-			print("Loading Statistics from file:")
-			print("\t", filepath)
-		f = open(filepath, 'r')
-		self.statistics = json.load(f)
-		f.close()
-		if self.debug:
-			print("Loaded Stats File!")
 
 	def loadGeneration(self, generation=0):
 		if self.debug:
@@ -233,10 +217,54 @@ class Playback:
 	def getChampion(lb):
 		return lb[0][0]
 
-if __name__ == '__main__':
-	foldername = "2018-03-19 16:42:47"
-	s = Playback(foldername)
-	s.loadStatisticsFile()
+	@staticmethod
+	def chooseGeneration():
+		chosenAnswer = False
+		option = False
+		generation = 0
+
+		while not chosenAnswer:
+			print("Would you like to choose which generation to view?")
+			answer = input("Y/N:")
+			if answer in "ynYN":
+				chosenAnswer = True
+				if answer in "yY":
+					option = True
+			else:
+				print("You chose an invalid option, please try again.")
+				print("---")
+				
+		if option:
+			print("Which generation would you like to choose?")
+			answer = None
+
+
+# if __name__ == '__main__':
+# 	foldername = "2018-03-20 01:48:19 (6ply 200 generations)"
+# 	s = Playback(foldername)
+# 	s.loadStatisticsFile()
+	
+# 	for genID in range(0,5):
+# 		generation = s.loadGeneration(genID)
+# 		leaderboard = s.processLeaderboard(generation['stats'])
+# 		champ = s.getChampion(leaderboard)
+# 		# find games played by the champ
+# 		gameMoves = s.loadChampGames(generation,champ)
+# 		s.runReplayProgramme(gameMoves,champ=champ,gen=genID)
+# 		# s.loadChampGames(1)
+
+if __name__ == "__main__":
+	print("--- PLAYBACK ---")
+
+	import agentLoader as al
+	al = al.agentLoader()
+	system = al.loadAgentUI()
+	print("Loading Statistics file.. ", end="")
+
+	statistics = al.loadStatisticsFile(system)
+	print("Done.")
+	s = Playback()
+	s.statistics = statistics
 	
 	for genID in range(0,5):
 		generation = s.loadGeneration(genID)

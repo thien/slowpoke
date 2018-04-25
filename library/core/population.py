@@ -28,26 +28,20 @@ class Population:
     self.players = {}       # this is a list of players (all players)
     self.champions = []     # here we list the champions
     self.playerCounter = 0    # used to create playerID's.
-    self.ting = "234234"
     # generate an initial population
     self.currentPopulation = self.generatePlayers(self.count)
 
     self.numberOfWeights = self.players[0].bot.nn.lenCoefficents
     self.tau = 1 / math.sqrt( 2 * math.sqrt(self.numberOfWeights))
 
-    savepath =  os.path.join("..","results","champions")
-    self.folderDirectory = savepath
-    # check save directory exists prior to saving
-    if not os.path.isdir(self.folderDirectory):
-      os.makedirs(self.folderDirectory)
     # if safe mutations are enabled, we use it.
-    self.safeMutations = False
+    self.safeMutations = True
     # create reference neural network
     self.nn = NeuralNetwork(self.players[0].bot.layers)
     # debug flag
     self.debug = False
-    # flag to handle crossover method
-    self.crossoverMethod = 1
+    # flag to handle crossover method; if 2 do heuristic method
+    self.crossoverMethod = 2
 
   """
   Generates an individual player. This is only called in the
@@ -172,10 +166,19 @@ class Population:
       print("offsprings:",offsprings)
    
     # mutate the offsprings. we should parallelise this.
-    cores = multiprocessing.cpu_count()
     mutations = []
-    with multiprocessing.Pool(processes=cores) as pool:
+    print("Computing Mutations..")
+    threadCount = multiprocessing.cpu_count()
+    if len(offsprings) < threadCount:
+      threadCount = len(offsprings)
+    with multiprocessing.Pool(processes=threadCount) as pool:
       mutations = pool.map(self.mutate, offsprings)
+      pool.close()
+      pool.join()
+    
+    # for i in offsprings:
+    #   mutations.append(self.mutate(i))
+    print("Finished computing mutations.")
 
     # now that we have the mutations, load them to each agent.
     for mutation in mutations:
@@ -189,6 +192,50 @@ class Population:
     if self.debug:
       print("DONE, that took", end)
 
+    self.killCaches()
+
+    print("Successfully computed offsprings for the next generation.")
+
+
+  def heuristicCrossover(self,cpu1,cpu2,child1,child2):
+    print("Processing Crossover")
+    mother = self.players[cpu1].bot.nn.weights
+    father = self.players[cpu2].bot.nn.weights
+
+    randomlayer = random.randint(0,len(mother)-1)
+    lenWeightsRandlayer = len(father[randomlayer])
+    maxLim = int(0.4*lenWeightsRandlayer)
+    randWeightIndexes = list(set([random.randint(0,lenWeightsRandlayer-1) for i in range(maxLim)]))
+
+    newWeightSetA = []
+    newWeightSetB = []
+
+    for i in range(lenWeightsRandlayer):
+      if i in randWeightIndexes:
+        newWeightSetA.append(father[randomlayer][i].tolist()[0])
+        newWeightSetB.append(mother[randomlayer][i].tolist()[0])
+      else:
+        newWeightSetA.append(mother[randomlayer][i].tolist()[0])
+        newWeightSetB.append(father[randomlayer][i].tolist()[0])
+
+    # turn back into matrix
+    newWeightSetA = np.matrix(newWeightSetA)
+    newWeightSetB = np.matrix(newWeightSetB)
+
+    # for i in newWeightSetA:
+    #   print(i)
+
+    # now to load them to the offspring
+    self.setWeights(child1, self.getWeights(cpu1))
+    self.setWeights(child2, self.getWeights(cpu2))
+
+    self.players[child2].bot.nn.weights[randomlayer] = newWeightSetA
+    self.players[child2].bot.nn.weights[randomlayer] = newWeightSetB
+
+    print("Crossover Successful.")
+    # return the pair of children
+    return (child1,child2)
+    
   """
   Crossover mechanism for creating offspring children
   Input: two parents, two children, two indexes to swap from
@@ -202,19 +249,20 @@ class Population:
     mother = self.getWeights(cpu1)
     father = self.getWeights(cpu2)
     
+    
     if self.crossoverMethod == 0:
       for _ in range(10):
         # generate a random index and swap genes
         index = random.randint(0, self.numberOfWeights)
-        genome_m = mother[index]
-        genome_f = father[index]
+        genome_m,genome_f = mother[index],father[index]
         mother[index] = genome_m
         father[index] = genome_f
       self.setWeights(child1, mother)
       self.setWeights(child2, father)
-    
+    elif self.crossOver == 2:
+      self.heuristicCrossover(cpu1,cpu2,child1,child2)
     else:
-      # generate random cutoff positions
+      # generate random cutoff positions, 
       index1 = random.randint(0, self.numberOfWeights)
       index2 = random.randint(0, self.numberOfWeights)
       # check the order of the indexes to make sure they make sense.
@@ -228,9 +276,11 @@ class Population:
       self.setWeights(child1, child1W)
       self.setWeights(child2, child2W)
     
-    print("Done.")
+    print("Crossover Successful.")
     # return the pair of children
     return (child1,child2)  
+
+
 
   """
   Mutate the weights of the neural network.
@@ -267,6 +317,7 @@ class Population:
   Static function to create safe mutations
   """
   def safeMutation(self, cpu, static=False):
+    print("Computing Safe Mutations..")
     cache = self.getMoveCache(cpu)
     curreneWeight1D = self.players[cpu].bot.nn.getAllCoefficents()
 
@@ -438,6 +489,15 @@ class Population:
     else:
       return False
 
+  """
+  Kill the caches when we're done with mutations or whatever.
+  This is really important!
+  """
+  def killCaches(self):
+    for i in range(self.playerCounter):
+      self.players[i].bot.cache = {}
+    print("Killed all caches.")
+
   # Done
   def addOrigins(self,botID, values):
     self.players[botID].origin = [values]
@@ -449,52 +509,6 @@ class Population:
 
   def inheritCache(self,botID,parentID):
     self.players[botID].bot.cache = self.players[parentID].bot.cache
-  # # Done
-  # @staticmethod
-  # def randomPlayerID(val):
-  #   # choose a random number between 1 and the number of players. checks that it isn't the same number as val.
-  #   rand = random.randint(0, self.count-1)
-  #   while (rand == val):
-  #     rand = random.randint(0, self.count-1)
-  #   return rand
-
-
-  # def roulette(self, players):
-  #   """
-  #   Roulette algorithm for parent selection.
-  #   """
-  #   chosen = None
-  #   overallFitness = 0
-  #   superEqual = False
-  #   # calculate the overall fitness
-  #   for i in players:
-  #     overallFitness += i.points
-  #   # check if overall fitness is zer0
-  #   if overallFitness == 0:
-  #     overallFitness = len(players)
-  #     superEqual = True
-  #   # randomly shuffle the players around.
-  #   random.shuffle(players)
-  #   # initiate a list of probablities
-  #   probabilities = []
-  #   # calculate probabllities for each player.
-  #   for i in players:
-  #     if not superEqual:
-  #       probability = i.points / overallFitness
-  #     else:
-  #       probability = 1 / overallFitness
-  #     if len(probabilities) > 1:
-  #       probability = probability + probabilities[-1]
-  #     probabilities.append(probability)
-  #   # generate a random number
-  #   number = random.random()
-  #   # find a player.
-  #   for i in range(len(probabilities)):
-  #     if number < probabilities[i]:
-  #       # we have chosen a player.
-  #       chosen = players[i]
-  #       break
-  #   return chosen
 
   @staticmethod
   def generateRandomWeights(weights=None):
@@ -524,10 +538,11 @@ class Population:
     # get a copy of the current nn coefs.
     coefs = nn.getAllCoefficents()
     # return this.
-    print("Done.")
+    print("Generated Fake moves.")
     return (fakeMoves, coefs)
     
 
 if __name__ == '__main__':
   # we can use this to test out the population program
   pass
+  # x = Population(15,1)

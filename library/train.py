@@ -12,6 +12,7 @@ def train():
     options = {
         'mongoConfigPath':'config2.json',
         'Population' : 15,
+        'debugMode' : False, # if enabled, makes the system play randomly for testing purposes
         'printStatus' : True,
         'connectMongo' : False,
         'resultsLocation' : os.path.join("..", "results")
@@ -20,17 +21,37 @@ def train():
     verifiedBool = False
     # Check for arguments
     if len(sys.argv) > 1:
+        
         # check arguments
         if "light" in sys.argv:
             print("You are about to load a light simulation.")
             options['plyDepth'] = 1
-            options['NumberOfGenerations'] = 100
+            options['NumberOfGenerations'] = 200
+            verifiedBool = True
+
+        elif "medium" in sys.argv:
+            print("You are about to load a medium simulation.")
+            options['plyDepth'] = 3
+            options['NumberOfGenerations'] = 200
             verifiedBool = True
 
         elif "heavy" in sys.argv:
             print("You are about to load a heavy simulation.")
-            options['plyDepth'] = 3
-            options['NumberOfGenerations'] = 100
+            options['plyDepth'] = 6
+            options['NumberOfGenerations'] = 200
+            verifiedBool = True
+
+        elif "ohno" in sys.argv:
+            print("You are about to load a really heavy simulation.")
+            options['plyDepth'] = 8
+            options['NumberOfGenerations'] = 1500
+            verifiedBool = True
+
+        if "debug" in sys.argv:
+            print("You are about to load a debug simulation.")
+            options['plyDepth'] = 1
+            options['debugMode'] = True
+            options['NumberOfGenerations'] = 200
             verifiedBool = True
         
         # check for user input
@@ -43,7 +64,7 @@ def train():
                 readyBool = True
         else:
             print("You didn't use an available option.")
-            print("There are two options: light, heavy")
+            print("options: light, medium, heavy, debug, ohno")
     else:
         # no arguments loaded; ask user for load type.
         print("You'll need to load some argument into this file. for instance:")
@@ -52,9 +73,8 @@ def train():
     if readyBool:
         t = tournament.Generator(options)
         t.runGenerations()
-        date = t.cleanDate(t.StartTime, True)
         # create statistics
-        stats = statistics.Statistics(date)
+        stats = statistics.Statistics(t.folderName)
         stats.loadStatisticsFile()
         stats.saveCharts()
         # stats.averageNumMovesPerGeneration()
@@ -62,7 +82,7 @@ def train():
         # stats.timeStatsPerGeneration()
 
         # evaluate performance
-        su = evaluator.Evaluate(date,options['plyDepth'])
+        su = evaluator.Evaluate(t.folderName,options['plyDepth'])
         su.loadChampions()
         games = su.createGames()
         su.evaluate(games)

@@ -1,4 +1,3 @@
-
 import datetime
 from .evaluator.neural import NeuralNetwork
 import json
@@ -32,13 +31,14 @@ minimax_empty = -1
 
 class Slowpoke:
   
-  def __init__(self, plyDepth=4, kingWeight=1.5, weights=[], layers=[91,40,10,1], isminimax=False):
+  def __init__(self, plyDepth=4, kingWeight=1.5, weights=[], layers=[91,40,10,1], isminimax=False, debug=False):
     """
     Initialise Agent
 
     Note that we keep the weights since it is
     essential for the bot to evaluate the board.
     """
+    self.debug = debug
     self.chooseMinimax = isminimax
     self.nn = False
     self.ply = plyDepth
@@ -60,7 +60,7 @@ class Slowpoke:
     if isminimax:
       self.decisionFunction = minimax.MiniMax(self.ply, self.evaluate_board)
     else:
-      self.decisionFunction = tmcts.TMCTS(self.ply,self.evaluate_board)
+      self.decisionFunction = tmcts.TMCTS(self.ply,self.evaluate_board, debug=self.debug)
 
     # optional cache
     self.cache = {}
@@ -117,7 +117,9 @@ class Slowpoke:
         hashd = tuple(boardStatus)
         if hashd in self.cache:
           return self.cache[hashd]
+
       val = self.nn.compute(boardStatus)
+
       if self.enableCache:
         self.cache[hashd] = val
       return val

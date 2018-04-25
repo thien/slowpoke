@@ -14,6 +14,9 @@ import multiprocessing
 import os
 import json
 
+# ignore runtime warnings
+np.warnings.filterwarnings('ignore')
+
 import statistics
 
 # Piece values on board
@@ -25,7 +28,7 @@ ChampWinPt, ChampDrawPt, ChampLosePt = 1,0,-1
 def optionDefaults(options):
   # adds default options if they are absent from options.
   defaultOptions = {
-    'debug' : False,
+    'debugMode' : False,
     'mongoConfigPath' : 'config.json',
     'plyDepth' : 4,
     'NumberOfGenerations' : 200,
@@ -44,7 +47,7 @@ class Generator:
   def __init__(self, options):
     # initialise default variables when needed.
     options = optionDefaults(options)
-    self.isDebugMode = options['debug']
+    self.isDebugMode = options['debugMode']
     # Declare base information
     self.plyDepth = options['plyDepth']
     self.generations = options['NumberOfGenerations']
@@ -88,7 +91,9 @@ class Generator:
     self.initiateMongoConnection()
     # we also want to save the stats offline
     self.generationStats = []
-    self.saveLocation = os.path.join(options['resultsLocation'],self.cleanDate(self.StartTime, True))
+    self.folderName = str(self.cleanDate(self.StartTime, True)) +" " + str(self.plyDepth) + "ply"
+    self.saveLocation = os.path.join(options['resultsLocation'],self.folderName)
+    # self.saveLocation = os.path.join(options['resultsLocation'],self.cleanDate(self.StartTime, True))
     # generate charts as we go?
     self.generateChartsEveryRound = True
 
@@ -144,8 +149,15 @@ class Generator:
     # run game simulations.
     results = []
     # close number of processes when map is done.
-    with multiprocessing.Pool(processes=self.processors) as pool:
+    threadCount = self.processors
+    if self.processors > len(gamePool):
+      threadCount = len(gamePool)
+    with multiprocessing.Pool(processes=threadCount) as pool:
       results = pool.map(self.gameWorker, gamePool)
+      pool.close()
+      pool.join()
+  
+
     self.displayStatusInfo()
 
     # when the pool is done with processing, process the results.
@@ -215,9 +227,8 @@ class Generator:
       self.population[i].bot.cache = {}    
     
   def generateStats(self):
-    date = self.cleanDate(self.StartTime, True)
     # create statistics
-    stats = statistics.Statistics(date)
+    stats = statistics.Statistics(self.folderName)
     stats.loadStatisticsFile()
     stats.saveCharts()
     print("I made some charts!")
@@ -287,8 +298,16 @@ class Generator:
       champGames = self.createChampGames()
       # close number of processes when map is done.
       results = []
-      with multiprocessing.Pool(processes=self.processors) as pool:
+
+      numberOfChampgames = len(champGames)
+      threadCount = self.processors
+      if self.processors > numberOfChampgames:
+        threadCount = numberOfChampgames
+    
+      with multiprocessing.Pool(processes=threadCount) as pool:
         results = pool.map(self.poolChampGame, champGames)
+        pool.close()
+        pool.join()
 
       # split results into equal segments
       l = results
@@ -348,6 +367,7 @@ class Generator:
   def statusInfo(self):
     currentTime = datetime.datetime.now().timestamp()
     recent_scores = self.progress[-7:]
+    
     averageGenTimeLength = np.mean(self.GenerationTimeLengths)
 
     PercentageEst = 0
@@ -388,7 +408,11 @@ class Generator:
     messsages.append(["Champions Currently Playing?", self.AreChampionsPlaying])
     messsages.append(["Previous Score", self.LastChampionScore])
     messsages.append(["Cummulative Score", self.cummulativeScore])
-    messsages.append(["Average Growth", np.mean(recent_scores)])
+
+    avgRecentScores = 0
+    if len(recent_scores) > 0:
+      avgRecentScores = np.mean(recent_scores)
+    messsages.append(["Average Growth", avgRecentScores])
     try:
       messsages.append(["Recent Scores", [ "{:0.2f}".format(x) for x in recent_scores ]])
       messsages.append(["Prev. Champ Point Range",[ "{:0.2f}".format(x) for x in self.previousChampPointList ]])
@@ -397,6 +421,8 @@ class Generator:
     messsages.append([" ", " "])
     messsages.append(["Previous Scoreboard", " "])
     messsages.append([self.previousGenerationRankings, ""])
+    messsages.append(["",""])
+    messsages.append(["Debug Mode:", self.isDebugMode])
     
     return messsages
 

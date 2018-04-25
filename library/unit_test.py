@@ -8,21 +8,10 @@ random.seed(1)
 
 import unittest
 
-# class TestStringMethods(unittest.TestCase):
-
-#   def test_upper(self):
-#     self.assertEqual('foo'.upper(), 'FOO')
-
-#   def test_isupper(self):
-#     self.assertTrue('FOO'.isupper())
-#     self.assertFalse('Foo'.isupper())
-
-#   def test_split(self):
-#     s = 'hello world'
-#     self.assertEqual(s.split(), ['hello', 'world'])
-#     # check that s.split fails when the separator is not a string
-#     with self.assertRaises(TypeError):
-#       s.split(2)
+"""
+These unit tests cover situations that are hard to cover since they normally take a while to produce.
+Normally, the classes have tests within their files.
+"""
 
 class PopulationTestCase(unittest.TestCase):
   def setUp(self):
@@ -95,6 +84,33 @@ def Testing():
   p.generateNextPopulation()
   print(p.currentPopulation)
 
+
+def testCrossover():
+  p = population.Population(15, 1)
+  p.safeMutations = True
+  
+  (fakeMoves, coefs) = p.generateFakeMoves()
+  
+  for player_id in p.currentPopulation:
+    # overload their neural net with fake coef and moves
+    p.players[player_id].bot.nn.loadCoefficents(coefs)
+    p.players[player_id].bot.cache = fakeMoves
+  # overload fake tournament results
+  for _ in range(0,10):
+    k = random.choice(p.currentPopulation)
+    l = random.choice(p.currentPopulation)
+    # some fake result
+    res = {"Winner" : k}
+    p.allocatePoints(res, k,l)
+  p.sortCurrentPopulationByPoints()
+  # print(p.printCurrentPopulationByPoints())
+  p.addChampion()
+  # generate the next population
+  # p.generateNextPopulation()
+  # print(p.currentPopulation)
+  p.heuristicCrossover(1,2,3,4)
+
 if __name__ == '__main__':
   # unittest.main()
-  Testing()
+  # Testing()
+  testCrossover()

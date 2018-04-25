@@ -12,10 +12,13 @@ import random
 
 class TMCTS:
 
-    def __init__(self, ply, evaluator):
+    def __init__(self, ply, evaluator, debug=False):
         self.ply = ply
         self.evaluator = evaluator
         self.baseRound = 300
+        self.debug = debug
+        if self.debug:
+            self.baseRound = 10
 
     def Decide(self, B, colour):
         self.movesets = {}
@@ -23,7 +26,7 @@ class TMCTS:
 
     # -------------------------------------------------------
 
-    def random_ts(self, B, ply, colour, debug=False):
+    def random_ts(self, B, ply, colour, printDebug=False):
         # print("YOU ARE", colour)
         # colour = 1 if colour == 0 else 0
         moves = B.get_moves()
@@ -64,14 +67,16 @@ class TMCTS:
                 moveIndex = B.get_moves().index(m)
                 moveString =  B.get_move_strings()[moveIndex]
                 # calculate the chance of it winning
-                chance = self.movesets[m]['chances'] / self.movesets[m]['plays']
+                chance = 0
+                if (self.movesets[m]['plays'] > 0) and (self.movesets[m]['chances'] > 0):
+                    chance = self.movesets[m]['chances'] / self.movesets[m]['plays']
                 if chance > bestChance:
                     bestChance = chance
                     bestMove = m
-                    if debug:
+                    if printDebug:
                         print(moveString, chance,  self.movesets[m]['chances'] ,self.movesets[m]['plays'],  "*")
                 else:
-                    if debug:
+                    if printDebug:
                         print(moveString, chance)
             
             return bestMove
