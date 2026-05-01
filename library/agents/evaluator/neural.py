@@ -214,10 +214,12 @@ class NeuralNetwork:
     # Add input contribution in MLX
     if len(batch_inputs[0]) == 91:
       # x[-1] contribution for each input
-      sums = mx.array([x[-1] * 32 for x in batch_inputs], dtype=mx.float32)
+      sums = mx.array([float(x[-1] * 32) for x in batch_inputs])
       current = current + sums[:, None]
     else:
-      sums = mx.array([mx.sum(mx.array(x)) for x in batch_inputs], dtype=mx.float32)
+      # Vectorized sum for non-91 case
+      batch_arr = mx.array(batch_np)
+      sums = mx.sum(batch_arr, axis=1)
       current = current + sums[:, None]
     
     return current.flatten()  # Returns mx.array

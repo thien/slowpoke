@@ -6,13 +6,17 @@ minimax_draw = 0
 minimax_empty = -1
 
 import random
+import numpy as np
+
 try:
   import mlx.core as mx
   MLX_AVAILABLE = True
 except ImportError:
   mx = None
   MLX_AVAILABLE = False
-import numpy as np
+
+# Special marker for terminal values (negative index indicates terminal state)
+TERMINAL_VALUE_MARKER = -1
 
 class TMCTS:
 
@@ -22,7 +26,16 @@ class TMCTS:
     self.baseRound = 300
     self.debug = debug
     self.batch_size = batch_size  # Accumulate this many positions before batch eval
-    self.use_mlx = hasattr(evaluator, 'nn') and getattr(evaluator, 'nn', None) is not None and getattr(evaluator.nn, '_use_mlx', False)
+    # Check if evaluator has MLX-capable neural network
+    self.nn = getattr(evaluator, 'nn', None)
+    self.use_mlx = (hasattr(evaluator, 'nn') and 
+                    evaluator.nn is not None and 
+                    getattr(evaluator.nn, '_use_mlx', False))
+    # Batch accumulation state for cross-tree batching
+    self._batch_positions = []
+    self._position_to_result = {}  # Maps position index -> evaluation result
+    # Counter for position indexing
+    self._position_counter = 0
     if self.debug:
       self.baseRound = 10
 
@@ -50,6 +63,14 @@ class TMCTS:
       if ply > 0:
         random_rounds = self.baseRound * ply
       
+      # Clear batch accumulation for this decision
+      self._batch_positions = []
+      self._position_to_result = {}
+      self._position_counter = 0
+      
+      # Track result info for each round: (result_or_pos_idx, move)
+      self._round_results = []
+      
       # set up moves
       for move in moves:
         self.movesets[move] = {
@@ -61,10 +82,29 @@ class TMCTS:
       for i in range(random_rounds):
         random_move = random.choice(moves)
         B.push_move(random_move)
-        # start mcts
-        self.movesets[random_move]['chances'] += self.treesearch(B,ply,colour)
-        self.movesets[random_move]['plays'] += 1
+        # start mcts - use batched tree search if MLX is available
+        if self.use_mlx:
+          result = self.treesearch_batch(B, ply, colour)
+          self._round_results.append((result, random_move))
+        else:
+          result = self.treesearch(B, ply, colour)
+          self.movesets[random_move]['chances'] += result
+          self.movesets[random_move]['plays'] += 1
         B.pop_move()
+
+      # After all rounds, flush batch and resolve all deferred evaluations
+      if self.use_mlx and self._batch_positions:
+        self.flush_batch()
+        # Resolve all results
+        for result, move in self._round_results:
+          if isinstance(result, int) and result >= 0:
+            # Position index - resolve from batch results
+            value = self._position_to_result.get(result, 0.0)
+          else:
+            # Terminal value (float)
+            value = float(result)
+          self.movesets[move]['chances'] += value
+          self.movesets[move]['plays'] += 1
 
       bestChance = -1000
       bestMove = moves[0]
@@ -85,14 +125,17 @@ class TMCTS:
       return bestMove
 
   def treesearch(self, B, ply, colour):
-    """Tree search with MLX-native batch evaluation.
-    Accumulates positions during traversal and evaluates in batches."""
+    """Standard tree search with individual evaluations."""
     isOver = self.isOver(B, colour)
     if isOver[0]:
       return isOver[1]
     else:
       if ply < 1:
-        return self.evaluator.evaluate_board(B, colour)
+        # Support both callable evaluator and object with evaluate_board method
+        if callable(self.evaluator):
+          return self.evaluator(B, colour)
+        else:
+          return self.evaluator.evaluate_board(B, colour)
       else:
         # get moves
         moves = B.get_moves()
@@ -123,21 +166,26 @@ class TMCTS:
   def treesearch_batch(self, B, ply, colour):
     """MLX-native tree search with batched position accumulation.
     
-    Collects positions during tree traversal, evaluates in batches
-    using MLX, keeping all evaluations as MLX arrays until final
-    aggregation.
+    Accumulates positions during tree traversal and evaluates in batches
+    using MLX. Uses a deferred evaluation pattern where positions are
+    collected, then batch-evaluated after the tree search completes.
     
-    Returns: mx.array with evaluation result
+    Returns: 
+      - int (position index) for deferred neural network evaluations
+      - float for terminal states (win/lose/draw)
     """
     isOver = self.isOver(B, colour)
     if isOver[0]:
-      return mx.array([float(isOver[1])])
+      return float(isOver[1])
     
     if ply < 1:
+      # Extract position and accumulate for batch evaluation
       pos = self._extract_position(B, colour)
-      return self.evaluator.nn.compute_mlx(pos)
-    
-    results = []
+      pos_idx = self._position_counter
+      self._position_counter += 1
+      self._batch_positions.append((pos_idx, pos))
+      # Return position index as deferred marker
+      return pos_idx
     
     moves = B.get_moves()
     move = random.choice(moves)
@@ -145,7 +193,7 @@ class TMCTS:
     
     isOver = self.isOver(B, colour)
     if isOver[0]:
-      result = mx.array([float(isOver[1])])
+      result = float(isOver[1])
       B.pop_move()
       return result
     
@@ -154,40 +202,83 @@ class TMCTS:
       move = random.choice(moves)
       B.push_move(move)
       result = self.treesearch_batch(B, ply-1, colour)
-      results.append(result)
       B.pop_move()
-      
-      if len(results) == 1:
-        return results[0]
-      else:
-        stacked = mx.stack(results)
-        return mx.mean(stacked)
+      B.pop_move()  # Pop enemy move
+      return result
     else:
-      return mx.array([0.0])
+      B.pop_move()  # Pop enemy move
+      return 0.0
+
+  def flush_batch(self):
+    """Evaluate all accumulated positions in a single batch.
+    
+    Maps batch results back to individual positions using position indices.
+    Stores results in _position_to_result for resolution.
+    
+    Returns: np.array with evaluation results
+    """
+    if not self._batch_positions:
+      return np.array([0.0])
+    
+    # Sort by position index to maintain order
+    sorted_positions = sorted(self._batch_positions, key=lambda x: x[0])
+    indices = [p[0] for p in sorted_positions]
+    position_arrays = [p[1] for p in sorted_positions]
+    
+    # Evaluate batch using MLX or fallback
+    if self.use_mlx and self.nn is not None and hasattr(self.nn, 'compute_batch_mlx'):
+      results = self.nn.compute_batch_mlx(position_arrays)
+      # Convert mx.array to numpy if needed
+      if hasattr(results, 'numpy'):
+        results = np.array(results.numpy())
+      elif not isinstance(results, np.ndarray):
+        results = np.array([float(r) for r in results])
+    else:
+      # Fallback: evaluate individually using evaluator
+      if callable(self.evaluator):
+        results = np.array([self.evaluator(None, None) for _ in position_arrays], dtype=np.float32)
+      else:
+        results = np.array([self.evaluator.evaluate_board(None, None) for _ in position_arrays], dtype=np.float32)
+    
+    # Store results in lookup table for resolution
+    for idx, result in zip(indices, results):
+      self._position_to_result[idx] = float(result)
+    
+    # Clear positions
+    self._batch_positions = []
+    
+    return results
 
   def _extract_position(self, B, colour):
     """Extract board position for neural network evaluation."""
     boardStatus = B.getBoardPosWeighted(colour, {
       "Black": 1, 
       "White": -1,
-      "empty": 0, 
-      "blackKing": 1.5, 
+      "empty": 0,
+      "blackKing": 1.5,
       "whiteKing": -1.5
     })
     
-    if self.evaluator.nn.layers[0] == 91:
-      boardStatus = self.evaluator.nn.subsquares(boardStatus)
+    # Handle both NeuralNetwork objects and other evaluators
+    layer_size = None
+    if self.nn is not None and hasattr(self.nn, 'layer_size'):
+      layer_size = self.nn.layer_size[0]
+    elif hasattr(self.evaluator, 'layer_size'):
+      layer_size = self.evaluator.layer_size[0]
+    
+    if layer_size == 91:
+      boardStatus = self.nn.subsquares(boardStatus) if self.nn else boardStatus
     
     return np.array(boardStatus, dtype=np.float32)
 
-  def isOver(self,B, colour):
+  def isOver(self, B, colour):
     if B.is_over():
       if B.winner != minimax_empty:
         if B.winner == colour:
-          return (True,minimax_win)
+          return (True, minimax_win)
         else:
-          return (True,minimax_lose)
+          return (True, minimax_lose)
       else:
-        return (True,minimax_draw)
+        return (True, minimax_draw)
     else:
-      return (False,-1)
+      return (False, -1)

@@ -46,7 +46,7 @@ class CheckerBoard:
         'forward', 'backward', 'pieces', 'active', 'passive',
         'empty', 'jump', 'mandatoryJumps', 'turnCount', 'multipleJumpStack',
         'state', 'winner', 'noEatCount', 'altMoveStack', 'moves', 'pdn',
-        'blackPieces', 'whitePieces', '_history', 'AIBoardPos'
+        'blackPieces', 'whitePieces', '_history', 'AIBoardPos', 'is_over_called'
     )
     
     def __init__(self):

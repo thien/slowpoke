@@ -49,7 +49,7 @@ class Population:
   generatePlayers() function!
   """
   def generatePlayer(self):
-    bot = sp.Slowpoke(self.plyDepth,debug=self.isDebug)
+    bot = sp.Slowpoke(self.plyDepth,debug=self.isDebug,use_mlx=True)
     human = agent.Agent(bot)
     # generate ID
     human.setID(self.playerCounter)

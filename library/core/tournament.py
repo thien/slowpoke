@@ -373,11 +373,14 @@ class Generator:
     if i['black'].bot.enableCache:
       bCache = i['black'].bot.cache
       wCache = i['white'].bot.cache
+      # Sample from caches if they have entries
       for _ in range(100):
-        randb = random.choice(list(bCache.keys()))
-        bSubset[randb] = bCache[randb]
-        randw = random.choice(list(wCache.keys()))
-        wSubset[randw] = wCache[randw]
+        if bCache:
+          randb = random.choice(list(bCache.keys()))
+          bSubset[randb] = bCache[randb]
+        if wCache:
+          randw = random.choice(list(wCache.keys()))
+          wSubset[randw] = wCache[randw]
       # nuke cache
       i['black'].bot.cache = {}
       i['white'].bot.cache = {}
