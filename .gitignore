@@ -1,4 +1,3 @@
-
 *.pyc
 .DS_Store
 config.json
@@ -9,3 +8,6 @@ champions/*
 .vscode/*
 results/*
 library/\.vscode/
+.venv/
+__pycache__/
+*.egg-info/

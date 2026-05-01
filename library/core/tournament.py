@@ -15,7 +15,8 @@ import os
 import json
 
 # ignore runtime warnings
-np.warnings.filterwarnings('ignore')
+import warnings
+warnings.filterwarnings('ignore')
 
 import statistics
 
