@@ -502,19 +502,6 @@ class CheckerBoard:
         del self.altMoveStack[entry['altMoveStack_len']:]
         self.updateState()
         return self
-        B = CheckerBoard()
-        B.active = self.active
-        B.backward = [x for x in self.backward]
-        B.empty = self.empty
-        B.forward = [x for x in self.forward]
-        B.jump = self.jump
-        B.mandatoryJumps = [x for x in self.mandatoryJumps]
-        B.passive = self.passive
-        B.pieces = [x for x in self.pieces]
-        B.noEatCount = self.noEatCount
-        # B.pdn = self.pdn
-        B.altMoveStack = self.altMoveStack[-repetitionLimits+2:]
-        return B
 
     """
     Returns a list of possible moves that the player can choose to make.
