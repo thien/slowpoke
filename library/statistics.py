@@ -123,6 +123,9 @@ class Statistics:
 
     syu = [scoreStats[s] for s in scoreStats]
     xlabels = [x.title() for x in scoreStats]
+    # Guard against empty data (single generation case)
+    if sum(len(x) for x in syu) == 0:
+      return
     # print(syu)
     # plotScoreStats = np.concatenate((spread, center, flier_high, flier_low), 0)
     plt.figure()
@@ -154,6 +157,11 @@ class Statistics:
     # now we create a chart of champion distributions.
     labels = xlabels
     sizes = [sum(stats[x]) for x in [y for y in scoreStats]]
+    
+    # Guard against empty data (single generation case)
+    if not sizes or sum(sizes) == 0:
+      return
+    
     explode = (0, 0.1, 0, 0)  # only "explode" the 2nd slice (i.e. 'Hogs')
 
     cols = {
@@ -164,7 +172,7 @@ class Statistics:
     }
 
       #  colors = [self.string2HexColor(x) for x in xlabels]
-    colors = [cols[x] for x in xlabels]
+    colors = [cols.get(x, "#888888") for x in xlabels]  # default gray for unknown labels
     # print(colors, xlabels)
     # input()
     # plot subplots
