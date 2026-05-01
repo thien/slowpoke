@@ -185,7 +185,8 @@ class Generator:
     if self.processors > len(gamePool):
       threadCount = len(gamePool)
     with multiprocessing.Pool(processes=threadCount) as pool:
-      results = pool.map(self.gameWorker, gamePool)
+      chunksize = max(1, len(gamePool) // threadCount)
+      results = pool.map(self.gameWorker, gamePool, chunksize=chunksize)
       pool.close()
       pool.join()
 
@@ -333,7 +334,8 @@ class Generator:
         threadCount = numberOfChampgames
     
       with multiprocessing.Pool(processes=threadCount) as pool:
-        results = pool.map(self.poolChampGame, champGames)
+        chunksize = max(1, numberOfChampgames // threadCount)
+        results = pool.map(self.poolChampGame, champGames, chunksize=chunksize)
         pool.close()
         pool.join()
 
