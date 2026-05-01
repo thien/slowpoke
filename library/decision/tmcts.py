@@ -69,9 +69,7 @@ class TMCTS:
       bestChance = -1000
       bestMove = moves[0]
       for m in self.movesets:
-        moveIndex = B.get_moves().index(m)
-        moveString =  B.get_move_strings()[moveIndex]
-        # calculate the chance of it winning
+        # Calculate the chance of it winning directly from movesets
         chance = 0
         if (self.movesets[m]['plays'] > 0) and (self.movesets[m]['chances'] > 0):
           chance = self.movesets[m]['chances'] / self.movesets[m]['plays']
@@ -79,10 +77,10 @@ class TMCTS:
           bestChance = chance
           bestMove = m
           if printDebug:
-            print(moveString, chance,  self.movesets[m]['chances'] ,self.movesets[m]['plays'],  "*")
+            print(f"Move {m}: chance={chance}, wins={self.movesets[m]['chances']}, plays={self.movesets[m]['plays']}  *")
         else:
           if printDebug:
-            print(moveString, chance)
+            print(f"Move {m}: chance={chance}")
       
       return bestMove
 
@@ -117,9 +115,10 @@ class TMCTS:
             # traverse, moving down the player ply
             result = self.treesearch(B, ply-1, colour)
             B.pop_move()
-            return result
           else:
-            return 0
+            result = 0
+          B.pop_move()  # pop enemy move
+          return result
 
   def treesearch_batch(self, B, ply, colour):
     """MLX-native tree search with batched position accumulation.

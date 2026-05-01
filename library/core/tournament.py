@@ -13,6 +13,7 @@ import random
 import multiprocessing
 import os
 import json
+import logging
 
 # ignore runtime warnings
 import warnings
@@ -92,8 +93,11 @@ class Generator:
     self.initiateMongoConnection()
     # we also want to save the stats offline
     self.generationStats = []
-    self.folderName = str(self.cleanDate(self.StartTime, True)) +" " + str(self.plyDepth) + "ply"
+    self.folderName = str(self.cleanDate(self.StartTime, True)) + " " + str(self.plyDepth) + "ply"
     self.saveLocation = os.path.join(options['resultsLocation'],self.folderName)
+    # Set up logging
+    self.log_file = os.path.join(self.saveLocation, 'training.log')
+    self._setup_logging()
     # self.saveLocation = os.path.join(options['resultsLocation'],self.cleanDate(self.StartTime, True))
     # generate charts as we go?
     self.generateChartsEveryRound = True
@@ -117,6 +121,33 @@ class Generator:
         self.db.initiate(self.config['MongoURI'])
     except:
       pass
+  
+  def _setup_logging(self):
+    """Set up logging to file instead of repeated console prints."""
+    # Ensure save directory exists
+    if not os.path.isdir(self.saveLocation):
+      os.makedirs(self.saveLocation)
+    
+    # Configure logging to file
+    logging.basicConfig(
+      filename=self.log_file,
+      level=logging.INFO,
+      format='%(asctime)s - %(message)s',
+      datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    self.logger = logging.getLogger(__name__)
+    self.log("Training started")
+    self.log(f"Population: {self.populationSize}, Ply Depth: {self.plyDepth}, Generations: {self.generations}")
+  
+  def log(self, message):
+    """Write a message to the log file."""
+    if hasattr(self, 'logger'):
+      self.logger.info(message)
+  
+  def logStatusInfo(self):
+    """Write current status info to log file."""
+    for i in self.statusInfo():
+      self.log(f"{i[0]}: {i[1]}")
 
   def Tournament(self):
     """
@@ -157,9 +188,6 @@ class Generator:
       results = pool.map(self.gameWorker, gamePool)
       pool.close()
       pool.join()
-  
-
-    self.displayStatusInfo()
 
     # when the pool is done with processing, process the results.
     for i in range(len(results)):
@@ -187,6 +215,7 @@ class Generator:
     # loop through the generations.
     for i in range(self.generations):
       print("Initiating generation",i)
+      self.log(f"Starting generation {i}")
       # increment generation count
       self.currentGeneration = i
       self.currentGenStartTime = datetime.datetime.now().timestamp()
@@ -196,11 +225,9 @@ class Generator:
       # initiate timestamp
       startTime = datetime.datetime.now()
       # make bots play each other.
-      print("READY")
       self.population, generationResults = self.Tournament()
       self.previousGenerationRankings = self.population.printCurrentPopulationByPoints()
       
-      # print(self.population.printCurrentPopulationByPoints())
       # compute champion games (runs independently of others)
       self.runChampions()
       # save champions to file
@@ -222,6 +249,8 @@ class Generator:
       self.saveTrainingStatsToJSON(self.saveLocation, self.generationStats)
       if self.generateChartsEveryRound:
         self.generateStats()
+      # Display status at generation boundary
+      self.displayStatusInfo(force_display=True)
 
   def nukeCache(self):
     for i in self.population:
@@ -244,7 +273,6 @@ class Generator:
       json.dump(stats, outfile)
 
   def poolChampGame(self, info):
-    self.displayStatusInfo()
     blackPlayer = self.population.players[info['Players'][0]]
     whitePlayer = self.population.players[info['Players'][1]]
     results = game.tournamentMatch(blackPlayer,whitePlayer)
@@ -255,7 +283,6 @@ class Generator:
       return ChampDrawPt
     else:
       return ChampLosePt
-    self.displayStatusInfo()
 
   def createChampGames(self):
     currentChampID = self.population.champions[-1]
@@ -333,14 +360,13 @@ class Generator:
       # theres only one champion, don't play.
       self.progress.append(0)
     self.AreChampionsPlaying = False
-    self.displayStatusInfo()
+    self.displayStatusInfo(force_display=True)
 
   def gameWorker(self,i):
-    self.displayStatusInfo()
     timeStart = datetime.datetime.now().timestamp()
     results = game.tournamentMatch(i['black'], i['white'], i['game_id'], i['dbURI'], i['debugInfo'])
     bSubset = {}
-    wSubset = {}  
+    wSubset = {} 
     # get a subset of the caches
     if i['black'].bot.enableCache:
       bCache = i['black'].bot.cache
@@ -361,8 +387,6 @@ class Generator:
       'white_cache' : wSubset,
       'duration' : str(self.cleanDate(datetime.datetime.now().timestamp() - timeStart))
     }
-    self.displayStatusInfo()
-    # print(i['black'].bot.cache)
     return data
 
   def statusInfo(self):
@@ -427,15 +451,16 @@ class Generator:
     
     return messsages
 
-  def displayStatusInfo(self):
-    # # clear screen
-    # print(chr(27) + "[2J")
-    print('\033c', end=None)
-    print("SLOWPOKE")
-    print("----------------------")
-    for i in self.statusInfo():
-      print("{0:30} {1}".format(str(i[0]), str(i[1])))
-    print("----------------------")
+  def displayStatusInfo(self, force_display=False):
+    """Log status info to file. Only display to console on generation boundaries."""
+    self.logStatusInfo()
+    # Only print to console for key generation events
+    if force_display:
+      print("SLOWPOKE - Generation", self.currentGeneration)
+      for i in self.statusInfo():
+        if i[0] not in [" ", "Previous Scoreboard", "Debug Mode:"]:
+          print("{0:30} {1}".format(str(i[0]), str(i[1])))
+      print("----------------------")
 
   @staticmethod
   def cleanDate(timestamp, unixDefault=False):

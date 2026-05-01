@@ -507,6 +507,7 @@ class CheckerBoard:
         del self.moves[entry['moves']:]
         del self.altMoveStack[entry['altMoveStack_len']:]
         self.updateState()
+        self.turnCount = entry['turnCount']  # restore after updateState() increments it
         return self
 
     """
@@ -515,11 +516,7 @@ class CheckerBoard:
     def get_move_strings(self):
         # First check if we are in a jump sequence
         if self.jump and self.mandatoryJumps:
-            # Convert mandatoryJumps to strings - same logic as jump case below
-            moves = []
-            moves = [m for m in self.mandatoryJumps]  # Keep original format for now
-            # We need to return strings, but we also need bit positions to match
-            # For simplicity, compute move strings from the mandatoryJumps like get_jumps does
+            # Convert mandatoryJumps to strings for display purposes
             jump_strings = []
             for move in self.mandatoryJumps:
                 move_abs = abs(move)
