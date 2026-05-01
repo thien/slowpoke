@@ -7,6 +7,13 @@ try:
 except ImportError:
   from library.agents.evaluator import subsquares
 
+try:
+  import mlx
+  import mlx.core as mx
+  MLX_AVAILABLE = True
+except ImportError:
+  MLX_AVAILABLE = False
+
 def showVector(v, dec):
   fmt = "%." + str(dec) + "f" # like %.4f
   for i in range(len(v)):
@@ -16,9 +23,11 @@ def showVector(v, dec):
 
 class NeuralNetwork:
   __slots__ = ['layer_size', 'NumberOfLayers', 'NumberOfHiddenLayers', 'layers', 
-               'weights', 'biases', 'lenCoefficents', 'rebuildCoefficents', 'rnd', 'ravel']
+               'weights', 'biases', 'lenCoefficents', 'rebuildCoefficents', 'rnd', 'ravel',
+               '_use_mlx', '_mx_weights', '_mx_biases', '_mx_compiled_forward',
+               '_last_input_size']
   
-  def __init__(self, layer_list=[32,40,10,1]):
+  def __init__(self, layer_list=[32,40,10,1], use_mlx=False):
     self.layer_size = layer_list
     self.NumberOfLayers = len(self.layer_size)
     self.NumberOfHiddenLayers = self.NumberOfLayers - 2
@@ -28,10 +37,28 @@ class NeuralNetwork:
     self.lenCoefficents = 0
     self.rebuildCoefficents = None
     self.rnd = np.random.seed()
+    self._use_mlx = use_mlx and MLX_AVAILABLE
+    self._mx_weights = None
+    self._mx_biases = None
+    self._mx_compiled_forward = None
+    self._last_input_size = 0
     # initiate layers
     self.initiateLayers()
     self.initiateWeights()
     self.initiateBiases()
+    
+    # Initialize MLX weights if requested
+    if self._use_mlx:
+      self._init_mlx_weights()
+
+  def _init_mlx_weights(self):
+    """Convert numpy weights to MLX arrays for GPU evaluation."""
+    if not MLX_AVAILABLE:
+      self._use_mlx = False
+      return
+    
+    self._mx_weights = [mx.array(w.astype(np.float32)) for w in self.weights]
+    self._mx_biases = [mx.array(b.astype(np.float32)) for b in self.biases]
 
   def initiateLayers(self):
     for i in self.layer_size:
@@ -95,20 +122,29 @@ class NeuralNetwork:
       biases_inc += resolution
       self.biases[i] = sub_biases.astype(np.float32)
     
+    # Sync MLX weights if using MLX
+    if self._use_mlx:
+      self._init_mlx_weights()
+    
     return True
 
   def compute(self, x):
     """
     Optimized forward pass through the neural network.
+    Uses MLX for GPU acceleration on Apple Silicon when available.
     Fully vectorized - no loops over neurons.
     """
+    # Use MLX if available and input is large enough to benefit
+    if self._use_mlx and MLX_AVAILABLE and hasattr(x, '__len__') and len(x) > 32:
+      return self._compute_mlx(x)
+    
+    # NumPy fallback (original optimized implementation)
     current = x
     
     # Forward pass through all hidden layers
     for n in range(self.NumberOfLayers - 2):
       # Vectorized: matrix multiply + bias in one step
-      current = self.weights[n].T.dot(current) + self.biases[n]
-      current = self.nonlinear_function(current)
+      current = np.tanh(self.weights[n].T.dot(current) + self.biases[n])
     
     # Final layer
     current = self.weights[-1].T.dot(current) + self.biases[-1]
@@ -120,6 +156,72 @@ class NeuralNetwork:
       current = current + np.sum(x)
     
     return float(current[0]) if current.size == 1 else current
+
+  def _compute_mlx(self, x):
+    """
+    MLX-accelerated forward pass for batch evaluation.
+    Falls back to numpy for single inputs.
+    """
+    # Convert input to MLX array
+    mx_x = mx.array(np.asarray(x, dtype=np.float32))
+    
+    # JIT-compiled forward pass
+    if self._mx_compiled_forward is None:
+      import mlx.nn as nn
+      
+      def forward_fn(inputs):
+        current = inputs
+        for n in range(self.NumberOfLayers - 2):
+          current = mx.tanh(mx.matmul(current, self._mx_weights[n]) + self._mx_biases[n])
+        current = mx.matmul(current, self._mx_weights[-1]) + self._mx_biases[-1]
+        return current
+      
+      self._mx_compiled_forward = mx.compile(forward_fn)
+    
+    result = self._mx_compiled_forward(mx_x)
+    mx.eval(result)
+    
+    # Convert back to scalar
+    result_np = np.array(result)
+    
+    # Add input contribution (same as numpy version)
+    x_arr = np.asarray(x)
+    if x_arr.size == 91:
+      result_np = result_np + x_arr[-1] * 32
+    else:
+      result_np = result_np + np.sum(x_arr)
+    
+    return float(result_np[0]) if result_np.size == 1 else result_np
+
+  def compute_batch(self, batch_inputs):
+    """
+    Batch evaluation optimized for MCTS position evaluation.
+    Takes a list of position vectors and returns evaluations.
+    """
+    if not self._use_mlx or not MLX_AVAILABLE:
+      # Fallback to individual evaluations
+      return np.array([self.compute(x) for x in batch_inputs])
+    
+    batch_np = np.array(batch_inputs, dtype=np.float32)
+    mx_batch = mx.array(batch_np)
+    
+    # Vectorized batch forward pass
+    current = mx_batch
+    for n in range(self.NumberOfLayers - 2):
+      current = mx.tanh(mx.matmul(current, self._mx_weights[n]) + self._mx_biases[n])
+    current = mx.matmul(current, self._mx_weights[-1]) + self._mx_biases[-1]
+    
+    mx.eval(current)
+    
+    results = np.array(current)
+    
+    # Add input contribution
+    if len(batch_inputs) > 0 and len(batch_inputs[0]) == 91:
+      results = results + np.array([x[-1] * 32 for x in batch_inputs])[:, None]
+    else:
+      results = results + np.array([np.sum(x) for x in batch_inputs])[:, None]
+    
+    return results.flatten()
 
   @staticmethod
   def subsquares(x):
