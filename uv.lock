@@ -2297,6 +2297,11 @@ dev = [
     { name = "pytest", version = "9.0.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "ruff" },
 ]
+test = [
+    { name = "pytest", version = "8.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "pytest", version = "8.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
+    { name = "pytest", version = "9.0.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -2316,6 +2321,7 @@ dev = [
     { name = "pytest", specifier = ">=7.0.0" },
     { name = "ruff", specifier = ">=0.1.0" },
 ]
+test = [{ name = "pytest", specifier = ">=8.3.5" }]
 
 [[package]]
 name = "termcolor"

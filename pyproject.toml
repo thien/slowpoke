@@ -40,6 +40,9 @@ dev = [
     "black>=22.0.0",
     "ruff>=0.1.0",
 ]
+test = [
+    "pytest>=8.3.5",
+]
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
