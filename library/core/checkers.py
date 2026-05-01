@@ -42,6 +42,13 @@ class CheckerBoard:
     """
     Initiates board via new_game().
     """
+    __slots__ = (
+        'forward', 'backward', 'pieces', 'active', 'passive',
+        'empty', 'jump', 'mandatoryJumps', 'turnCount', 'multipleJumpStack',
+        'state', 'winner', 'noEatCount', 'altMoveStack', 'moves', 'pdn',
+        'blackPieces', 'whitePieces', '_history', 'AIBoardPos'
+    )
+    
     def __init__(self):
         self.forward = [None, None]
         self.backward = [None, None]
@@ -109,6 +116,7 @@ class CheckerBoard:
         self.noEatCount = 0
         self.altMoveStack = []
         self.moves = []
+        self._history = []  # For push/pop move operations
 
     """
     Updates the game state to reflect the effects of the input
@@ -438,6 +446,62 @@ class CheckerBoard:
 
     # Returns a new board with the exact same state as the calling object.
     def copy(self):
+        B = CheckerBoard()
+        B.active = self.active
+        B.backward = [x for x in self.backward]
+        B.empty = self.empty
+        B.forward = [x for x in self.forward]
+        B.jump = self.jump
+        B.mandatoryJumps = [x for x in self.mandatoryJumps]
+        B.passive = self.passive
+        B.pieces = [x for x in self.pieces]
+        B.noEatCount = self.noEatCount
+        # B.pdn = self.pdn
+        B.altMoveStack = self.altMoveStack[-repetitionLimits+2:]
+        return B
+
+    def push_move(self, move):
+        """Apply a move without creating a copy. Stores previous state in _history for undo."""
+        # Store state need to undo this move
+        history_entry = {
+            'active': self.active,
+            'passive': self.passive,
+            'forward': [x for x in self.forward],
+            'backward': [x for x in self.backward],
+            'pieces': [x for x in self.pieces],
+            'empty': self.empty,
+            'jump': self.jump,
+            'mandatoryJumps': [x for x in self.mandatoryJumps],
+            'noEatCount': self.noEatCount,
+            'multipleJumpStack': [x for x in self.multipleJumpStack],
+            'turnCount': self.turnCount,
+            'moves': len(self.moves),
+            'altMoveStack_len': len(self.altMoveStack),
+        }
+        self._history.append(history_entry)
+        return self.make_move(move)
+
+    def pop_move(self):
+        """Undo the last push_move operation."""
+        if not self._history:
+            return self
+        entry = self._history.pop()
+        self.active = entry['active']
+        self.passive = entry['passive']
+        self.forward = entry['forward']
+        self.backward = entry['backward']
+        self.pieces = entry['pieces']
+        self.empty = entry['empty']
+        self.jump = entry['jump']
+        self.mandatoryJumps = entry['mandatoryJumps']
+        self.noEatCount = entry['noEatCount']
+        self.multipleJumpStack = entry['multipleJumpStack']
+        self.turnCount = entry['turnCount']
+        # Truncate stacks to previous lengths
+        del self.moves[entry['moves']:]
+        del self.altMoveStack[entry['altMoveStack_len']:]
+        self.updateState()
+        return self
         B = CheckerBoard()
         B.active = self.active
         B.backward = [x for x in self.backward]
