@@ -1,5 +1,6 @@
 
 import os
+import time
 from core import checkers, game, mongo, population, tournament
 from decision import mcts, splash, minimax
 try:
@@ -14,6 +15,14 @@ import random
 random.seed(1)
 
 import unittest
+import numpy as np
+
+# Performance benchmarks comparing NumPy vs MLX implementations
+try:
+  import mlx.core as mx
+  MLX_AVAILABLE = True
+except ImportError:
+  MLX_AVAILABLE = False
 
 """
 These unit tests cover situations that are hard to cover since they normally take a while to produce.

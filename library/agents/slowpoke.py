@@ -31,7 +31,7 @@ minimax_empty = -1
 
 class Slowpoke:
   
-  def __init__(self, plyDepth=4, kingWeight=1.5, weights=[], layers=[91,40,10,1], isminimax=False, debug=False):
+  def __init__(self, plyDepth=4, kingWeight=1.5, weights=[], layers=[91,40,10,1], isminimax=False, debug=False, use_mlx=False):
     """
     Initialise Agent
 
@@ -53,26 +53,31 @@ class Slowpoke:
 
     # Once we have everything we are ready to initiate
     # the board.
-    self.initiateNeuralNetwork(layers, weights)
+    self.initiateNeuralNetwork(layers, weights, use_mlx=use_mlx)
     self.movesConsidered = []
 
     self.decisionFunction = None
     if isminimax:
       self.decisionFunction = minimax.MiniMax(self.ply, self.evaluate_board)
     else:
-      self.decisionFunction = tmcts.TMCTS(self.ply,self.evaluate_board, debug=self.debug)
+      self.decisionFunction = tmcts.TMCTS(self.ply, self, debug=self.debug)
 
     # optional cache
     self.cache = {}
     self.enableCache = True
+    
+    # MLX batch evaluation support
+    self.use_mlx = use_mlx and self.nn._use_mlx
+    self._batch_inputs = []
+    self._batch_refs = []
 
-  def initiateNeuralNetwork(self, layers, weights=[]):
+  def initiateNeuralNetwork(self, layers, weights=[], use_mlx=False):
     """
     This function initiates the neural network and adds it
     to the AI class.
     """
     # Now we can initialise the neural network.
-    self.nn = NeuralNetwork(layers)
+    self.nn = NeuralNetwork(layers, use_mlx=use_mlx)
     if weights:
       self.loadWeights(weights)
   
@@ -83,7 +88,7 @@ class Slowpoke:
   def move_function(self, board, colour):
     return self.decisionFunction.Decide(board, colour)
 
-  def evaluate_board(self,board,colour):
+  def evaluate_board(self, board, colour):
     """
     We throw in the board into the neural network here, and
     then the neural network evaluates the position of the
@@ -107,7 +112,6 @@ class Slowpoke:
       # print("you are", colour)
       # Get the current status of the board.
       boardStatus = board.getBoardPosWeighted(colour, self.pieceWeights)
-
       
       if self.layers[0] == 91:
         boardStatus = self.nn.subsquares(boardStatus)
@@ -123,6 +127,28 @@ class Slowpoke:
       if self.enableCache:
         self.cache[hashd] = val
       return val
+
+  def evaluate_board_mlx(self, board, colour):
+    """
+    MLX-native evaluation that returns mx.array.
+    For batched tree search operations.
+    """
+    if board.is_over():
+      if board.winner != minimax_empty:
+        if board.winner == colour:
+          return float(minimax_win)
+        else:
+          return float(minimax_lose)
+      else:
+        return float(minimax_draw)
+    
+    boardStatus = board.getBoardPosWeighted(colour, self.pieceWeights)
+    
+    if self.layers[0] == 91:
+      boardStatus = self.nn.subsquares(boardStatus)
+    
+    import mlx.core as mx
+    return mx.array([float(self.nn.compute(boardStatus))])
 
   # """
   # Checks the current stage of the board.
@@ -175,4 +201,3 @@ class Slowpoke:
   #     return nn_results[1]
   #   else:
   #     return nn_results[2]
-

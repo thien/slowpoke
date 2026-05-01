@@ -1,14 +1,25 @@
 import datetime
 import random
 import math
+try:
+  import mlx.core as mx
+  MLX_AVAILABLE = True
+except ImportError:
+  mx = None
+  MLX_AVAILABLE = False
+import numpy as np
 
 class MCTS:
 
-  def __init__(self, ply, evaluator=None, debug=False):
+  def __init__(self, ply, evaluator=None, debug=False, batch_size=512):
     self.ply = ply
     self.evaluator = evaluator
     self.c = 1.4
     self.debug = debug
+    self.batch_size = batch_size
+    self.use_mlx = False
+    if evaluator is not None and hasattr(evaluator, 'nn'):
+      self.use_mlx = getattr(evaluator.nn, '_use_mlx', False)
     
   def Decide(self, B, colour):
     return self.mcts_code(B, self.ply, colour)
@@ -99,6 +110,10 @@ class MCTS:
     winner = -1
     current_ply = ply
 
+    # Position accumulator for batch evaluation
+    position_batch = []
+    batch_refs = []
+
     # loop through all the moves
     for t in range(1, rounds+1):
       legal_moves = B.get_moves()
@@ -133,7 +148,7 @@ class MCTS:
         move, FEN_hash = choice
         B.push_move(move)
         move_stack.append(move)
-  
+
       if B.is_over():
         winner = B.winner
         break
@@ -146,11 +161,30 @@ class MCTS:
         self.mcts_chances[(player, su)] = 0
         if t > current_ply:
           current_ply = t
+          
+          # For MLX: accumulate positions for batch evaluation
+          if self.use_mlx and self.evaluator:
+            boardStatus = B.getBoardPosWeighted(B.current_player(), {
+              "Black": 1, "White": -1, "empty": 0, "blackKing": 1.5, "whiteKing": -1.5
+            })
+            if self.evaluator.layers[0] == 91:
+              boardStatus = self.evaluator.nn.subsquares(boardStatus)
+            position_batch.append(np.array(boardStatus, dtype=np.float32))
+            batch_refs.append((player, su))
 
       visited_states.add((player, su))
       player = B.current_player()
       if B.is_over():
         winner = B.winner
+
+    # Batch evaluate accumulated positions with MLX
+    if self.use_mlx and self.evaluator and len(position_batch) > 0:
+      batch_results = self.evaluator.nn.compute_batch_mlx(position_batch)
+      for (player, su), result in zip(batch_refs, batch_results):
+        # Initialise node with neural network prior
+        if (player, su) in self.mcts_plays:
+          self.mcts_plays[(player, su)] = 1
+          self.mcts_chances[(player, su)] = float(result)
 
     # Record stats for all visited states
     for p, x in visited_states:

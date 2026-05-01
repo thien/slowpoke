@@ -507,6 +507,25 @@ class CheckerBoard:
     Returns a list of possible moves that the player can choose to make.
     """
     def get_move_strings(self):
+        # First check if we are in a jump sequence
+        if self.jump and self.mandatoryJumps:
+            # Convert mandatoryJumps to strings - same logic as jump case below
+            moves = []
+            moves = [m for m in self.mandatoryJumps]  # Keep original format for now
+            # We need to return strings, but we also need bit positions to match
+            # For simplicity, compute move strings from the mandatoryJumps like get_jumps does
+            jump_strings = []
+            for move in self.mandatoryJumps:
+                move_abs = abs(move)
+                # Extract source and destination from the move bit
+                bits = [(i, b) for (i, b) in enumerate(bin(move_abs)[::-1]) if b == '1']
+                if len(bits) >= 2:
+                    src_bit, dst_bit = bits[0][0], bits[1][0] if len(bits) > 1 else bits[0][0] + 4 if move_abs & 0x11 else bits[0][0] + 5
+                    src = 1 + src_bit - src_bit//9
+                    dst = 1 + dst_bit - dst_bit//9
+                    jump_strings.append(f"{src}x{dst}")
+            return jump_strings
+        
         moves = []
         rfj = self.right_forward_jumps()
         lfj = self.left_forward_jumps()

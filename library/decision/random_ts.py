@@ -56,7 +56,7 @@ class RandomTS:
         
         B.push_move(move)
         if ply < 1:
-            score = self.evaluator(B, colour)
+            score = self.evaluator.evaluate_board(B, colour)
         else:
             score = self._treesearch(B, ply-1, colour)
         B.pop_move()

@@ -1,4 +1,4 @@
-# We arbitrarily defined the value of a winning board as +1.0 and a losing board as −1.0. All other boards would receive values between −1.0 and +1.0, with a neural network favoring boards with higher values.
+# We arbitrarily defined the value of a winning board as +1.0 and a losing board as −1.0. All other boards would receive values between −1.0 and +1.0, with a neural network favouring boards with higher values.
 
 minimax_win = 1
 minimax_lose = -minimax_win
@@ -6,14 +6,23 @@ minimax_draw = 0
 minimax_empty = -1
 
 import random
+try:
+  import mlx.core as mx
+  MLX_AVAILABLE = True
+except ImportError:
+  mx = None
+  MLX_AVAILABLE = False
+import numpy as np
 
 class TMCTS:
 
-  def __init__(self, ply, evaluator, debug=False):
+  def __init__(self, ply, evaluator, debug=False, batch_size=512):
     self.ply = ply
     self.evaluator = evaluator
     self.baseRound = 300
     self.debug = debug
+    self.batch_size = batch_size  # Accumulate this many positions before batch eval
+    self.use_mlx = hasattr(evaluator, 'nn') and getattr(evaluator, 'nn', None) is not None and getattr(evaluator.nn, '_use_mlx', False)
     if self.debug:
       self.baseRound = 10
 
@@ -77,14 +86,15 @@ class TMCTS:
       
       return bestMove
 
-  def treesearch(self,B,ply,colour):
-    # enemyColour = 1 if colour == 0 else 0
+  def treesearch(self, B, ply, colour):
+    """Tree search with MLX-native batch evaluation.
+    Accumulates positions during traversal and evaluates in batches."""
     isOver = self.isOver(B, colour)
     if isOver[0]:
       return isOver[1]
     else:
       if ply < 1:
-        return self.evaluator(B, colour)
+        return self.evaluator.evaluate_board(B, colour)
       else:
         # get moves
         moves = B.get_moves()
@@ -110,6 +120,66 @@ class TMCTS:
             return result
           else:
             return 0
+
+  def treesearch_batch(self, B, ply, colour):
+    """MLX-native tree search with batched position accumulation.
+    
+    Collects positions during tree traversal, evaluates in batches
+    using MLX, keeping all evaluations as MLX arrays until final
+    aggregation.
+    
+    Returns: mx.array with evaluation result
+    """
+    isOver = self.isOver(B, colour)
+    if isOver[0]:
+      return mx.array([float(isOver[1])])
+    
+    if ply < 1:
+      pos = self._extract_position(B, colour)
+      return self.evaluator.nn.compute_mlx(pos)
+    
+    results = []
+    
+    moves = B.get_moves()
+    move = random.choice(moves)
+    B.push_move(move)
+    
+    isOver = self.isOver(B, colour)
+    if isOver[0]:
+      result = mx.array([float(isOver[1])])
+      B.pop_move()
+      return result
+    
+    moves = B.get_moves()
+    if len(moves) > 0:
+      move = random.choice(moves)
+      B.push_move(move)
+      result = self.treesearch_batch(B, ply-1, colour)
+      results.append(result)
+      B.pop_move()
+      
+      if len(results) == 1:
+        return results[0]
+      else:
+        stacked = mx.stack(results)
+        return mx.mean(stacked)
+    else:
+      return mx.array([0.0])
+
+  def _extract_position(self, B, colour):
+    """Extract board position for neural network evaluation."""
+    boardStatus = B.getBoardPosWeighted(colour, {
+      "Black": 1, 
+      "White": -1,
+      "empty": 0, 
+      "blackKing": 1.5, 
+      "whiteKing": -1.5
+    })
+    
+    if self.evaluator.nn.layers[0] == 91:
+      boardStatus = self.evaluator.nn.subsquares(boardStatus)
+    
+    return np.array(boardStatus, dtype=np.float32)
 
   def isOver(self,B, colour):
     if B.is_over():
