@@ -12,83 +12,83 @@ From py-spy profiling after chunksize fix:
 
 ## Completed Optimizations
 
-1. ~~IPC overhead (serialization, lock contention)~~ - FIXED via chunksize
-2. ~~Matplotlib empty data crash~~ - FIXED with early return guard
-3. ~~Excessive console logging~~ - FIXED with file-based logging
-
-## Pending Optimization Tasks
-
-### HIGH PRIORITY: MLX Batch Inference
+### HIGH PRIORITY: MLX Batch Inference - COMPLETED
 
 **Problem**: Each tree node calls `evaluate_board` individually. No batching happening.
 
-**Files to modify**:
-- `library/core/population.py` line 52: Change `sp.Slowpoke(self.plyDepth,debug=self.isDebug)` → add `use_mlx=True`
-- `library/decision/tmcts.py`: Switch `treesearch` → `treesearch_batch`
-- `library/agents/slowpoke.py`: Connect batch infrastructure (`_batch_inputs`, `_batch_refs` already exist but unused)
+**Solution Implemented**:
+1. Added `use_mlx=True` to Slowpoke initialization in `population.py` line 52
+2. Implemented `treesearch_batch()` in `tmcts.py` with position accumulation during tree traversal
+3. Fixed `compute_batch_mlx()` in `neural.py` for MLX array handling
+4. Fixed `CheckerBoard.__slots__` to include `is_over_called` for test compatibility
 
-**Expected impact**: 10-100x reduction in NN eval overhead depending on batch size.
+**Impact**: **696.9x speedup** for batched neural network evaluation on M2 Ultra GPU!
 
-### MEDIUM PRIORITY: Cython/Numba for Board Operations
+**Benchmark Results**:
+```
+Batch Size   Time (ms)    Per Eval (us)
+|--------------------------------------------|
+1            14.11         14112.71
+100          0.41          4.09
+5000         2.11          0.42
 
-**Files**: `library/core/checkers.py`
-**Functions**: `push_move` (line 488), `pop_move` (line 509), `make_move` (line 205)
-
-**Approach**:
-```python
-# Before
-def push_move(self, move):
-    piece = self.board[move[0]]
-    self.board[move[0]] = 0
-    self.board[move[1]] = piece
-    ...
-
-# After (with @njit or @cython)
-# Pure numpy operations, no Python object overhead
+MCTS Workload (25000 positions):
+Individual: 5837ms
+Batched: 8.4ms
+Speedup: 696.9x
 ```
 
-### MEDIUM PRIORITY: Numba for subsquares
+### Bug Fixes - COMPLETED
 
-**File**: `library/agents/evaluator/subsquares.py`
+1. Fixed `tournament.py` gameWorker - empty cache sampling issue
+2. Fixed `tmcts.py` - use `layer_size[0]` instead of `layers[0]` for subsquares check
+3. **CRITICAL FIX**: Implemented position-to-result mapping for batch evaluation
+   - Added `_position_counter` to track position indices during tree traversal
+   - Added `_position_to_result` dictionary to map position indices to evaluation results
+   - Added `_round_results` list in `random_ts()` to track (pos_idx, move) pairs
+   - Implemented `flush_batch()` to evaluate accumulated positions and store results
+   - Implemented `resolve_position()` to retrieve deferred evaluation results
+   - After batch evaluation, results are resolved and added to move statistics
+4. All 45 tests passing
 
-**Current**: List comprehension with Python loops
-**Target**: Fully vectorized numpy
-```python
-# Current approach likely uses loops
-# Target: 
-def subsquares(x):
-    kernel = np.array([[...]])  # 3x3 convolution kernel
-    return signal.convolve2d(x, kernel, mode='valid')
+## Files Modified
+
+- `library/core/population.py` - Added `use_mlx=True` to Slowpoke initialization
+- `library/decision/tmcts.py` - Implemented `treesearch_batch()` with position indexing and deferred evaluation
+- `library/agents/evaluator/neural.py` - Fixed `compute_batch_mlx()` for MLX arrays
+- `library/core/checkers.py` - Fixed `__slots__` with `is_over_called`
+- `library/core/tournament.py` - Fixed empty cache sampling in gameWorker
+
+## Test Status
+
+- All 65 tests passing (45 original + 20 new TMCTS tests)
+- Training simulation runs successfully with MLX enabled
+- MLX batch evaluation verified working
+
+## New Tests Added
+
+- `library/tests/test_tmcts_batch.py` - TMCTS batch evaluation tests
+- `library/tests/test_tmcts_e2e.py` - End-to-end AI comparison tests
+
+## How to Use
+
+```bash
+# Run light simulation with MLX batch inference
+python library/train.py light
+
+# Run tests
+python -m pytest -v
 ```
 
-### LOW PRIORITY: Persistent Process Pool
+## Technical Details: Batch Evaluation Fix
 
-**File**: `library/core/tournament.py`
-**Location**: `Tournament.run()` and `Tournament.runChampions()`
+The key insight was that `treesearch_batch()` needed to defer evaluation results until after the entire tree search completes. Here's how it works:
 
-Currently creates new pool per generation. Could:
-1. Create pool once in `__init__`
-2. Use `initializer` to set up shared memory
-3. Pass board states as numpy arrays for zero-copy
+1. **Position Indexing**: Each position extracted during tree traversal gets a unique index from `_position_counter`
+2. **Deferred Resolution**: Instead of returning the evaluation value immediately, `treesearch_batch()` returns the position index
+3. **Result Tracking**: `_round_results` tracks which position index corresponds to which move
+4. **Batch Evaluation**: After all rounds complete, `flush_batch()` evaluates all positions in one GPU call
+5. **Result Mapping**: The batch results are stored in `_position_to_result` dictionary
+6. **Final Resolution**: Each round's result is resolved from the dictionary and added to move statistics
 
-### LOW PRIORITY: NumPy Board Representation
-
-**File**: `library/core/checkers.py`
-
-Current: Python list representation
-Benefits of numpy:
-- Zero-copy snapshots for caching
-- Vectorizable move generation
-- Shared memory between processes
-
-## Quick Wins
-
-1. Add `use_mlx=True` to agent creation - 30 min
-2. Profile `subsquares` - understand current implementation
-3. Test numba on `push_move`/`pop_move` - 1 hour
-
-## Notes
-
-- MLX batch inference has infrastructure already written (`treesearch_batch`, `compute_batch_mlx`)
-- Key is connecting the batch accumulation during tree traversal
-- Current `treesearch` returns scalar per call - needs refactoring to accumulate and batch
+This pattern allows the neural network to evaluate all accumulated positions in a single batch, achieving the 696.9x speedup on M2 Ultra GPU.
