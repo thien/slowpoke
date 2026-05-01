@@ -2,7 +2,14 @@
 import os
 from core import checkers, game, mongo, population, tournament
 from decision import mcts, splash, minimax
-from agents import agent, geodude, human, magikarp, slowpoke
+try:
+  from agents import agent, geodude, human, magikarp, slowpoke
+except ImportError:
+  import agents.agent as agent
+  import agents.geodude as geodude
+  import agents.human as human
+  import agents.magikarp as magikarp
+  import agents.slowpoke as slowpoke
 import random
 random.seed(1)
 

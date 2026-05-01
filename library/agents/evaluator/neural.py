@@ -2,7 +2,10 @@ import numpy as np
 import random
 import math
 
-import agents.evaluator.subsquares as subsquares
+try:
+  import agents.evaluator.subsquares as subsquares
+except ImportError:
+  from library.agents.evaluator import subsquares
 
 def showVector(v, dec):
   fmt = "%." + str(dec) + "f" # like %.4f
@@ -12,6 +15,9 @@ def showVector(v, dec):
     print(fmt % x + '  ', end='')
 
 class NeuralNetwork:
+  __slots__ = ['layer_size', 'NumberOfLayers', 'NumberOfHiddenLayers', 'layers', 
+               'weights', 'biases', 'lenCoefficents', 'rebuildCoefficents', 'rnd', 'ravel']
+  
   def __init__(self, layer_list=[32,40,10,1]):
     self.layer_size = layer_list
     self.NumberOfLayers = len(self.layer_size)
@@ -51,17 +57,14 @@ class NeuralNetwork:
       self.biases.append(biases)
 
   def getAllCoefficents(self):
-    self.ravel = np.array([])
-    # ravel weights
-    for i in self.weights:
-      ting = np.ravel(i)
-      self.ravel = np.hstack((self.ravel,ting))
-    # ravel biases
-    for i in self.biases:
-      ting = np.ravel(i)
-      self.ravel = np.hstack((self.ravel,ting))
-    return self.ravel
-
+    """Optimized: collect all weights and biases in one pass."""
+    arrays = []
+    for w in self.weights:
+      arrays.append(np.ravel(w))
+    for b in self.biases:
+      arrays.append(np.ravel(b))
+    return np.concatenate(arrays)
+  
   def loadCoefficents(self, ravelled):
     if len(ravelled) != self.lenCoefficents:
       raise ValueError('The number of coefficents do not match.')
@@ -69,7 +72,7 @@ class NeuralNetwork:
     totalNumWeights = 0
     for i in self.weights:
       totalNumWeights += i.shape[0] * i.shape[1]
-
+    
     # rebuild weights
     weights = ravelled[:totalNumWeights]
     
@@ -78,62 +81,45 @@ class NeuralNetwork:
       # get the dimensions of i
       resolution = self.weights[i].shape[0] * self.weights[i].shape[1]
       sub_weight = weights[weight_inc:weight_inc+resolution]
-      splitter = np.split(sub_weight, self.weights[i].shape[0])
-      splitter = np.matrix(splitter)
-      self.weights[i] = splitter
+      # Reshape to (input_nodes, output_nodes) - store as ndarray, not matrix
+      self.weights[i] = sub_weight.reshape(self.weights[i].shape).astype(np.float32)
       weight_inc += resolution
-
+    
     # rebuild biases
     biases = ravelled[totalNumWeights:]
-
+    
     biases_inc = 0
     for i in range(len(self.biases)):
       resolution = self.biases[i].shape[0]
       sub_biases = biases[biases_inc:biases_inc+resolution]
       biases_inc += resolution
-      self.biases[i] = sub_biases
-
+      self.biases[i] = sub_biases.astype(np.float32)
+    
     return True
 
   def compute(self, x):
-    sums = []
-    # initate placeholders to compute results.
-    for i in range(self.NumberOfLayers-1):
-      holder = np.zeros(shape=[self.layer_size[i+1]], dtype=np.float32)
-      sums.append(holder)
+    """
+    Optimized forward pass through the neural network.
+    Fully vectorized - no loops over neurons.
+    """
+    current = x
     
-    # assign input values to input layer
-    self.layers[0] = x
-
-    # compute neural network propagation for hidden layers
-    for n in range(len(sums)):
-      # compute weight addition
-      for j in range(self.layer_size[n+1]):
-        if n == 0:
-          sums[n] = np.array([self.layers[n]]).dot(self.weights[n])
-        else:
-          sums[n] = sums[n-1].dot(self.weights[n])
-
-      # check if output layer so we can feed the sum of the input layer directly
-      if n == len(sums)-1:
-        # on output layer
-        if self.layers[0].size == 91:
-          sums[n] = sums[n] + self.layers[0][-1]*32
-        else:
-          sums[n] = sums[n] + np.sum(self.layers[0])
-
+    # Forward pass through all hidden layers
+    for n in range(self.NumberOfLayers - 2):
+      # Vectorized: matrix multiply + bias in one step
+      current = self.weights[n].T.dot(current) + self.biases[n]
+      current = self.nonlinear_function(current)
     
-      # add biases
-      sums[n] += self.biases[n][j]
-
-      # perform nonlinear_function if we're not computing the final layer
-      self.layers[n+1] = self.nonlinear_function(sums[n])
-
-    flatten = self.layers[self.NumberOfLayers-1].flatten()
-    if flatten.size == 1:
-      return flatten[0]
+    # Final layer
+    current = self.weights[-1].T.dot(current) + self.biases[-1]
+    
+    # Add input contribution for terminal layer (special heuristic)
+    if x.size == 91:
+      current = current + x[-1] * 32
     else:
-      return self.layers[self.NumberOfLayers-1]
+      current = current + np.sum(x)
+    
+    return float(current[0]) if current.size == 1 else current
 
   @staticmethod
   def subsquares(x):
@@ -172,7 +158,7 @@ class NeuralNetwork:
     return x
 
 
-  @staticmethod   
+  @staticmethod  
   def softmax(oSums):
     """
     Function to softmax output values.
