@@ -126,13 +126,19 @@ class CheckerBoard:
     bits turned on: the old position and the new position.
     """
     def make_move(self, move):
-        # translate move bit
-        legalMoves = self.get_moves()
-        # find the move within the legal_moves bit and get its position
-        moveBitPosition = legalMoves.index(move)
-        # load the possible moves from the string text
-        moveString = self.get_move_strings()[moveBitPosition]
-        # ---
+        # Extract move string directly from move bits (no validation needed - caller ensures legality)
+        move_abs = abs(move)
+        # The move bit has exactly two 1-bits. Extract their positions.
+        # For regular moves (0x11 or 0x21 shifted): bits are at i and i+4 (right) or i and i+5 (left)
+        # For jumps (-0x101 or -0x401 shifted): bits are at i and i+8 (right) or i and i+10 (left)
+        bits = [i for (i, b) in enumerate(bin(move_abs)[::-1]) if b == '1']
+        src_bit = bits[0]
+        dst_bit = bits[1]
+        
+        # Convert bit positions to square numbers (1-indexed, row-major)
+        src = 1 + src_bit - src_bit//9
+        dst = 1 + dst_bit - dst_bit//9
+        moveString = f"{src}x{dst}" if move < 0 else f"{src}-{dst}"
         
         # perform move action below
         active = self.active
