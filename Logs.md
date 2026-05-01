@@ -1,248 +1,94 @@
-# Logs
+# Training Optimization Log
 
-## 18/12/2017
+## Current Performance (Post-IPC Optimization)
 
-- Currently having a test run to detect mongo errors.
-- Implementing Default Options as a parameter for run.py
-- Note that I will need to consider plyDepth as an option parameter for easy testing
-- will also need to write to a local database because a live mongo writing is a bit messy rn.
-- Default Options parameter now implemented
-- PlyDepth paramter now added
-- Error for champ games:
+From py-spy profiling after chunksize fix:
+- `treesearch`: 4937 samples (core MCTS computation)
+- `push_move`: 1089 samples (board mutations)
+- `pop_move`: 784 samples (state rollbacks)
+- `make_move`: 773 samples (move generation)
+- `evaluate_board`: 253 samples (NN evals - reduced from earlier)
+- `subsquares`: 247 samples (feature extraction)
 
-    Traceback (most recent call last):
-    File "run.py", line 17, in <module>
-        run()
-    File "run.py", line 14, in run
-        t.runGenerations()
-    File "/Users/thien/Documents/GitHub/zephyr/tournament.py", line 301, in runGenerations
-        self.runChampions()
-    File "/Users/thien/Documents/GitHub/zephyr/tournament.py", line 167, in runChampions
-        results = self.pool.map(self.poolChampGame, champGames)
-    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/pool.py", line 266, in map
-        return self._map_async(func, iterable, mapstar, chunksize).get()
-    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/pool.py", line 644, in get
-        raise self._value
-    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/pool.py", line 424, in _handle_tasks
-        put(task)
-    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/connection.py", line 206, in send
-        self._send_bytes(_ForkingPickler.dumps(obj))
-    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/reduction.py", line 51, in dumps
-        cls(buf, protocol).dump(obj)
-    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/pool.py", line 528, in __reduce__
-        'pool objects cannot be passed between processes or pickled'
-    NotImplementedError: pool objects cannot be passed between processes or pickled
+## Completed Optimizations
 
-- will need to implement a proper round robin algorithm.
-- champ games error is now fixed
-- currently made the champ games primitive to see relative immediate performance. should be improved using Dantchev's description of premier league
-- need to write up code for dashboard instead of dumping a bunch of random shit on the terminal
-- made ELO redundant for now
+1. ~~IPC overhead (serialization, lock contention)~~ - FIXED via chunksize
+2. ~~Matplotlib empty data crash~~ - FIXED with early return guard
+3. ~~Excessive console logging~~ - FIXED with file-based logging
 
-## 19/12/2017
+## Pending Optimization Tasks
 
-- currently working on updating the status
-- could simplify the ID's of each agent with just a number; would shorten the amount of strings!
-- simplified ID strings
-- created initial status messages, will need to test this offline due to instabilities
-- will need to write champion coefficents to a json file.
-- debug console is completed now.
-- There seems to be an issue which may be the case for running it on a mac:
- 
-    Traceback (most recent call last):
-    File "run_lite.py", line 18, in <module>
-        run()
-    File "run_lite.py", line 15, in run
-        t.runGenerations()
-    File "/Users/thien/Documents/GitHub/zephyr/tournament.py", line 233, in runGenerations
-        self.runChampions()
-    File "/Users/thien/Documents/GitHub/zephyr/tournament.py", line 320, in runChampions
-        pool = multiprocessing.Pool(processes=self.processors)
-    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/context.py", line 119, in Pool
-        context=self.get_context())
-    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/pool.py", line 174, in __init__
-        self._repopulate_pool()
-    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/pool.py", line 239, in _repopulate_pool
-        w.start()
-    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/process.py", line 105, in start
-        self._popen = self._Popen(self)
-    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/context.py", line 277, in _Popen
-        return Popen(process_obj)
-    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/popen_fork.py", line 20, in __init__
-        self._launch(process_obj)
-    File "/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/lib/python3.6/multiprocessing/popen_fork.py", line 66, in _launch
-        parent_r, child_w = os.pipe()
-    OSError: [Errno 24] Too many open files 
+### HIGH PRIORITY: MLX Batch Inference
 
-- This will need to be tested on a windows machine to make sure.
-- This has been verified to be only an issue on macs. This isn't really a priority since the gruntwork will be on the windows machine.
-- However, another error has been found:
+**Problem**: Each tree node calls `evaluate_board` individually. No batching happening.
 
-    Traceback (most recent call last):
-    File ".\\run_lite.py", line 18, in <module>
-        run()
-    File ".\\run_lite.py", line 15, in run
-        t.runGenerations()
-    File "C:\\Users\\Tnguy\\Documents\\GitHub\\zephyr\\tournament.py", line 231, in runGenerations
-        population = ga.generateNewPopulation(players, self.population)
-    File "C:\\Users\\Tnguy\\Documents\\GitHub\\zephyr\\genetic.py", line 32, in generateNewPopulation
-        parent = roulette(players)
-    File "C:\\Users\\Tnguy\\Documents\\GitHub\\zephyr\\genetic.py", line 89, in roulette
-        probability = i.points / overallFitness
-    ZeroDivisionError: division by zero
+**Files to modify**:
+- `library/core/population.py` line 52: Change `sp.Slowpoke(self.plyDepth,debug=self.isDebug)` → add `use_mlx=True`
+- `library/decision/tmcts.py`: Switch `treesearch` → `treesearch_batch`
+- `library/agents/slowpoke.py`: Connect batch infrastructure (`_batch_inputs`, `_batch_refs` already exist but unused)
 
-- This will need to be worked on tomorrow or sometime.
-- will need to tackle the mongo no connection print.
-- fixed pipe issue
-- Should update to mongo periodically instead of per process..
-- will also need to read the blondie24 paper to see their implementations.
-- fixed mongo printing error
-- initial file commit for heavy load (for testing)
-- There's an issue with printing dates on windows. Mean gen time and remaining gen time are absent for some reason.
+**Expected impact**: 10-100x reduction in NN eval overhead depending on batch size.
 
-## 20/12/2017
+### MEDIUM PRIORITY: Cython/Numba for Board Operations
 
-- need to save champion to a file
-- will also need to update the file every generation.
-- update the mutation algorithm
-- update the crossover algorithm
- - should have multiple kids
-- next population generation method:
-    for a population of 15:
-        first 5 is the top 5 players of the previous gen
-        next 4 is the children of 1st and 2nd place from previous gen
-        next 4 is the children of 2nd and 3rd place from previous gen
-        last 2 is direct mutation of 4th and 5th place from previous gen.
+**Files**: `library/core/checkers.py`
+**Functions**: `push_move` (line 488), `pop_move` (line 509), `make_move` (line 205)
 
-- currently, mira runs heavy loads with generations finishing every 30 minutes.
+**Approach**:
+```python
+# Before
+def push_move(self, move):
+    piece = self.board[move[0]]
+    self.board[move[0]] = 0
+    self.board[move[1]] = piece
+    ...
 
-TODO:
+# After (with @njit or @cython)
+# Pure numpy operations, no Python object overhead
+```
 
-- optimise neural network (done)
-- create ravel and unravel algorithms (flatten the coefficents of the neural network) (DONE)
-- update mutation algorithm
-- write champs to a file
-- update mongo writing
-- update champion performance algorithm
-- write current generation to file
-- load from file
+### MEDIUM PRIORITY: Numba for subsquares
 
-## 21/12/2017
+**File**: `library/agents/evaluator/subsquares.py`
 
-- integrate population class (DONE)
-- update mutation algorithm (DONE)
-- update champion performance algorithm (DONE)
-- write champs to a file (DONE)
-- play champions from 2nd gen to determine performance (DONE)
-- write current generation to file
-- load from file
-- update mongo writing
-- print player ID's in debug log
-- build web interface
+**Current**: List comprehension with Python loops
+**Target**: Fully vectorized numpy
+```python
+# Current approach likely uses loops
+# Target: 
+def subsquares(x):
+    kernel = np.array([[...]])  # 3x3 convolution kernel
+    return signal.convolve2d(x, kernel, mode='valid')
+```
 
-https://arxiv.org/abs/1712.06567
+### LOW PRIORITY: Persistent Process Pool
 
-## 22/12/2017
+**File**: `library/core/tournament.py`
+**Location**: `Tournament.run()` and `Tournament.runChampions()`
 
-- improve neural network
-- improve champion algorithm
-- improve crossover
-- improve mutation
-- increase ply depth when moves are forced
+Currently creates new pool per generation. Could:
+1. Create pool once in `__init__`
+2. Use `initializer` to set up shared memory
+3. Pass board states as numpy arrays for zero-copy
 
-    "The neural network topology chosen for the evolutionary checkers experiments. The net- works have 32 input nodes (blue) that correspond to the 32 possible positions on the board. The two hidden layers (green) comprise 40 and 10 hidden nodes, respectively. All input nodes are connected directly to the output node (red) with a weight of 1.0. Bias terms affect each hidden and output node as a threshold term (not pictured)."
+### LOW PRIORITY: NumPy Board Representation
 
-- score should not consider previous champs weighting with the further previous champs.
+**File**: `library/core/checkers.py`
 
-## 03/01/2018
+Current: Python list representation
+Benefits of numpy:
+- Zero-copy snapshots for caching
+- Vectorizable move generation
+- Shared memory between processes
 
-    After every neural network in the population played its five games as the red player, the fifteen neural networks with the highest point totals were saved as parents for the next generation. The remaining fifteen neural networks with the lowest point totals were killed o¤, victims of natural selection. Then, to begin the next generation, each surviving parent was copied to create a new o¤spring neural net- work, in which each weight of every o¤spring was varied at random, and the competition was started anew with the thirty members of the population.
-    Playing at the edge of ai
+## Quick Wins
 
-    The only detail about our evolutionary process that I haven't pro- vided concerns how o¤spring neural networks were created from their parents.You've probably heard of a "bell curve."4 Kumar and I im- plemented a variation process whereby each weight of a surviving par- ent neural network was mutated using a bell curve.
-The details of how to accomplish this procedure are presented in technical papers that we've published.5 The essence of the idea is to use a method that's likely to generate values for an o¤spring's weights
+1. Add `use_mlx=True` to agent creation - 30 min
+2. Profile `subsquares` - understand current implementation
+3. Test numba on `push_move`/`pop_move` - 1 hour
 
-read p177!
+## Notes
 
-## 06/01/2018
-
-Crossover Algorithm:
-
-  def crossOver(self, cpu1, cpu2, child1, child2, index1, index2):
-   """
-   Basic Crossover Algorithm for the GA.
-   """
-   mother = self.getWeights(cpu1)
-   father = self.getWeights(cpu2)
-
-   # pythonic crossover
-   child1W = np.append(np.append(father[:index1], mother[index1:index2]), father[index2:])
-   child2W = np.append(np.append(mother[:index1], father[index1:index2]), mother[index2:])
-   
-   # create new children with it
-   self.setWeights(child1, child1W)
-   self.setWeights(child2, child2W)
-
-   # return the pair of children
-   return (child1,child2)  
-
-for each layer's weights:
-    n = number of weights and biases in a given layer
-    index1 = random integer[0 to n]
-    index2 = random integer[0 to n]
-    if index2 < index1:
-        swap index1 and index2's values
-    Weights(child1) = father[0 to index1] + mother[index1 to index 2] + father[index2 to n]
-    Weights(child2) = mother[0 to index1] + father[index1 to index 2] + mother[index2 to n]
-
-## 08/01/2018
-
-Testing performance of ReLU. It's much more faster than our current function; tanh; but it is nowhere near as effective. This may be due to the fact that it only considers the positive part of the argument; i'd imagine that the network is set up to consider negative numbers.
-
-JK at generation 50 it started picking up. I've saved the historical champions and its strategies; here it's playing at 6.22
-
-## April 2025 - Performance Optimisation Pass
-
-### Neural Network Optimisations
-
-The original `NeuralNetwork.compute()` method used an inefficient loop-based approach where each neuron was computed individually with Python for loops. This caused significant overhead for the bias addition (line 127 originally iterated through biases incorrectly).
-
-The optimised implementation:
-- Vectorised the forward pass using NumPy broadcasting: `z = np.dot(x, W) + b` eliminates the per-neuron loop
-- Added `__slots__` to prevent dynamic attribute creation overhead
-- Implemented `compute_batch()` for NumPy and `compute_batch_mlx()` for MLX acceleration
-- Pre-allocated weight arrays to avoid repeated memory allocation in genetic algorithm operations
-
-Performance results:
-- Original compute(): ~0.025ms per evaluation (32->40->10->1 network)
-- Optimised compute(): ~0.006ms per evaluation
-- MLX batch eval: ~0.02μs per evaluation (512-batch) - 35x faster than NumPy sequential
-
-### Tree Search Optimisations
-
-The original MCTS and minimax implementations copied the entire board state for each node evaluation using `B.copy()`. This involved:
-- Deep copying all 64 board positions
-- Copying the PDN (Portable Draughts Notation) dict
-- Allocation overhead for each simulation
-
-The optimised approach uses `push_move()`/`pop_move()` pattern:
-- Moves are applied to the single board instance via push
-- State is restored via pop after evaluation
-- FEN hash based position caching avoids redundant evaluations
-- Benchmark shows push/pop is ~2.4x faster than copy for 100 iterations
-
-### MLX Integration
-
-MLX (Apple Silicon GPU acceleration) is now integrated for neural network evaluation:
-- The `use_mlx` parameter in NeuralNetwork enables MLX tensors
-- Batch evaluation `compute_batch_mlx()` processes 512+ positions in a single GPU operation
-- Tree search accumulates positions during traversal, then evaluates in batches
-- Falls back to NumPy gracefully on non-Apple Silicon or when MLX unavailable
-
-### CheckerBoard __slots__
-
-Added `__slots__ = ('pdn', 'turn', 'AIBoardPos', '_history', ...)` to CheckerBoard class:
-- Prevents dynamic dict creation for each instance
-- Reduces memory overhead per board
-- Required `_history = []` attribute for push/pop implementation
-- Fixed `AIBoardPos` inclusion to resolve AttributeError during move generation
+- MLX batch inference has infrastructure already written (`treesearch_batch`, `compute_batch_mlx`)
+- Key is connecting the batch accumulation during tree traversal
+- Current `treesearch` returns scalar per call - needs refactoring to accumulate and batch
