@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::Bound;
+use numpy::{PyArray1, IntoPyArray};
 
 // ── Constants ──
 const BLACK: u8 = 0;
@@ -119,6 +120,20 @@ impl CheckerBoard {
         m
     }
 
+    /// Returns true if any legal move exists (for is_over fast-path).
+    /// Avoids allocating a Vec — just ORs bitboard results.
+    pub fn has_any_moves(&self) -> bool {
+        // Check jumps first
+        let rfj = (self.empty >> 8) & (self.pieces[self.passive as usize] >> 4) & self.forward[self.active as usize];
+        let lfj = (self.empty >> 10) & (self.pieces[self.passive as usize] >> 5) & self.forward[self.active as usize];
+        let rbj = (self.empty << 8) & (self.pieces[self.passive as usize] << 4) & self.backward[self.active as usize];
+        let lbj = (self.empty << 10) & (self.pieces[self.passive as usize] << 5) & self.backward[self.active as usize];
+        if (rfj | lfj | rbj | lbj) != 0 { return true; }
+        // Check regular moves
+        self.right_forward() != 0 || self.left_forward() != 0
+            || self.right_backward() != 0 || self.left_backward() != 0
+    }
+
     /// All possible jumps from a specific piece bit.
     pub fn jumps_from(&self, piece: u64) -> Vec<i64> {
         let (rfj, lfj, rbj, lbj) = if self.active == BLACK {
@@ -217,29 +232,29 @@ impl CheckerBoard {
     pub fn get_no_eat_count(&self) -> u32 { self.no_eat_count }
     pub fn get_jump_flag(&self) -> bool { self.jump }
 
-    /// Returns Vec<f32> weighted board position for NN evaluation.
-    pub fn get_board_pos_weighted(&self, colour: u8,
-        w_empty: f32, w_black: f32, w_white: f32, w_bk: f32, w_wk: f32) -> Vec<f32>
+    /// Returns numpy float32[32] weighted board position for NN evaluation.
+    pub fn get_board_pos_weighted<'py>(&self, py: Python<'py>, colour: u8,
+        w_empty: f32, w_black: f32, w_white: f32, w_bk: f32, w_wk: f32) -> Bound<'py, PyArray1<f32>>
     {
         let bk = self.backward[BLACK as usize];
         let bm = self.forward[BLACK as usize] ^ bk;
         let wk = self.forward[WHITE as usize];
         let wm = self.backward[WHITE as usize] ^ wk;
-        let mut out = Vec::with_capacity(32);
+        let mut data = Vec::with_capacity(32);
         if colour == BLACK {
             for i in 0..4 { for j in 0..8 {
                 let c = cell_bit(i, j);
-                out.push(if c & bm != 0 { w_black } else if c & wm != 0 { w_white }
+                data.push(if c & bm != 0 { w_black } else if c & wm != 0 { w_white }
                     else if c & bk != 0 { w_bk } else if c & wk != 0 { w_wk } else { w_empty });
             }}
         } else {
             for i in (0..4).rev() { for j in (0..8).rev() {
                 let c = cell_bit(i, j);
-                out.push(if c & bm != 0 { w_white } else if c & wm != 0 { w_black }
+                data.push(if c & bm != 0 { w_white } else if c & wm != 0 { w_black }
                     else if c & bk != 0 { w_wk } else if c & wk != 0 { w_bk } else { w_empty });
             }}
         }
-        out
+        data.into_pyarray(py)
     }
 
     /// True if any pieces of the given colour exist on the board.
@@ -247,22 +262,22 @@ impl CheckerBoard {
         self.pieces[colour as usize] != 0
     }
 
-    /// Returns 32-element Vec<i8>: Black=0, White=1, empty=-1, blackKing=2, whiteKing=3
-    pub fn get_rank(&self) -> Vec<i8> {
+    /// Returns numpy int8[32]: Black=0, White=1, empty=-1, blackKing=2, whiteKing=3
+    pub fn get_rank<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<i8>> {
         let bk = self.backward[BLACK as usize];
         let bm = self.forward[BLACK as usize] ^ bk;
         let wk = self.forward[WHITE as usize];
         let wm = self.backward[WHITE as usize] ^ wk;
-        let mut rank = Vec::with_capacity(32);
+        let mut data = Vec::with_capacity(32);
         for i in 0..4 { for j in 0..8 {
             let c = cell_bit(i, j);
-            rank.push(if c & bm != 0 { BLACK as i8 }
+            data.push(if c & bm != 0 { BLACK as i8 }
                 else if c & wm != 0 { WHITE as i8 }
                 else if c & bk != 0 { 2 }
                 else if c & wk != 0 { 3 }
                 else { EMPTY });
         }}
-        rank
+        data.into_pyarray(py)
     }
 
     pub fn copy(&self) -> Self { self.clone() }

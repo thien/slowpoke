@@ -189,7 +189,7 @@ if __name__ == "__main__":
     for b in boards:
         py_out = b.getBoardPosWeighted(Black, weights)
         if hasattr(b, '_core') and b._core is not None:
-            rs_out = b._core.get_board_pos_weighted(0, w['empty'], w['Black'], w['White'],
-                                                      w['blackKing'], w['whiteKing'])
+            rs_out = np.asarray(b._core.get_board_pos_weighted(0, w['empty'], w['Black'], w['White'],
+                                                      w['blackKing'], w['whiteKing']))
             assert np.allclose(py_out, rs_out, atol=1e-6), "Python/Rust mismatch!"
     print(f"Correctness: OK ({len(boards)} boards match)")

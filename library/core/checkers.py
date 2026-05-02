@@ -45,6 +45,14 @@ repetitionLimits = 12
 unusedBits = 0b100000000100000000100000000100000000
 
 
+def _reconstruct_board(state):
+    """Recreate a CheckerBoard from a pickled state dict."""
+    B = CheckerBoard(_skip_core=True)
+    for k, v in state.items():
+        setattr(B, k, v)
+    return B
+
+
 def _set_bits(n):
     """Return list of set bit positions in n (LSB first), only looping over set bits.
 
@@ -70,9 +78,13 @@ class CheckerBoard:
         'blackPieces', 'whitePieces', '_history', 'AIBoardPos', '_AIBoardArray', '_core', '_has_core', 'is_over_called'
     )
     
-    def __init__(self):
-        self._core = _RustCB() if _HAS_RUST_CORE else None
-        self._has_core = self._core is not None
+    def __init__(self, _skip_core=False):
+        if _skip_core:
+            self._core = None
+            self._has_core = False
+        else:
+            self._core = _RustCB() if _HAS_RUST_CORE else None
+            self._has_core = self._core is not None
         self.forward = [None, None]
         self.backward = [None, None]
         self.pieces = [None, None]
@@ -302,10 +314,10 @@ class CheckerBoard:
         if self.jump:
             return self.mandatoryJumps
         if self._has_core:
-            jumps = list(self._core.get_jumps())
+            jumps = self._core.get_jumps()
             if jumps:
                 return jumps
-            return list(self._core.get_regular_moves())
+            return self._core.get_regular_moves()
 
         jumps = self.get_jumps()
         if jumps:
@@ -397,7 +409,11 @@ class CheckerBoard:
         if self.noEatCount == boringNoEatLimit:
             self.checkWinner()
             return True
-        if len(self.get_moves()) == 0:
+        if self._has_core:
+            if not self._core.has_any_moves():
+                self.checkWinner()
+                return True
+        elif len(self.get_moves()) == 0:
             self.checkWinner()
             return True
         lastmoves = self.altMoveStack[-repetitionLimits:]
@@ -456,6 +472,12 @@ class CheckerBoard:
                 return Black
             else:
                 return White
+
+    def __reduce__(self):
+        # Pickle without the Rust core — workers create their own
+        state = {s: getattr(self, s, None) for s in self.__slots__
+                 if s not in ('_core', '_has_core')}
+        return (_reconstruct_board, (state,))
 
     def copy(self):
         B = CheckerBoard()
@@ -628,9 +650,9 @@ class CheckerBoard:
     """
     def updateState(self):
         if self._has_core:
-            raw = self._core.get_rank()
-            self.AIBoardPos = [int(x) for x in raw]
-            self._AIBoardArray = np.array(raw, dtype=np.int8)
+            raw_arr = self._core.get_rank()
+            self.AIBoardPos = [int(x) for x in raw_arr]
+            self._AIBoardArray = raw_arr
             self.turnCount = self._core.get_turn_count() + 1
             self.active = self._core.get_active()
             self.passive = self._core.get_passive()
@@ -640,7 +662,7 @@ class CheckerBoard:
             whitePieces = []
             for i in range(4):
                 for j in range(8):
-                    v = raw[8 * i + j]
+                    v = raw_arr[8 * i + j]
                     sq = str(1 + j + 8 * i)
                     if v == Black:
                         state[i][j] = Black
@@ -742,9 +764,9 @@ class CheckerBoard:
     def getBoardPosWeighted(self, colour, weights):
         w = weights
         if self._has_core:
-            return np.array(self._core.get_board_pos_weighted(
+            return self._core.get_board_pos_weighted(
                 colour, w['empty'], w['Black'], w['White'],
-                w['blackKing'], w['whiteKing']), dtype=np.float32)
+                w['blackKing'], w['whiteKing'])
         arr = self._AIBoardArray
         if colour == Black:
             lookup = np.array([w['empty'], w['Black'], w['White'],
