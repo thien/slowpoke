@@ -9,19 +9,19 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.population import Population
 from decision.parallel_tmcts import ParallelTMCTS
-from agents.slowpoke import Slowpoke
+from agents.slowbro import Slowbro
 
 class TestParallelPopulationIntegration(unittest.TestCase):
   """Test parallel MCTS integration with Population."""
   
-  def test_ply_1_uses_slowpoke(self):
-    """ply=1 should use Slowpoke by default (no parallelism needed for shallow search)."""
-    # Create population with ply=1 (should use Slowpoke)
+  def test_ply_1_uses_slowbro(self):
+    """ply=1 should use Slowbro (native [32] NN)."""
+    # Create population with ply=1
     pop = Population(numberOfPlayers=2, plyDepth=1, isDebug=True, useParallelMCTS=False)
     
-    # Check that bots are Slowpoke
+    # Check that bots are Slowbro
     for player_id, player in pop.players.items():
-      self.assertIsInstance(player.bot, Slowpoke, f"Player {player_id} should be Slowpoke")
+      self.assertIsInstance(player.bot, Slowbro, f"Player {player_id} should be Slowbro")
   
   def test_ply_2_uses_parallel_by_default(self):
     """ply=2 should use ParallelTMCTS by default (auto mode)."""

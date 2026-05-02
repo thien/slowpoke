@@ -1,4 +1,4 @@
-import agents.slowpoke as sp
+import agents.slowbro as sb
 import agents.agent as agent
 import core.mongo as mongo
 from agents.evaluator.neural import NeuralNetwork
@@ -89,8 +89,6 @@ class Population:
 
     # if safe mutations are enabled, we use it.
     self.safeMutations = True
-    # create reference neural network
-    self.nn = NeuralNetwork(self.players[0].bot.layers)
     # debug flag
     self.debug = False
     # flag to handle crossover method; if 2 do heuristic method
@@ -101,19 +99,14 @@ class Population:
   generatePlayers() function!
   """
   def generatePlayer(self):
-    # Use parallel MCTS for deeper ply depths
-    if self.useParallelMCTS:
-      from decision.parallel_tmcts import ParallelTMCTS
-      # Create a neural network for the bot (same as Slowpoke)
-      # Using [32, 40, 10, 1] — subsquares matrix is now fused into first-layer weights,
-      # so the 32-element board input goes directly into the NN (no 91→subsquares→NN)
-      nn = NeuralNetwork([32, 40, 10, 1], use_mlx=True)
-      bot = ParallelTMCTS(self.plyDepth, evaluator=None, num_parallel=self.parallelThreads, debug=self.isDebug)
-      bot.nn = nn  # Attach the neural network
-      bot.layers = [32, 40, 10, 1]  # Set layers for compatibility
-      bot.use_mlx = True  # Enable MLX for batch evaluation
-    else:
-      bot = sp.Slowpoke(self.plyDepth, layers=[32, 40, 10, 1], debug=self.isDebug, use_mlx=True)
+    # Slowbro handles [32,40,10,1] NN natively, with optional parallel TMCTS
+    bot = sb.Slowbro(
+        plyDepth=self.plyDepth,
+        use_mlx=True,
+        use_parallel=self.useParallelMCTS,
+        num_parallel=self.parallelThreads,
+        debug=self.isDebug
+    )
     human = agent.Agent(bot, initial_elo=self.baselineElo)
     # generate ID
     human.setID(self.playerCounter)
@@ -128,8 +121,8 @@ class Population:
     # Prevent creating multiple baseline entities
     if self.baselineEntity is not None:
       return self.baselineEntity
-    # Create a Slowpoke with random/uninitialized weights (fused [32] architecture)
-    bot = sp.Slowpoke(self.plyDepth, layers=[32, 40, 10, 1], debug=self.isDebug, use_mlx=True)
+    # Slowbro with random/uninitialized weights (native [32] architecture)
+    bot = sb.Slowbro(plyDepth=self.plyDepth, debug=self.isDebug, use_mlx=True)
     human = agent.Agent(bot, initial_elo=self.baselineElo)
     human.setID(-1)  # Special ID for baseline entity
     human.isBaseline = True  # Mark as baseline
@@ -690,11 +683,11 @@ class Population:
   def generateFakeMoves():
     print("Generating fake moves", end=".. ")
     # we create a dictionary of fake moves. 
-    nn = NeuralNetwork(layer_list=[91,40,10,1])
+    nn = NeuralNetwork(layer_list=[32,40,10,1])
     fakeMoves = {}
     for _ in range(10000):
       # generate a random list of nn inputs
-      state = np.random.random_sample([91])
+      state = np.random.random_sample([32])
       stateID = tuple(state)
       evals = nn.compute(state)
       fakeMoves[stateID] = evals
