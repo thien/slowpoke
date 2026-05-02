@@ -125,6 +125,7 @@ class Population:
     human = agent.Agent(bot, initial_elo=self.baselineElo)
     human.setID(-1)
     human.isBaseline = True
+    human.entity_name = "baseline"
     self.players[human.id] = human
     return human
 
@@ -133,7 +134,7 @@ class Population:
     onix_bot = Onix(plyDepth=self.plyDepth, debug=self.isDebug)
     ent = agent.Agent(onix_bot, initial_elo=900.0)
     ent.setID(ONIX_ID)
-    ent.isOnix = True
+    ent.entity_name = "Onix"
     ent.origin = [[0, 0, 0]]
     ent.parents = []
     self.players[ent.id] = ent
@@ -165,10 +166,20 @@ class Population:
     elo_ratings = sorted(elo_ratings, key=operator.itemgetter(1), reverse=True)
     output = ""
     for i in elo_ratings:
-      # i[0] is the player ID, i[1] is Elo, i[2] is points
-      player_label = f"Player {i[0]}"
-      if self.baselineEntity and i[0] == self.baselineEntity.id:
-        player_label += " (baseline)"
+      label = getattr(self.players[i[0]], 'entity_name', None)
+      player_label = f"Player {i[0]} ({label})" if label else f"Player {i[0]}"
+      output += f"{player_label}\tElo: {i[1]:.1f}\tPts: {i[2]}\n"
+    return output
+
+  def printCurrentPopulationByElo(self):
+    if self.debug:
+      print("Current Population:",self.currentPopulation)
+    elo_ratings = list(map(lambda x: (x,self.players[x].elo, self.players[x].points), self.currentPopulation))
+    elo_ratings = sorted(elo_ratings, key=operator.itemgetter(1), reverse=True)
+    output = "Population by Elo Rating:\n"
+    for i in elo_ratings:
+      label = getattr(self.players[i[0]], 'entity_name', None)
+      player_label = f"Player {i[0]} ({label})" if label else f"Player {i[0]}"
       output += f"{player_label}\tElo: {i[1]:.1f}\tPts: {i[2]}\n"
     return output
 
@@ -622,10 +633,10 @@ class Population:
     else:
       black_score, white_score = 0.5, 0.5
 
-    # Update Elo — Onix is a fixed anchor at 900, never moves
-    if black != ONIX_ID:
+    # Onix is a fixed anchor at 900, never moves
+    if getattr(self.players[black], 'entity_name', None) != 'Onix':
       self.players[black].elo = self.elo_system.update_rating(black_rating, white_rating, black_score, black_games)
-    if white != ONIX_ID:
+    if getattr(self.players[white], 'entity_name', None) != 'Onix':
       self.players[white].elo = self.elo_system.update_rating(white_rating, black_rating, white_score, white_games)
 
   def addChampion(self):
