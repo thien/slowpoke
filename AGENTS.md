@@ -84,3 +84,65 @@ make bench      # benchmark hot functions
 - **MLX** optional — GPU batch evaluation for neural network. Enabled per-agent.
 - **`CheckerBoard.__slots__`** is defined; do not add ad-hoc attributes.
 - **Spelling**: Use British English throughout (colour, behaviour, centre, etc.).
+
+## Coding style
+
+All Python code must adhere to these rules, enforced by ruff:
+
+### snake_case
+
+Use `snake_case` for all names — functions, methods, variables, parameters, module-level constants. Classes use `PascalCase`. No `camelCase` anywhere.
+
+```python
+# Good
+def get_board_pos_weighted(...): ...
+class CheckerBoard: ...
+
+# Wrong
+def getBoardPosWeighted(...): ...
+```
+
+### Google-style docstrings
+
+Every function, method, and class must have a Google-style docstring:
+
+```python
+def my_function(arg1: int, arg2: str) -> bool:
+    """Short description.
+
+    Longer description if needed (optional).
+
+    Args:
+        arg1: Description of arg1.
+        arg2: Description of arg2.
+
+    Returns:
+        Description of return value.
+
+    Raises:
+        ValueError: When something goes wrong.
+    """
+```
+
+One-line docstrings are acceptable for trivial functions:
+
+```python
+def is_valid() -> bool:
+    """Return whether the current state is valid."""
+```
+
+### Type hints
+
+Every function and method signature **must** include type hints for all parameters and the return type. Use `-> None` for void functions.
+
+```python
+def compute(x: np.ndarray, alpha: float = 0.5) -> np.ndarray: ...
+```
+
+### Zen of Python
+
+Code should follow the Zen of Python (`import this`):
+- Explicit is better than implicit.
+- Flat is better than nested.
+- Readability counts.
+- If the implementation is hard to explain, it's a bad idea.

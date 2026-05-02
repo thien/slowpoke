@@ -1,5 +1,15 @@
 # Training Optimization Log
 
+## Refactoring Commitment
+
+All code in this project follows the **Zen of Python** (`import this`):
+- **Explicit over implicit**: Every function signature has type hints. Every parameter and return type is documented.
+- **Flat over nested**: Avoid deep nesting. Prefer early returns and guard clauses.
+- **Readability counts**: Google-style docstrings, snake_case naming, descriptive variable names.
+- **If it's hard to explain, it's a bad idea**: If a function or block requires a paragraph to describe, refactor it.
+
+This commitment applies retroactively to all existing code through systematic refactoring phases: test coverage → type hints → docstrings → naming conventions → formatting.
+
 ## Current Performance (Post-IPC Optimization)
 
 From py-spy profiling after chunksize fix:
