@@ -226,7 +226,7 @@ class ParallelTMCTS:
         """Restore state when unpickling."""
         self.__dict__.update(state)
     
-    def decide(self, B, colour: int) -> Any:
+    def Decide(self, B, colour: int) -> Any:
         """Run parallel MCTS and return best move."""
         return self._decide_impl(B, colour)
     

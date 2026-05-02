@@ -57,9 +57,13 @@ class Agent:
     self.id = value
 
   def getDict(self):
+    try:
+        weights = self.bot.nn.weights.tolist()
+    except AttributeError:
+        weights = None
     return {
       "_id" : self.id,
-      'weights': self.bot.nn.weights.tolist(),
+      'weights': weights,
       'elo': self.elo,
       'points' : self.points
     }
@@ -67,7 +71,10 @@ class Agent:
   def assignColour(self,colID):
     # black is 0, white is 1
     self.colour = colID
-    self.bot.currentColour = colID
+    try:
+      self.bot.currentColour = colID
+    except AttributeError:
+      pass
 
   def make_move(self, board, colour):
     return self.bot.move_function(board, colour)

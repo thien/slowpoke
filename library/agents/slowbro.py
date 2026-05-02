@@ -8,29 +8,30 @@ with no subsquares call. Supports both serial TMCTS and parallel TMCTS.
 Slowbro is the tournament agent — cleaner, faster, no external NN attachment needed.
 """
 
-import sys
 import os
+import sys
 
 # Ensure library/ is in sys.path for decision.* imports
 _lib_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _lib_dir not in sys.path:
     sys.path.insert(0, _lib_dir)
 
-import numpy as np
-from .evaluator.neural import NeuralNetwork
+from agents import minimax_draw, minimax_empty, minimax_lose, minimax_win
 
-# Shared constants matching slowpoke.py
-minimax_win = 1
-minimax_lose = -minimax_win
-minimax_draw = 0
-minimax_empty = -1
+from .evaluator.neural import NeuralNetwork
 
 
 class Slowbro:
-
-    def __init__(self, plyDepth=4, layers=None, weights=None,
-                 use_mlx=False, use_parallel=False, num_parallel=4,
-                 debug=False):
+    def __init__(
+        self,
+        plyDepth=4,
+        layers=None,
+        weights=None,
+        use_mlx=False,
+        use_parallel=False,
+        num_parallel=4,
+        debug=False,
+    ):
         """
         Initialise Slowbro agent.
 
@@ -53,7 +54,7 @@ class Slowbro:
             "White": -1,
             "empty": 0,
             "blackKing": 1.5,
-            "whiteKing": -1.5
+            "whiteKing": -1.5,
         }
 
         # Create neural network with direct 32-input architecture
@@ -71,11 +72,13 @@ class Slowbro:
         # Decision function — parallel or serial TMCTS
         if use_parallel:
             from decision.parallel_tmcts import ParallelTMCTS
+
             self.decisionFunction = ParallelTMCTS(
                 plyDepth, self, num_parallel=num_parallel, debug=debug
             )
         else:
             import decision.tmcts as tmcts
+
             self.decisionFunction = tmcts.TMCTS(plyDepth, self, debug=debug)
 
     def loadWeights(self, weights):
@@ -83,6 +86,7 @@ class Slowbro:
         if len(weights) != self.nn.lenCoefficents:
             # Legacy [91,40,10,1] weights — fuse into [32,40,10,1] via subsquares matrix
             from .evaluator.subsquares import make_fused_nn
+
             legacy_nn = NeuralNetwork([91, 40, 10, 1])
             legacy_nn.loadCoefficents(weights)
             fused_nn = make_fused_nn(legacy_nn)
