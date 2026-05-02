@@ -3,49 +3,68 @@
 ## Quick start
 
 ```bash
-# All Python commands must run from library/
-cd library
+# Build once (required after cloning)
+make install
 
-# Train (generations, 15 players)
-uv run python train.py light     # ply=1, 200 gen
-uv run python train.py medium    # ply=3, 200 gen
-uv run python train.py heavy     # ply=6, 200 gen
-uv run python train.py debug     # ply=1, random play
-uv run python train.py heavy --parallel 8
+# Train (generations, 15 players) — run from library/
+(cd library && ../.venv/bin/python train.py light)   # ply=1, 200 gen
+(cd library && ../.venv/bin/python train.py medium)  # ply=3, 200 gen
+(cd library && ../.venv/bin/python train.py heavy)   # ply=6, 200 gen
+(cd library && ../.venv/bin/python train.py heavy --parallel 8)
 
 # Play against a champion
-uv run python play.py
+(cd library && ../.venv/bin/python play.py)
 
-# Lint / format / test
+# Lint / format
 uv run ruff check .
 uv run ruff format .
-uv run pytest              # from repo root
+
+# Test / bench (after make install)
+make test
+make bench
+
+# Quick smoke test
+make smoke
 ```
 
 ## Architecture
 
 All source lives in `library/`. Imports use the `library`-relative path (e.g., `from core.checkers import CheckerBoard`). Tests use `sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))` to find `core/`.
 
-| Directory | Contents |
+| Location | Purpose |
 |---|---|
-| `library/core/` | CheckerBoard (bitboard logic), game loop, tournament, population |
-| `library/agents/` | Player bots (Slowbro, Slowpoke, Geodude, Magikarp) + evaluator |
-| `library/decision/` | MCTS variants: `tmcts.py`, `parallel_tmcts.py`, `minimax.py` |
+| `library/core/` | CheckerBoard, game loop, tournament, population |
+| `library/agents/` | Bots (Slowbro, Slowpoke, Geodude, Magikarp) |
+| `library/decision/` | MCTS: `tmcts.py`, `parallel_tmcts.py`, `minimax.py` |
+| `src/lib.rs` | Rust `checkers_core` — bitboard ops (hot path) |
+| `Cargo.toml` | Rust build config |
+
+**Rust backend**: `library/core/checkers.py` delegates `get_moves`, `push_move`, `pop_move`, `getBoardPosWeighted`, and `make_move` to `checkers_core.CheckerBoard` (a Rust PyO3 extension). Falls back to pure Python if the Rust module isn't installed.
 
 Agent hierarchy:
-- `Agent` (in `agent.py`) wraps a bot with Elo rating, ID, match history
-- `Slowbro` is the tournament agent — fused 32-input NN (no subsquares call)
-- `Slowpoke` is the legacy agent — 91-input NN with subsquares
+- `Agent` wraps a bot with Elo rating, ID, match history
+- `Slowbro` — tournament agent, fused 32-input NN (no subsquares)
+- `Slowpoke` — legacy agent, 91-input NN with subsquares
 
 ## Board mechanics
 
-- Bitboard representation: 36-bit integers per colour (forward/backward/pieces)
-- `make_move(move, full_update=True)` — game moves use `full_update=True` (computes PDN + display state)
-- `push_move(move)` / `pop_move()` — MCTS search uses `full_update=False` internally, skipping PDN/display and state update.
-  The search path does NOT maintain an intermediate rank list — NN evaluation reads bitboards directly.
-- `getBoardPosWeighted()` reads bitboards directly in a single pass (no intermediate rank list or dict lookup).
-- `get_moves()`, `get_jumps()`, `jumps_from()`, `make_move()` — all use `_set_bits()` helper (bit-twiddling, not `bin()`).
-- `is_over()` calls `checkWinner()` which uses bitboard checks (`self.pieces[color] != 0`).
+- Bitboard representation: 36-bit `u64` per colour (forward/backward/pieces)
+- `make_move(move, full_update=True)` — game path, computes PDN + display state
+- `push_move` / `pop_move` — MCTS search path. Bitboard state managed by Rust core.
+  History stores `mandatoryJumps` and `multipleJumpStack` on Python side; bitboard state in Rust `Vec<HistoryEntry>`.
+- `getBoardPosWeighted()` — Rust computes weighted float32[32] directly from bitboards in ~0.7us.
+- Move generation (`get_moves`, `get_jumps`, `jumps_from`) — Rust uses `u64::trailing_zeros()` (ARM `cls` instruction) for bit iteration.
+- `is_over` / `checkWinner` use bitboard checks (`pieces[color] != 0`).
+
+## Building
+
+The Rust extension requires Rust (install via `rustup`). Build once after cloning:
+
+```bash
+make install    # maturin build --release + pip install
+make test       # run all 125 tests
+make bench      # benchmark hot functions
+```
 
 ## Concurrency
 

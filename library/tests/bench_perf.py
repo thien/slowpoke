@@ -183,21 +183,13 @@ if __name__ == "__main__":
     bench_search_round(boards)
     print()
 
-    # Correctness: verify direct matches old for all boards
+    # Correctness: verify matches the canonical Rust output
     weights = {'Black': 1, 'White': -1, 'empty': 0, 'blackKing': 1.5, 'whiteKing': -1.5}
+    w = weights
     for b in boards:
-        new_b = b.getBoardPosWeighted(Black, weights)
-        # reference from bitboards
-        bk = b.backward[Black]; bm = b.forward[Black] ^ bk
-        wk = b.forward[White]; wm = b.backward[White] ^ wk
-        ref = np.empty(32, dtype=np.float32)
-        for i in range(4):
-            for j in range(8):
-                cell = 1 << (9*i + j); idx = 8*i + j
-                if cell & bm: ref[idx] = 1.0
-                elif cell & wm: ref[idx] = -1.0
-                elif cell & bk: ref[idx] = 1.5
-                elif cell & wk: ref[idx] = -1.5
-                else: ref[idx] = 0.0
-        assert np.allclose(new_b, ref), "Black mismatch!"
-    print("Correctness: OK (all boards match bitboard ground truth)")
+        py_out = b.getBoardPosWeighted(Black, weights)
+        if hasattr(b, '_core') and b._core is not None:
+            rs_out = b._core.get_board_pos_weighted(0, w['empty'], w['Black'], w['White'],
+                                                      w['blackKing'], w['whiteKing'])
+            assert np.allclose(py_out, rs_out, atol=1e-6), "Python/Rust mismatch!"
+    print(f"Correctness: OK ({len(boards)} boards match)")

@@ -20,6 +20,13 @@ import datetime
 from termcolor import colored
 from itertools import groupby
 
+try:
+    from checkers_core import CheckerBoard as _RustCB
+    _HAS_RUST_CORE = True
+except ImportError:
+    _RustCB = None
+    _HAS_RUST_CORE = False
+
 ### CONSTANTS
 
 # Black moves "forward", White moves "backward"
@@ -60,16 +67,20 @@ class CheckerBoard:
         'forward', 'backward', 'pieces', 'active', 'passive',
         'empty', 'jump', 'mandatoryJumps', 'turnCount', 'multipleJumpStack',
         'state', 'winner', 'noEatCount', 'altMoveStack', 'moves', 'pdn',
-        'blackPieces', 'whitePieces', '_history', 'AIBoardPos', '_AIBoardArray', 'is_over_called'
+        'blackPieces', 'whitePieces', '_history', 'AIBoardPos', '_AIBoardArray', '_core', '_has_core', 'is_over_called'
     )
     
     def __init__(self):
+        self._core = _RustCB() if _HAS_RUST_CORE else None
+        self._has_core = self._core is not None
         self.forward = [None, None]
         self.backward = [None, None]
         self.pieces = [None, None]
         self.new_game()
-        # initiate the state.
-        self.updateState()
+        if self._has_core:
+            self.updateState()
+        else:
+            self.updateState()
 
     """
     Initiates the PGN for the game (for export).
@@ -105,23 +116,17 @@ class CheckerBoard:
     Resets current state to new game.
     """
     def new_game(self):
-        
+        if self._has_core:
+            self._core.new_game()
+        self.forward = [0x1eff, 0]
+        self.backward = [0, 0x7fbc00000]
+        self.pieces = [self.forward[0], self.backward[1]]
+        self.empty = unusedBits ^ (2**36 - 1) ^ (self.pieces[0] | self.pieces[1])
+
         self.active = Black
         self.passive = White
-
-        self.forward[Black] = 0x1eff
-        self.backward[Black] = 0
-        self.pieces[Black] = self.forward[Black] | self.backward[Black]
-
-        self.forward[White] = 0
-        self.backward[White] = 0x7fbc00000
-        self.pieces[White] = self.forward[White] | self.backward[White]
-
-        self.empty = unusedBits ^ (2**36 - 1) ^ (self.pieces[Black] | self.pieces[White])
-
         self.jump = 0
         self.mandatoryJumps = []
-
         self.pdn = self.init_pgn()
         self.turnCount = 0
         self.multipleJumpStack = []
@@ -130,8 +135,8 @@ class CheckerBoard:
         self.noEatCount = 0
         self.altMoveStack = []
         self.moves = []
-        self._history = []  # For push/pop move operations
-        self._AIBoardArray = np.empty(0, dtype=np.int8)  # set by _update_rank or updateState
+        self._history = []
+        self._AIBoardArray = np.empty(0, dtype=np.int8)
 
     """
     Updates the game state to reflect the effects of the input
@@ -145,79 +150,85 @@ class CheckerBoard:
         bits = _set_bits(move_abs)
         src_bit = bits[0]
         dst_bit = bits[1]
-        
-        # Convert bit positions to square numbers (1-indexed, row-major)
-        src = 1 + src_bit - src_bit//9
-        dst = 1 + dst_bit - dst_bit//9
+
+        src = 1 + src_bit - src_bit // 9
+        dst = 1 + dst_bit - dst_bit // 9
         moveString = f"{src}x{dst}" if move < 0 else f"{src}-{dst}"
-        
-        # perform move action below
-        active = self.active
-        passive = self.passive
-        if move < 0:
-            move *= -1
-            takenPiece = 1 << (sum(_set_bits(move)) // 2)
-            self.pieces[passive] ^= takenPiece
-            if self.forward[passive] & takenPiece:
-                self.forward[passive] ^= takenPiece
-            if self.backward[passive] & takenPiece:
-                self.backward[passive] ^= takenPiece
-            self.jump = 1
 
-        self.pieces[active] ^= move
-        if self.forward[active] & move:
-            self.forward[active] ^= move
-        if self.backward[active] & move:
-            self.backward[active] ^= move
+        if self._has_core:
+            self._core.make_move(move)
+            active = 1 - self._core.get_active()
+            passive = 1 - active
+            destination = 1 << dst_bit
+        else:
+            # ── Python fallback: bitboard ops ──
+            active = self.active
+            passive = self.passive
+            if move < 0:
+                move *= -1
+                takenPiece = 1 << (sum(_set_bits(move)) // 2)
+                self.pieces[passive] ^= takenPiece
+                if self.forward[passive] & takenPiece:
+                    self.forward[passive] ^= takenPiece
+                if self.backward[passive] & takenPiece:
+                    self.backward[passive] ^= takenPiece
+                self.jump = 1
 
-        destination = move & self.pieces[active]
-        self.empty = unusedBits ^ (2**36 - 1) ^ (self.pieces[Black] | self.pieces[White])
-        
-        # add to move stacks (for the bot to decide on historical moves)
+            self.pieces[active] ^= move
+            if self.forward[active] & move:
+                self.forward[active] ^= move
+            if self.backward[active] & move:
+                self.backward[active] ^= move
+
+            destination = move & self.pieces[active]
+            self.empty = unusedBits ^ (2**36 - 1) ^ (self.pieces[Black] | self.pieces[White])
+
+        # ── PDN logic (shared by both paths) ──
         self.altMoveStack.append((active, moveString))
         self.moves.append((active, moveString))
 
-
-        # if theres a jump, see if the user needs to make more jumps.
-        if self.jump:
+        if move < 0:
             self.noEatCount = 0
-            self.mandatoryJumps = self.jumps_from(destination)
-            # now put the previous position on cache.
+            if self._has_core:
+                self.mandatoryJumps = list(self._core.jumps_from(destination))
+            else:
+                self.mandatoryJumps = self.jumps_from(destination)
             positions = moveString.split("x")
             if len(positions) >= 2:
                 self.multipleJumpStack.append(positions[0])
                 self.multipleJumpStack.append(positions[1])
             if self.mandatoryJumps:
-                if not full_update:
+                if not full_update and not self._has_core:
                     self._update_rank()
                 return self
         else:
             self.noEatCount += 1
 
-        if active == Black and (destination & 0x780000000) != 0:
-            self.backward[Black] |= destination
-        elif active == White and (destination & 0xf) != 0:
-            self.forward[White] |= destination
+        if not self._has_core:
+            if active == Black and (destination & 0x780000000) != 0:
+                self.backward[Black] |= destination
+            elif active == White and (destination & 0xf) != 0:
+                self.forward[White] |= destination
 
-        # need to add the move to the list of moves.
         if len(self.multipleJumpStack) > 0:
             if len(self.multipleJumpStack) > 2:
-                # concatenate the move attack into one string, removing duplicates
                 jumpStacks = [x[0] for x in groupby(self.multipleJumpStack)]
                 self.pdn["Moves"].append("x".join(jumpStacks))
             else:
                 self.pdn["Moves"].append("x".join(self.multipleJumpStack))
-            # empty the stack when done
             self.multipleJumpStack = []
         else:
             self.pdn["Moves"].append(moveString)
-        
-        # reset the number of jumps, switch players and continue.
+
         self.jump = 0
-        self.active, self.passive = self.passive, self.active
+        if self._has_core:
+            self.active = self._core.get_active()
+            self.passive = self._core.get_passive()
+        else:
+            self.active, self.passive = self.passive, self.active
         if full_update:
             self.updateState()
-        else:
+        elif not self._has_core:
             self._update_rank()
         return self
 
@@ -290,6 +301,11 @@ class CheckerBoard:
     def get_moves(self):
         if self.jump:
             return self.mandatoryJumps
+        if self._has_core:
+            jumps = list(self._core.get_jumps())
+            if jumps:
+                return jumps
+            return list(self._core.get_regular_moves())
 
         jumps = self.get_jumps()
         if jumps:
@@ -299,7 +315,6 @@ class CheckerBoard:
         lf = self.left_forward()
         rb = self.right_backward()
         lb = self.left_backward()
-
         moves = []
         for i in _set_bits(rf):
             moves.append(0x11 << i)
@@ -312,13 +327,14 @@ class CheckerBoard:
         return moves
 
     def get_jumps(self):
+        if self._has_core:
+            return list(self._core.get_jumps())
+
         rfj = self.right_forward_jumps()
         lfj = self.left_forward_jumps()
         rbj = self.right_backward_jumps()
         lbj = self.left_backward_jumps()
-
         moves = []
-
         if (rfj | lfj | rbj | lbj) != 0:
             for i in _set_bits(rfj):
                 moves.append(-(0x101 << i))
@@ -328,10 +344,12 @@ class CheckerBoard:
                 moves.append(-(0x101 << (i - 8)))
             for i in _set_bits(lbj):
                 moves.append(-(0x401 << (i - 10)))
-
         return moves
 
     def jumps_from(self, piece):
+        if self._has_core:
+            return list(self._core.jumps_from(piece))
+
         if self.active == Black:
             rfj = (self.empty >> 8) & (self.pieces[self.passive] >> 4) & piece
             lfj = (self.empty >> 10) & (self.pieces[self.passive] >> 5) & piece
@@ -350,7 +368,6 @@ class CheckerBoard:
             else:
                 rfj = 0
                 lfj = 0
-
         moves = []
         if (rfj | lfj | rbj | lbj) != 0:
             for i in _set_bits(rfj):
@@ -376,34 +393,21 @@ class CheckerBoard:
             return True
         return False
 
-    # returns true if there are no more possible moves to make
     def is_over(self):
-        itHas = False
-        # If there's enough moves where nobody is being jumped on, 
-        # then call it a draw.
         if self.noEatCount == boringNoEatLimit:
-            itHas = True
-        else:
-            # maybe someone has actually lost.
-            if len(self.get_moves()) == 0:
-                itHas = True
-            else:
-                # if they're still playing, check if there is 
-                # threefold repetition.
-                lastmoves = self.altMoveStack[-repetitionLimits:]
-                if len(lastmoves) == repetitionLimits:
-                    p1_list = lastmoves[0::2]
-                    p2_list = lastmoves[1::2]
-                    # count unique moves
-                    p1_recent = set(p1_list)
-                    p2_recent = set(p2_list)
-                    if len(p1_recent) <4 and len(p2_recent) <4:
-                        itHas = True      
-        if itHas:
             self.checkWinner()
-            return itHas
-        else:
-            return itHas
+            return True
+        if len(self.get_moves()) == 0:
+            self.checkWinner()
+            return True
+        lastmoves = self.altMoveStack[-repetitionLimits:]
+        if len(lastmoves) == repetitionLimits:
+            p1 = set(lastmoves[0::2])
+            p2 = set(lastmoves[1::2])
+            if len(p1) < 4 and len(p2) < 4:
+                self.checkWinner()
+                return True
+        return False
 
     def checkWinner(self):
         if self.noEatCount == boringNoEatLimit:
@@ -411,14 +415,20 @@ class CheckerBoard:
             self.pdn["Winner"] = empty
             self.pdn["Result"] = "1/2-1/2"
         else:
-            has_black = self.pieces[Black] != 0
-            has_white = self.pieces[White] != 0
+            if self._has_core:
+                has_black = self._core.has_pieces(Black)
+                has_white = self._core.has_pieces(White)
+                active = self._core.get_active()
+            else:
+                has_black = self.pieces[Black] != 0
+                has_white = self.pieces[White] != 0
+                active = self.active
             if has_black and has_white:
                 self.winner = empty
                 self.pdn["Winner"] = empty
                 self.pdn["Result"] = "1/2-1/2"
             else:
-                if self.active == White:
+                if active == White:
                     self.winner = Black
                     self.pdn["Winner"] = Black
                     self.pdn["Result"] = "1-0"
@@ -447,9 +457,10 @@ class CheckerBoard:
             else:
                 return White
 
-    # Returns a new board with the exact same state as the calling object.
     def copy(self):
         B = CheckerBoard()
+        if self._has_core:
+            B._core = self._core.copy()
         B.active = self.active
         B.backward = [x for x in self.backward]
         B.empty = self.empty
@@ -459,52 +470,65 @@ class CheckerBoard:
         B.passive = self.passive
         B.pieces = [x for x in self.pieces]
         B.noEatCount = self.noEatCount
-        # B.pdn = self.pdn
         B.altMoveStack = self.altMoveStack[-repetitionLimits+2:]
         B._AIBoardArray = self._AIBoardArray.copy()
         return B
 
     def push_move(self, move):
-        history_entry = (
-            self.active,
-            self.passive,
-            self.forward[0], self.forward[1],
-            self.backward[0], self.backward[1],
-            self.pieces[0], self.pieces[1],
-            self.empty,
-            self.jump,
-            tuple(self.mandatoryJumps),
-            self.noEatCount,
-            tuple(self.multipleJumpStack),
-            self.turnCount,
-            len(self.moves),
-            len(self.altMoveStack),
-            self._AIBoardArray.tobytes(),
-        )
-        self._history.append(history_entry)
-        return self.make_move(move, full_update=False)
+        if self._has_core:
+            self._history.append((
+                tuple(self.mandatoryJumps),
+                tuple(self.multipleJumpStack),
+                len(self.moves),
+                len(self.altMoveStack),
+            ))
+            self._core.push_move(move)
+        else:
+            self._history.append((
+                self.active, self.passive,
+                self.forward[0], self.forward[1],
+                self.backward[0], self.backward[1],
+                self.pieces[0], self.pieces[1],
+                self.empty,
+                self.jump,
+                tuple(self.mandatoryJumps),
+                self.noEatCount,
+                tuple(self.multipleJumpStack),
+                self.turnCount,
+                len(self.moves),
+                len(self.altMoveStack),
+                self._AIBoardArray.tobytes(),
+            ))
+            return self.make_move(move, full_update=False)
 
     def pop_move(self):
         if not self._history:
             return self
         entry = self._history.pop()
-        self.active = entry[0]
-        self.passive = entry[1]
-        self.forward[0] = entry[2]
-        self.forward[1] = entry[3]
-        self.backward[0] = entry[4]
-        self.backward[1] = entry[5]
-        self.pieces[0] = entry[6]
-        self.pieces[1] = entry[7]
-        self.empty = entry[8]
-        self.jump = entry[9]
-        self.mandatoryJumps = list(entry[10])
-        self.noEatCount = entry[11]
-        self.multipleJumpStack = list(entry[12])
-        self.turnCount = entry[13]
-        del self.moves[entry[14]:]
-        del self.altMoveStack[entry[15]:]
-        self._AIBoardArray = np.frombuffer(entry[16], dtype=np.int8).copy()
+        if self._has_core:
+            self._core.pop_move()
+            self.mandatoryJumps = list(entry[0])
+            self.multipleJumpStack = list(entry[1])
+            del self.moves[entry[2]:]
+            del self.altMoveStack[entry[3]:]
+        else:
+            self.active = entry[0]
+            self.passive = entry[1]
+            self.forward[0] = entry[2]
+            self.forward[1] = entry[3]
+            self.backward[0] = entry[4]
+            self.backward[1] = entry[5]
+            self.pieces[0] = entry[6]
+            self.pieces[1] = entry[7]
+            self.empty = entry[8]
+            self.jump = entry[9]
+            self.mandatoryJumps = list(entry[10])
+            self.noEatCount = entry[11]
+            self.multipleJumpStack = list(entry[12])
+            self.turnCount = entry[13]
+            del self.moves[entry[14]:]
+            del self.altMoveStack[entry[15]:]
+            self._AIBoardArray = np.frombuffer(entry[16], dtype=np.int8).copy()
 
     """
     Returns a list of possible moves that the player can choose to make.
@@ -603,8 +627,43 @@ class CheckerBoard:
     This also updates the FEN.
     """
     def updateState(self):
+        if self._has_core:
+            raw = self._core.get_rank()
+            self.AIBoardPos = [int(x) for x in raw]
+            self._AIBoardArray = np.array(raw, dtype=np.int8)
+            self.turnCount = self._core.get_turn_count() + 1
+            self.active = self._core.get_active()
+            self.passive = self._core.get_passive()
+            # Build display state + PDN strings from rank
+            state = [[None for _ in range(8)] for _ in range(4)]
+            blackPieces = []
+            whitePieces = []
+            for i in range(4):
+                for j in range(8):
+                    v = raw[8 * i + j]
+                    sq = str(1 + j + 8 * i)
+                    if v == Black:
+                        state[i][j] = Black
+                        blackPieces.append(sq)
+                    elif v == White:
+                        state[i][j] = White
+                        whitePieces.append(sq)
+                    elif v == blackKing:
+                        state[i][j] = blackKing
+                        blackPieces.append("K" + sq)
+                    elif v == whiteKing:
+                        state[i][j] = whiteKing
+                        whitePieces.append("K" + sq)
+                    else:
+                        state[i][j] = empty
+            self.state = state
+            self.blackPieces = blackPieces
+            self.whitePieces = whitePieces
+            c = "B" if self.active == Black else "W"
+            self.pdn["FEN"] = f"{c}:W{','.join(whitePieces)}:B{','.join(blackPieces)}"
+            return
 
-        # generate the PDN for the current board.
+        # genPDN helper
         def genPDN(blackPieces, whitePieces):
             Black_list = ','.join(blackPieces)
             White_list = ','.join(whitePieces)
@@ -616,7 +675,6 @@ class CheckerBoard:
             li = current + ":W" + White_list + ":" + "B" + Black_list
             self.pdn["FEN"] = li
 
-        # shorthand code for calculating the cell position.
         def cellPos(i,j):
             return 1 + j + 8*i
 
@@ -638,7 +696,6 @@ class CheckerBoard:
 
         rank = []
         for i in range(4):
-        
             for j in range(8):
                 cell = 1 << (9*i + j)
                 if cell & blackMen:
@@ -660,12 +717,11 @@ class CheckerBoard:
                 else:
                     state[i][j] = empty
                     rank.append(empty)
-        # print("Rank", rank)
         self.AIBoardPos = rank
         self._AIBoardArray = np.array(rank, dtype=np.int8)
         self.state = state
         self.turnCount += 1
-        genPDN(blackPieces,whitePieces)
+        genPDN(blackPieces, whitePieces)
 
     """
     Returns the positions of the pieces for the AI.
@@ -685,6 +741,10 @@ class CheckerBoard:
     """
     def getBoardPosWeighted(self, colour, weights):
         w = weights
+        if self._has_core:
+            return np.array(self._core.get_board_pos_weighted(
+                colour, w['empty'], w['Black'], w['White'],
+                w['blackKing'], w['whiteKing']), dtype=np.float32)
         arr = self._AIBoardArray
         if colour == Black:
             lookup = np.array([w['empty'], w['Black'], w['White'],

@@ -5,10 +5,13 @@ import os
 import datetime
 import evaluator
 import statistics
-# print ('Number of arguments:', len(sys.argv), 'arguments.')
-# print ('Argument List:', str(sys.argv))
 
 def train():
+    try:
+        from checkers_core import CheckerBoard as _RustCB
+        print(f"[checkers-core] Rust backend active ({_RustCB.__module__})")
+    except ImportError:
+        print("[checkers-core] Rust backend NOT AVAILABLE - using pure Python")
     options = {
         'mongoConfigPath':'config2.json',
         'Population' : 15,
