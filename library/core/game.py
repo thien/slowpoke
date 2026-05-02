@@ -1,84 +1,82 @@
-import core.checkers as checkers
-import agents.agent as agent
-import core.mongo as mongo
+"""Game loop and tournament match functions."""
 
-import sys
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional, Union
+
+from core import checkers
+from agents.agent import Agent
 
 Black, White, empty = 0, 1, -1
 
-"""
-Displays the ASCII Board and other various information.
-"""
-def printStatus(B):
+
+def printStatus(B: checkers.CheckerBoard) -> None:
+    """Print current board status and PGN info."""
     print("--------")
-    print (B)
+    print(B)
     print(B.pdn)
     print(B.AIBoardPos)
-    # print(B.moves())
     print("--------")
 
 
-baseOptions = {
-    'show_dialog' : True,
-    'show_board' : True,
-    'human_white' : False,
-    'human_black' : False,
-    'clear_screen_on_end' : True,
-    'preload_moves' : []
+baseOptions: Dict[str, Any] = {
+    'show_dialog': True,
+    'show_board': True,
+    'human_white': False,
+    'human_black': False,
+    'clear_screen_on_end': True,
+    'preload_moves': [],
 }
 
-def printPerspectiveBoard(B, options):
+
+def printPerspectiveBoard(B: checkers.CheckerBoard, options: Dict[str, Any]) -> None:
+    """Print the board from the current player's perspective."""
     if options['clear_screen_on_end']:
         print('\033c', end=None)
 
-    # set default colour.
     blackPOV = None
-
     if options['human_black'] or options['human_white']:
-        # we know that a person is playing.
         if options['human_black'] and options['human_white']:
-            # both of them are playing, swap when needed.
-            if B.turnCount % 2 != 0:
-                # blacks turn
-                if options['human_black']:
-                    blackPOV = True
-            else:
-                if options['human_white']:
-                    # generate board sprite
-                    blackPOV = False
+            blackPOV = True if (B.turnCount % 2 != 0 and options['human_black']) else (
+                False if options['human_white'] else None
+            )
         else:
-            if options['human_black']:
-                blackPOV = True
-            else:
-                blackPOV = False
+            blackPOV = bool(options['human_black'])
     else:
-        # set a default colour.
         blackPOV = True
-
-        # whites turn
     print(B.printBoard(blackPOV))
 
-def playGame(black_player, white_player, options=baseOptions):
+
+def playGame(
+    black_player: Agent,
+    white_player: Agent,
+    options: Optional[Dict[str, Any]] = None,
+) -> checkers.CheckerBoard:
+    """Play a game between two agents with optional display options.
+
+    Args:
+        black_player: Agent playing Black.
+        white_player: Agent playing White.
+        options: Display and configuration options.
+
+    Returns:
+        The final CheckerBoard state after the game ends.
+    """
+    if options is None:
+        options = baseOptions
     B = checkers.CheckerBoard()
     current_player = B.active
 
     if len(options['preload_moves']) > 0:
         for i in options['preload_moves']:
-            # get the index of the move we're going to use
             moveIndex = B.get_move_strings().index(i[1])
             move = B.get_moves()[moveIndex]
-            # make move
             B.make_move(move)
-    
-    choice = 0
-    # take as input agents.
+
     while not B.is_over():
         if options['show_board']:
             printPerspectiveBoard(B, options)
-            # print(B.pdn['Moves'])
-            # print(B.moves)
-            # print(B.moves)
-        if  B.turnCount % 2 != choice:
+        if B.turnCount % 2 != 0:
             if options['show_dialog']:
                 print("blacks turn")
             B.make_move(black_player.make_move(B, Black))
@@ -86,96 +84,88 @@ def playGame(black_player, white_player, options=baseOptions):
             if options['show_dialog']:
                 print("whites turn")
             B.make_move(white_player.make_move(B, White))
-        # If jumps remain, then the board will not update current player
         if B.active == current_player:
             if options['show_dialog']:
-                print ("Jumps must be taken.")
+                print("Jumps must be taken.")
             continue
         else:
             current_player = B.active
 
     if options['show_board']:
-        print (B)
+        print(B)
         B.getWinnerMessage()
     return B
 
-def debugPrint(check, msg):
+
+def debugPrint(check: bool, msg: str) -> None:
+    """Print debug message if check is True."""
     if check:
         print(msg)
 
-def generateDebugMsg(debug, moveCount, B):
-    gameCountMsg = "Game: " + str(debug['gameCount']).zfill(2) + "/" + str(debug['totalGames']).zfill(2)
-    moveMsg = "Move: " + str(moveCount).zfill(3) 
-    GenerationMsg = "Gen: " + str(debug['genCount']).zfill(3) 
-    PlayersMsg = "B: " + str(B.pdn['Black']) + " | W: " + str(B.pdn['White'])
-    msg = [GenerationMsg, gameCountMsg, moveMsg, PlayersMsg]
-    msg = ' | '.join(msg)
-    debugPrint(debug['printDebug'], msg)
 
-def tournamentMatch(blackCPU, whiteCPU, gameID="NULL", dbURI=False, debug=False, multiProcessing=False):
-    # initiate connection to mongoDB
-    # this is needed because pymongo screams if you init prior fork.
+def generateDebugMsg(debug: Dict[str, Any], moveCount: int, B: checkers.CheckerBoard) -> str:
+    """Generate a formatted debug status message."""
+    gameCountMsg = "Game: " + str(debug['gameCount']).zfill(2) + "/" + str(debug['totalGames']).zfill(2)
+    moveMsg = "Move: " + str(moveCount).zfill(3)
+    GenerationMsg = "Gen: " + str(debug['genCount']).zfill(3)
+    PlayersMsg = "B: " + str(B.pdn['Black']) + " | W: " + str(B.pdn['White'])
+    msg = ' | '.join([GenerationMsg, gameCountMsg, moveMsg, PlayersMsg])
+    debugPrint(debug['printDebug'], msg)
+    return msg
+
+
+def tournamentMatch(
+    blackCPU: Agent,
+    whiteCPU: Agent,
+    gameID: Union[str, int] = "NULL",
+    dbURI: Union[bool, str] = False,
+    debug: Union[bool, Dict[str, Any]] = False,
+    multiProcessing: bool = False,
+) -> Dict[str, Any]:
+    """Run a tournament match between two agents.
+
+    Args:
+        blackCPU: Agent playing Black.
+        whiteCPU: Agent playing White.
+        gameID: Identifier for the game.
+        dbURI: MongoDB URI string or False.
+        debug: Debug configuration or False.
+        multiProcessing: Whether running in multiprocessing mode.
+
+    Returns:
+        PGN dictionary with game results.
+    """
     db = None
-    if dbURI != False:
+    if dbURI:
+        import core.mongo as mongo
         db = mongo.Mongo()
         db.initiate(dbURI)
 
-    # assign colours
     blackCPU.assignColour(Black)
     whiteCPU.assignColour(White)
 
-    # initiate checkerboard.
     B = checkers.CheckerBoard()
-    # set the ID for this game.
     B.setID(gameID)
     B.setColours(blackCPU.id, whiteCPU.id)
 
-    # add the game to mongo.
-    if dbURI != False:
-        mongoGame_id = db.write('games', B.pdn)
+    if dbURI:
+        db.write('games', B.pdn)
 
-    # set game settings
     current_player = B.active
-    choice = 0
-    # Start the game loop.
     while not B.is_over():
-        # print move status.
-        if debug != False:
-            generateDebugMsg(debug, str(B.turnCount), B)
+        if debug:
+            generateDebugMsg(debug, B.turnCount, B)
 
-        # game loop!
-        if  B.turnCount % 2 != choice:
+        if B.turnCount % 2 != 0:
             B.make_move(blackCPU.make_move(B, Black))
         else:
             B.make_move(whiteCPU.make_move(B, White))
         if B.active == current_player:
-            # Jumps must be taken; don't assign the next player.
             continue
         else:
             current_player = B.active
 
-        # print board.
-        if debug != False:
-            debugPrint(debug['printBoard'], B)
-        # store the game to MongoDB.
-        # db.update('games', mongoGame_id, B.pdn)
-    # once game is done, update the pdn with the results and return it.
-    # db.update('games', mongoGame_id, B.pdn)
+        if debug and debug.get('printBoard'):
+            debugPrint(True, B)
+
     return B.pdn
-
-# -----------
-
-def main():
-    # handlePlayerOption()
-    # play2Player()
-    print("You shouldn't be able to load this program directly. It is only called.")
-    print("Terminating..")
-    # slowpokeGame()
-
-if __name__ == '__main__':
-    try:
-        status = main()
-        sys.exit(status)
-    except KeyboardInterrupt:
-        print ("Game terminated.")
-        sys.exit(1)

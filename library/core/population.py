@@ -1,28 +1,35 @@
-import agents.slowbro as sb
+"""Population management, Elo ratings, and evolution."""
+
+from __future__ import annotations
+
+import datetime
+import json
+import math
+import multiprocessing
+import operator
+import os
+import random
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
+
 import agents.agent as agent
+import agents.slowbro as sb
 import core.mongo as mongo
 from agents.evaluator.neural import NeuralNetwork
 
-import math
-import random
-import numpy as np
-import json
-import operator
-import os
-import datetime
-import multiprocessing
-
 
 class EloRating:
+    """Elo rating system with anchoring and K-factor calibration.
+
+    K=32 for new players (<10 games), K=24 for intermediate (10-50 games),
+    K=10 for established (>50 games).
     """
-    Elo rating system with anchoring and K-factor calibration.
-    K=32 for new players (<10 games), K=24 for intermediate (10-50 games), K=10 for established (>50 games).
-    """
-    def __init__(self, k_factor=32, initial_rating=1200):
+    def __init__(self, k_factor: int = 32, initial_rating: int = 1200) -> None:
         self.k_factor = k_factor
         self.initial_rating = initial_rating
-    
-    def get_k_factor(self, games_played):
+
+    def get_k_factor(self, games_played: int) -> int:
         """Get K-factor based on number of games played."""
         if games_played < 10:
             return 32  # New player - high volatility
@@ -31,10 +38,11 @@ class EloRating:
         else:
             return 10  # Established - low volatility
     
-    def expected_score(self, player_rating, opponent_rating):
+    def expected_score(self, player_rating: float, opponent_rating: float) -> float:
+        """Calculate expected score for a player against an opponent."""
         return 1 / (1 + 10 ** ((opponent_rating - player_rating) / 400))
-    
-    def update_rating(self, player_rating, opponent_rating, actual_score, games_played=0):
+
+    def update_rating(self, player_rating: float, opponent_rating: float, actual_score: float, games_played: int = 0) -> float:
         expected = self.expected_score(player_rating, opponent_rating)
         # Use dynamic K-factor if games_played > 0, otherwise use fixed K-factor
         if games_played > 0:
@@ -50,7 +58,7 @@ WinPt, DrawPt, LosePt = 2, 0, -1
 ONIX_ID = -2  # Permanent heuristic-bot fixture, never champion, never parent
 
 class Population:
-  def __init__(self, numberOfPlayers, plyDepth, isDebug=False, useParallelMCTS=None, numParallel=4, includeBaseline=True, baselineElo=500.0, includeOnix=False):
+  def __init__(self, numberOfPlayers: int, plyDepth: int, isDebug: bool = False, useParallelMCTS: Optional[bool] = None, numParallel: int = 4, includeBaseline: bool = True, baselineElo: float = 500.0, includeOnix: bool = False) -> None:
     self.isDebug = isDebug
     
     self.generation = 0
@@ -99,7 +107,7 @@ class Population:
   Generates an individual player. This is only called in the
   generatePlayers() function!
   """
-  def generatePlayer(self):
+  def generatePlayer(self) -> Agent:
     # Slowbro handles [32,40,10,1] NN natively, with optional parallel TMCTS
     bot = sb.Slowbro(
         plyDepth=self.plyDepth,
@@ -118,7 +126,7 @@ class Population:
   Generates a baseline player with uninitialized (random) weights.
   This player has 1200 Elo and serves as a reference point in tournaments.
   """
-  def generateBaselinePlayer(self):
+  def generateBaselinePlayer(self) -> object:
     if self.baselineEntity is not None:
       return self.baselineEntity
     bot = sb.Slowbro(plyDepth=self.plyDepth, debug=self.isDebug, use_mlx=True)
@@ -129,7 +137,7 @@ class Population:
     self.players[human.id] = human
     return human
 
-  def generateOnixPlayer(self):
+  def generateOnixPlayer(self) -> object:
     from agents.onix import Onix
     onix_bot = Onix(plyDepth=self.plyDepth, debug=self.isDebug)
     ent = agent.Agent(onix_bot, initial_elo=900.0)
@@ -144,7 +152,7 @@ class Population:
   Generates Players to participate in the tournament.
   This is only called at the beginning of the genetic algorithm.
   """
-  def generatePlayers(self, count):
+  def generatePlayers(self, count: int) -> list:
     players = []
     for _ in range(count):
       # generate a new human
@@ -159,7 +167,7 @@ class Population:
   Self explanatory, prints the current population in order of
   Elo rating (now the primary ranking metric).
   """
-  def printCurrentPopulationByPoints(self):
+  def printCurrentPopulationByPoints(self) -> str:
     if self.debug:
       print("Current Population:",self.currentPopulation)
     elo_ratings = list(map(lambda x: (x,self.players[x].elo, self.players[x].points), self.currentPopulation))
@@ -171,7 +179,7 @@ class Population:
       output += f"{player_label}\tElo: {i[1]:.1f}\tPts: {i[2]}\n"
     return output
 
-  def printCurrentPopulationByElo(self):
+  def printCurrentPopulationByElo(self) -> str:
     if self.debug:
       print("Current Population:",self.currentPopulation)
     elo_ratings = list(map(lambda x: (x,self.players[x].elo, self.players[x].points), self.currentPopulation))
@@ -186,7 +194,7 @@ class Population:
   """
   Prints the current population in order of Elo rating.
   """
-  def printCurrentPopulationByElo(self):
+  def printCurrentPopulationByElo(self) -> str:
     if self.debug:
       print("Current Population:",self.currentPopulation)
     elo_ratings = list(map(lambda x: (x,self.players[x].elo, self.players[x].points), self.currentPopulation))
@@ -199,7 +207,7 @@ class Population:
       output += f"{player_label}\tElo: {i[1]:.1f}\tPts: {i[2]}\n"
     return output
 
-  def printEloStats(self):
+  def printEloStats(self) -> str:
     """Print Elo statistics for the current population."""
     elos = [self.players[pid].elo for pid in self.currentPopulation]
     avg_elo = sum(elos) / len(elos)
@@ -214,7 +222,7 @@ class Population:
   order the players by how good they are.
   Now sorts by Elo rating instead of points.
   """
-  def sortCurrentPopulationByPoints(self):
+  def sortCurrentPopulationByPoints(self) -> list:
     # create tuple of players and their elo ratings
     elo_ratings = list(map(lambda x: (x,self.players[x].elo), self.currentPopulation))
     # sort list of tuples by Elo (highest first)
@@ -227,7 +235,7 @@ class Population:
   Input: list of player ID's.
   Output: a new list of players.
   """
-  def generateNextPopulation(self):
+  def generateNextPopulation(self) -> None:
     start = datetime.datetime.now()
     self.generation += 1
 
@@ -353,7 +361,7 @@ class Population:
     print("Successfully computed offsprings for the next generation.")
 
 
-  def heuristicCrossover(self,cpu1,cpu2,child1,child2):
+  def heuristicCrossover(self, cpu1, cpu2, child1, child2) -> None:
     print("Processing Crossover")
     mother = self.players[cpu1].bot.nn.weights
     father = self.players[cpu2].bot.nn.weights
@@ -396,7 +404,7 @@ class Population:
   Crossover mechanism for creating offspring children
   Input: two parents, two children, two indexes to swap from
   """
-  def crossOver(self, cpu1, cpu2, child1, child2):
+  def crossOver(self, cpu1, cpu2, child1, child2) -> None:
     """
     Basic Crossover Algorithm for the GA.
     """
@@ -441,7 +449,7 @@ class Population:
   """
   Mutate the weights of the neural network.
   """
-  def mutate(self,cpu):
+  def mutate(self, cpu) -> None:
     """
     Mutate the weights of the neural network.
     """
@@ -472,7 +480,7 @@ class Population:
   """
   Static function to create safe mutations
   """
-  def safeMutation(self, cpu, static=False):
+  def safeMutation(self, cpu, static: bool = False) -> None:
     print("Computing Safe Mutations..")
     cache = self.getMoveCache(cpu)
     curreneWeight1D = self.players[cpu].bot.nn.getAllCoefficents()
@@ -540,7 +548,7 @@ class Population:
   """
   Saves champions to a file.
   """
-  def saveChampionsToFile(self, folderDirectory):
+  def saveChampionsToFile(self, folderDirectory: str) -> None:
     folderDirectory = os.path.join(folderDirectory, "champions")
       # check save directory exists prior to saving
     if not os.path.isdir(folderDirectory):
@@ -570,7 +578,7 @@ class Population:
   mutation, their parents IDs, whether crossovers were used 
   and so on.
   """
-  def savePopulationGenomes(self, folderDirectory):
+  def savePopulationGenomes(self, folderDirectory: str) -> None:
     # check save directory exists prior to saving
     if not os.path.isdir(folderDirectory):
       os.makedirs(folderDirectory)
@@ -593,7 +601,7 @@ class Population:
   """
   NOT USED
   """
-  def savePopulationToDB(self, db):
+  def savePopulationToDB(self, db) -> None:
     population = self.currentPopulation
     """
     Stores the population into Mongo. 
@@ -612,7 +620,7 @@ class Population:
   Allocates points to players based on the game outcomes
   Also updates Elo ratings for both players.
   """
-  def allocatePoints(self, results, black, white):
+  def allocatePoints(self, results, black, white) -> None:
     black_rating = self.players[black].elo
     white_rating = self.players[white].elo
     black_games = self.players[black].games_played
@@ -639,7 +647,7 @@ class Population:
     if getattr(self.players[white], 'entity_name', None) != 'Onix':
       self.players[white].elo = self.elo_system.update_rating(white_rating, black_rating, white_score, white_games)
 
-  def addChampion(self):
+  def addChampion(self) -> None:
     for pid in self.currentPopulation:
       if pid not in (ONIX_ID, -1):
         self.champions.append(pid)
@@ -648,18 +656,18 @@ class Population:
   """
   Assign weights to a bot's neural net.
   """
-  def setWeights(self,botID, weights):
+  def setWeights(self, botID, weights) -> None:
     self.players[botID].bot.nn.loadCoefficents(weights)
 
   # Done
-  def getWeights(self,botID):
+  def getWeights(self, botID) -> object:
     return self.players[botID].bot.nn.getAllCoefficents()
 
   """
   Helper function to retrieve cache if it exists,
   otherwise return empty dict.
   """
-  def getMoveCache(self,botID):
+  def getMoveCache(self, botID) -> dict:
     if self.players[botID].bot.enableCache:
       return self.players[botID].bot.cache
     else:
@@ -669,21 +677,21 @@ class Population:
   Kill the caches when we're done with mutations or whatever.
   This is really important!
   """
-  def killCaches(self):
+  def killCaches(self) -> None:
     for i in range(self.playerCounter):
       self.players[i].bot.cache = {}
     print("Killed all caches.")
 
   # Done
-  def addOrigins(self,botID, values):
+  def addOrigins(self, botID, values) -> None:
     self.players[botID].origin = [values]
 
   # Done
-  def inheritOrigins(self,botID, parentIDs):
+  def inheritOrigins(self, botID, parentIDs) -> None:
     for i in parentIDs:
        self.players[botID].parents.append(i)
 
-  def inheritCache(self,botID,parentID):
+  def inheritCache(self, botID, parentID) -> None:
     self.players[botID].bot.cache = self.players[parentID].bot.cache
 
   @staticmethod

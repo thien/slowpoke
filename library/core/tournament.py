@@ -1,4 +1,5 @@
-# import self packages
+from __future__ import annotations
+
 import core.population as pop
 import core.game as game
 
@@ -105,7 +106,7 @@ class Generator:
     # generate charts as we go?
     self.generateChartsEveryRound = True
 
-  def loadJSONConfig(self, filepath):
+  def loadJSONConfig(self, filepath: str) -> dict:
     """
     Loads config.json
     """
@@ -117,7 +118,7 @@ class Generator:
       data = {'MongoURI' : ""}
       return data
 
-  def initiateMongoConnection(self):
+  def initiateMongoConnection(self) -> None:
     self.db = mongo.Mongo()
     try:
       if self.mongoConnected:
@@ -125,7 +126,7 @@ class Generator:
     except:
       pass
   
-  def _setup_logging(self):
+  def _setup_logging(self) -> None:
     """Set up logging to both file and console."""
     # Ensure save directory exists
     if not os.path.isdir(self.saveLocation):
@@ -142,17 +143,17 @@ class Generator:
     self.log("Training started")
     self.log(f"Population: {self.populationSize}, Ply Depth: {self.plyDepth}, Generations: {self.generations}")
   
-  def log(self, message):
+  def log(self, message: str) -> None:
     """Write a message to the log file."""
     if hasattr(self, 'logger'):
       self.logger.info(message)
   
-  def logStatusInfo(self):
+  def logStatusInfo(self) -> None:
     """Write current status info to log file."""
     for i in self.statusInfo():
       self.log(f"{i[0]}: {i[1]}")
 
-  def Tournament(self):
+  def Tournament(self) -> None:
     """
     Tournament; this determines the best players out of them all.
     returns the players in order of how good they are.
@@ -228,7 +229,7 @@ class Generator:
   """ 
   This function is called for every generation.
   """
-  def runGenerations(self):
+  def runGenerations(self) -> None:
     # loop through the generations.
     for i in range(self.generations):
       print("Initiating generation",i)
@@ -275,18 +276,18 @@ class Generator:
       # Display status at generation boundary
       self.displayStatusInfo(force_display=True)
 
-  def nukeCache(self):
+  def nukeCache(self) -> None:
     for i in self.population:
       self.population[i].bot.cache = {}    
     
-  def generateStats(self):
+  def generateStats(self) -> None:
     # create statistics
     stats = statistics.Statistics(self.folderName)
     stats.loadStatisticsFile()
     stats.saveCharts()
     print("I made some charts!")
 
-  def saveTrainingStatsToJSON(self, saveLocation, stats):
+  def saveTrainingStatsToJSON(self, saveLocation: str, stats) -> None:
     # check save directory exists prior to saving
     if not os.path.isdir(saveLocation):
       os.makedirs(saveLocation)
@@ -295,7 +296,7 @@ class Generator:
     with open(os.path.join(saveLocation, filename), 'w') as outfile:
       json.dump(stats, outfile)
 
-  def poolChampGame(self, info):
+  def poolChampGame(self, info) -> None:
     blackPlayer = self.population.players[info['Players'][0]]
     whitePlayer = self.population.players[info['Players'][1]]
     results = game.tournamentMatch(blackPlayer,whitePlayer)
@@ -307,7 +308,7 @@ class Generator:
     else:
       return ChampLosePt
 
-  def createChampGames(self):
+  def createChampGames(self) -> None:
     currentChampID = self.population.champions[-1]
     champGames = []
     gameRound = int(self.champGamesRoundsCount/2)
@@ -335,7 +336,7 @@ class Generator:
         champGames.append(info)
     return champGames
 
-  def runChampions(self):
+  def runChampions(self) -> None:
     """
     These champion games are called at the end of every generation
     and are used to determine the progress of the bots.
@@ -386,7 +387,7 @@ class Generator:
     self.AreChampionsPlaying = False
     self.displayStatusInfo(force_display=True)
 
-  def gameWorker(self,i):
+  def gameWorker(self, i: int) -> dict:
     timeStart = datetime.datetime.now().timestamp()
     results = game.tournamentMatch(i['black'], i['white'], i['game_id'], i['dbURI'], i['debugInfo'])
     bSubset = {}
@@ -416,7 +417,7 @@ class Generator:
     }
     return data
 
-  def statusInfo(self):
+  def statusInfo(self) -> dict:
     currentTime = datetime.datetime.now().timestamp()
     recent_scores = self.progress[-7:]
     
@@ -478,7 +479,7 @@ class Generator:
     
     return messsages
 
-  def displayStatusInfo(self, force_display=False):
+  def displayStatusInfo(self, force_display: bool = False) -> None:
     """Log status info to file. Always display to console."""
     self.logStatusInfo()
     # Always print to console
