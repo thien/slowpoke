@@ -30,6 +30,8 @@ class Onix:
     def __init__(self, plyDepth=4, debug=False):
         self.ply = plyDepth
         self.debug = debug
+        self.enableCache = False
+        self.cache = {}
 
         from decision.tmcts import TMCTS
         self.decisionFunction = TMCTS(plyDepth, self, debug=debug)

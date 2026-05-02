@@ -47,42 +47,43 @@ Black, White, empty = 0, 1, -1
 
 WinPt, DrawPt, LosePt = 2, 0, -1
 
+ONIX_ID = -2  # Permanent heuristic-bot fixture, never champion, never parent
+
 class Population:
-  def __init__(self, numberOfPlayers, plyDepth, isDebug=False, useParallelMCTS=None, numParallel=4, includeBaseline=True, baselineElo=500.0):
-    # used for testing purposes.
+  def __init__(self, numberOfPlayers, plyDepth, isDebug=False, useParallelMCTS=None, numParallel=4, includeBaseline=True, baselineElo=500.0, includeOnix=False):
     self.isDebug = isDebug
     
     self.generation = 0
     self.count = numberOfPlayers
-    self.plyDepth = plyDepth  # plydepth
-    self.mutationRate = 0.9   # rate for player mutation
-    self.players = {}       # this is a list of players (all players)
-    self.champions = []     # here we list the champions
-    self.playerCounter = 0    # used to create playerID's.
-    self.folderDirectory = os.path.join("..", "results", "champions")  # for champion saves
-    # Elo rating system
+    self.plyDepth = plyDepth
+    self.mutationRate = 0.9
+    self.players = {}
+    self.champions = []
+    self.playerCounter = 0
+    self.folderDirectory = os.path.join("..", "results", "champions")
     self.elo_system = EloRating(k_factor=32, initial_rating=1200)
-    self.baselineElo = baselineElo  # Baseline rating for random/uninitialized player
+    self.baselineElo = baselineElo
     
-    # Parallel MCTS configuration
-    # Default: use parallel MCTS when plyDepth > 1
     if useParallelMCTS is None:
       self.useParallelMCTS = plyDepth > 1
     else:
       self.useParallelMCTS = useParallelMCTS
-    self.parallelThreads = numParallel  # Number of parallel threads per bot
+    self.parallelThreads = numParallel
     
-    # generate an initial population
     self.currentPopulation = self.generatePlayers(self.count)
     
-    # Generate baseline entity AFTER population (uninitialized player with 1200 Elo)
-    # This serves as a reference point for the rating system
     self.baselineEntity = None
     if includeBaseline:
       self.baselineEntity = self.generateBaselinePlayer()
-      # Add baseline to current population for tournaments (only if not already present)
       if self.baselineEntity.id not in self.currentPopulation:
         self.currentPopulation.append(self.baselineEntity.id)
+
+    # Onix: permanent heuristic-bot fixture at ~900 Elo
+    self.onixEntity = None
+    if includeOnix:
+      self.onixEntity = self.generateOnixPlayer()
+      if self.onixEntity.id not in self.currentPopulation:
+        self.currentPopulation.append(self.onixEntity.id)
 
     self.numberOfWeights = self.players[0].bot.nn.lenCoefficents
     self.tau = 1 / math.sqrt( 2 * math.sqrt(self.numberOfWeights))
@@ -118,16 +119,25 @@ class Population:
   This player has 1200 Elo and serves as a reference point in tournaments.
   """
   def generateBaselinePlayer(self):
-    # Prevent creating multiple baseline entities
     if self.baselineEntity is not None:
       return self.baselineEntity
-    # Slowbro with random/uninitialized weights (native [32] architecture)
     bot = sb.Slowbro(plyDepth=self.plyDepth, debug=self.isDebug, use_mlx=True)
     human = agent.Agent(bot, initial_elo=self.baselineElo)
-    human.setID(-1)  # Special ID for baseline entity
-    human.isBaseline = True  # Mark as baseline
+    human.setID(-1)
+    human.isBaseline = True
     self.players[human.id] = human
     return human
+
+  def generateOnixPlayer(self):
+    from agents.onix import Onix
+    onix_bot = Onix(plyDepth=self.plyDepth, debug=self.isDebug)
+    ent = agent.Agent(onix_bot, initial_elo=900.0)
+    ent.setID(ONIX_ID)
+    ent.isOnix = True
+    ent.origin = [[0, 0, 0]]
+    ent.parents = []
+    self.players[ent.id] = ent
+    return ent
 
   """
   Generates Players to participate in the tournament.
@@ -208,21 +218,20 @@ class Population:
   """
   def generateNextPopulation(self):
     start = datetime.datetime.now()
-    # increment generation count
     self.generation += 1
-    # start with the top 5 players from the previous generation
-    elites = self.currentPopulation[:5]
-    # reset scores for these elites
+
+    # Exclude Onix and baseline from parent/elite selection
+    eligible = [pid for pid in self.currentPopulation
+                if pid not in (ONIX_ID, -1)]
+    elites = eligible[:5]
+
     for i in elites:
       self.players[i].points = 0
-      self.players[i].games_played = 0  # Reset games for elites moving to next generation
-    # create list of offsprings
+      self.players[i].games_played = 0
+
     offsprings = []
-    # create magic crossover from new parents
-    for i in range(0,2):
-      # # get ID's of parents
-      parent_a_ID, parent_b_ID = self.currentPopulation[i], self.currentPopulation[i+1]
-      # here we create 4 new children
+    for i in range(0, 2):
+      parent_a_ID, parent_b_ID = eligible[i], eligible[i + 1]
       children = self.generatePlayers(4)
 
       # crossover from parents
@@ -257,8 +266,8 @@ class Population:
 
     # the last two children are mutations of 4th and 5th place bots.
     remainders = self.generatePlayers(2)
-    self.setWeights(remainders[0], self.getWeights(self.currentPopulation[3]))
-    self.setWeights(remainders[1], self.getWeights(self.currentPopulation[4]))
+    self.setWeights(remainders[0], self.getWeights(eligible[3]))
+    self.setWeights(remainders[1], self.getWeights(eligible[4]))
     self.addOrigins(remainders[0], [0,1,0])
     self.addOrigins(remainders[1], [0,1,0])
     self.inheritOrigins(remainders[0], [self.currentPopulation[3]])
@@ -291,9 +300,8 @@ class Population:
     for mutation in mutations:
       self.players[mutation[0]].bot.nn.loadCoefficents(mutation[1])
     
-    # Set Elo ratings for offspring based on parent means
-    for i in range(0,2):
-      parent_a_ID, parent_b_ID = self.currentPopulation[i], self.currentPopulation[i+1]
+    for i in range(0, 2):
+      parent_a_ID, parent_b_ID = eligible[i], eligible[i + 1]
       parent_a_elo = self.players[parent_a_ID].elo
       parent_b_elo = self.players[parent_b_ID].elo
       mean_elo = (parent_a_elo + parent_b_elo) / 2
@@ -305,8 +313,8 @@ class Population:
       self.players[offsprings[i*4 + 3]].elo = parent_b_elo
     
     # Set Elo for remainder offspring (copies of 4th and 5th place)
-    self.players[offsprings[-2]].elo = self.players[self.currentPopulation[3]].elo
-    self.players[offsprings[-1]].elo = self.players[self.currentPopulation[4]].elo
+    self.players[offsprings[-2]].elo = self.players[eligible[3]].elo
+    self.players[offsprings[-1]].elo = self.players[eligible[4]].elo
     
     # Reset games_played for all offspring (they start fresh)
     for offspring_id in offsprings:
@@ -314,13 +322,15 @@ class Population:
       self.players[offspring_id].points = 0  # Also reset points for new generation
     
     newPopulation = offsprings + elites
+    # Preserve Onix across generations (keep its Elo, never reset)
+    if self.onixEntity is not None:
+      newPopulation.append(self.onixEntity.id)
+      self.players[ONIX_ID].points = 0
     # Preserve baseline entity across generations
     if self.baselineEntity is not None:
       newPopulation.append(self.baselineEntity.id)
-      # Reset baseline to configured Elo and 0 points each generation
       self.players[self.baselineEntity.id].elo = self.baselineElo
       self.players[self.baselineEntity.id].points = 0
-    # assign this set of offsprings as the new population.
     self.currentPopulation = newPopulation
     self.count = len(self.currentPopulation)
     end = datetime.datetime.now() - start
@@ -592,39 +602,37 @@ class Population:
   Also updates Elo ratings for both players.
   """
   def allocatePoints(self, results, black, white):
-    # Get ratings and games played
     black_rating = self.players[black].elo
     white_rating = self.players[white].elo
     black_games = self.players[black].games_played
     white_games = self.players[white].games_played
-    
-    # Increment games played for both players
+
     self.players[black].games_played += 1
     self.players[white].games_played += 1
-    
-    # Allocate points (existing logic)
+
+    # Determine the result scores for Elo calculation
     if results["Winner"] == Black:
+      black_score, white_score = 1.0, 0.0
       self.players[black].points += WinPt
       self.players[white].points += LosePt
-      # Update Elo: black wins (score=1.0), white loses (score=0.0)
-      self.players[black].elo = self.elo_system.update_rating(black_rating, white_rating, 1.0, black_games)
-      self.players[white].elo = self.elo_system.update_rating(white_rating, black_rating, 0.0, white_games)
     elif results["Winner"] == White:
+      black_score, white_score = 0.0, 1.0
       self.players[black].points += LosePt
       self.players[white].points += WinPt
-      # Update Elo: white wins (score=1.0), black loses (score=0.0)
-      self.players[black].elo = self.elo_system.update_rating(black_rating, white_rating, 0.0, black_games)
-      self.players[white].elo = self.elo_system.update_rating(white_rating, black_rating, 1.0, white_games)
     else:
-      # Draw case (if implemented)
-      self.players[black].elo = self.elo_system.update_rating(black_rating, white_rating, 0.5, black_games)
-      self.players[white].elo = self.elo_system.update_rating(white_rating, black_rating, 0.5, white_games)
+      black_score, white_score = 0.5, 0.5
 
-  """
-  Adds the champion to the list of champions
-  """
+    # Update Elo — Onix is a fixed anchor at 900, never moves
+    if black != ONIX_ID:
+      self.players[black].elo = self.elo_system.update_rating(black_rating, white_rating, black_score, black_games)
+    if white != ONIX_ID:
+      self.players[white].elo = self.elo_system.update_rating(white_rating, black_rating, white_score, white_games)
+
   def addChampion(self):
-    self.champions.append(self.currentPopulation[0])
+    for pid in self.currentPopulation:
+      if pid not in (ONIX_ID, -1):
+        self.champions.append(pid)
+        return
 
   """
   Assign weights to a bot's neural net.

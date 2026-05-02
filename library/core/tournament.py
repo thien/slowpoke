@@ -57,7 +57,7 @@ class Generator:
     self.generations = options['NumberOfGenerations']
     self.populationSize = options['Population'] #number of players
     # generate the initial population.
-    self.population = pop.Population(self.populationSize, self.plyDepth, self.isDebugMode, options['useParallelMCTS'], options['numParallel'])
+    self.population = pop.Population(self.populationSize, self.plyDepth, self.isDebugMode, options['useParallelMCTS'], options['numParallel'], includeOnix=True)
     # time handlers
     self.StartTime = datetime.datetime.now().timestamp()
     self.AverageGameTime = 0
