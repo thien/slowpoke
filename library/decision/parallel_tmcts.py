@@ -7,6 +7,7 @@ positions together for maximum GPU utilization.
 """
 
 import random
+import math
 import numpy as np
 from typing import List, Tuple, Optional, Dict, Any
 from threading import Lock
@@ -120,6 +121,11 @@ class ParallelTMCTS:
         self.debug = debug
         self.seed = seed
         
+        # Progressive narrowing with Gumbel-Top-K
+        self.progressive_narrowing = True
+        self.progressive_narrowing_k = 5
+        self.gumbel_temperature = 0.5
+        
         # Cache support (for tournament compatibility)
         self.enableCache = False
         self.cache = {}
@@ -164,10 +170,26 @@ class ParallelTMCTS:
         else:
             ply = self.ply
         
+        # Progressive narrowing: evaluate all root moves and select top-K
+        narrowed_moves = moves
+        if (self.progressive_narrowing and 
+            self.use_mlx and 
+            len(moves) > self.progressive_narrowing_k):
+            scored = self._evaluate_root_moves(B, moves, colour)
+            if scored:
+                # Add Gumbel noise for stochastic exploration
+                gumbel = self._sample_gumbel(len(scored))
+                noisy = [s + gumbel[i] for i, (_, s) in enumerate(scored)]
+                # Select top-K by noisy score
+                top_k = sorted(range(len(noisy)), key=lambda i: noisy[i], reverse=True)[:self.progressive_narrowing_k]
+                narrowed_moves = [scored[i][0] for i in top_k]
+                if self.debug:
+                    print(f"[ParallelTMCTS] Narrowed {len(moves)} -> {len(narrowed_moves)} root moves")
+        
         random_rounds = self.baseRound * ply if ply > 0 else 1
         
         # Track move statistics across all instances
-        move_stats: Dict[Any, Dict[str, float]] = {m: {'wins': 0.0, 'plays': 0} for m in moves}
+        move_stats: Dict[Any, Dict[str, float]] = {m: {'wins': 0.0, 'plays': 0} for m in narrowed_moves}
         
         # Run parallel instances with seeded random generators
         with ThreadPoolExecutor(max_workers=self.num_parallel) as executor:
@@ -176,7 +198,7 @@ class ParallelTMCTS:
                 # Each thread gets a deterministic seed derived from base seed
                 thread_seed = (self.seed if self.seed is not None else 42) + i
                 future = executor.submit(
-                    self._run_instance, B, ply, colour, random_rounds, move_stats, thread_seed
+                    self._run_instance, B, ply, colour, random_rounds, move_stats, thread_seed, narrowed_moves
                 )
                 futures.append(future)
             
@@ -191,7 +213,7 @@ class ParallelTMCTS:
         best_move = None
         best_chance = -float('inf')
         
-        for m in sorted(moves):  # Sort moves for deterministic tie-breaking
+        for m in sorted(narrowed_moves):  # Sort moves for deterministic tie-breaking
             stats = move_stats[m]
             if stats['plays'] > 0:
                 chance = stats['wins'] / stats['plays']
@@ -204,12 +226,62 @@ class ParallelTMCTS:
         
         return best_move
     
+    def _sample_gumbel(self, n, temperature=None):
+        """Sample n values from Gumbel(0,1) distribution."""
+        import random as _random
+        if temperature is None:
+            temperature = self.gumbel_temperature
+        return [-math.log(-math.log(_random.random())) * temperature for _ in range(n)]
+    
+    def _evaluate_root_moves(self, B, moves, colour):
+        """Evaluate all root moves via NN to get scores for narrowing.
+        
+        For each move: push, extract position, pop, accumulate in batch.
+        Returns list of (move, score) tuples, or None if unavailable.
+        """
+        if not self.use_mlx or self.nn is None:
+            return None
+        
+        move_info = []  # (move, value_or_None)
+        
+        for move in moves:
+            B.push_move(move)
+            isOver = self._isOver(B, colour)
+            if isOver[0]:
+                move_info.append((move, float(isOver[1])))
+            else:
+                # Extract and accumulate for batch evaluation
+                pos = self._extract_position(B, colour)
+                idx = self.accumulator.add_position(pos)
+                move_info.append((move, idx))
+            B.pop_move()
+        
+        # Flush and evaluate all accumulated positions
+        self.accumulator.flush_and_evaluate(self.nn)
+        
+        # Collect results
+        scored = []
+        for move, value_or_idx in move_info:
+            if isinstance(value_or_idx, float):
+                scored.append((move, value_or_idx))
+            else:
+                result = self.accumulator.get_result(value_or_idx)
+                scored.append((move, float(result)))
+        
+        self.accumulator.clear()
+        return scored
+    
     def _run_instance(self, B, ply: int, colour: int, rounds: int, 
-                      move_stats: Dict[Any, Dict[str, float]], thread_seed: int):
+                      move_stats: Dict[Any, Dict[str, float]], thread_seed: int,
+                      narrowed_moves=None):
         """Run a single MCTS instance with its own seeded random generator."""
         rng = random.Random(thread_seed)  # Thread-local RNG
         for _ in range(rounds):
-            move = rng.choice(B.get_moves())
+            # Use narrowed moves if provided, otherwise get all moves
+            if narrowed_moves is not None:
+                move = rng.choice(narrowed_moves)
+            else:
+                move = rng.choice(B.get_moves())
             B.push_move(move)
             
             # Run batch tree search

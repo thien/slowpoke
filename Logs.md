@@ -127,3 +127,91 @@ The key insight was that `treesearch_batch()` needed to defer evaluation results
 6. **Final Resolution**: Each round's result is resolved from the dictionary and added to move statistics
 
 This pattern allows the neural network to evaluate all accumulated positions in a single batch, achieving the 696.9x speedup on M2 Ultra GPU.
+
+---
+
+### UCB1 Move Selection - COMPLETED
+
+**Problem**: `random_ts()` uses `random.choice(moves)` to select which root move to explore in each simulation round. This distributes visits roughly uniformly across all legal moves, wasting simulations on obviously weak moves and requiring more total rounds to converge on the best move.
+
+**Solution Implemented**:
+1. Added `_select_move_ucb1(self, moves, C=None)` method to `tmcts.py`
+   - Computes UCB1 score for each move: `(wins/plays) + C * sqrt(log(total_plays)/plays)`
+   - Default exploration constant `C=1.4` (standard for MCTS)
+   - Handles unvisited moves with infinite UCB score (ensures all moves tried at least once)
+   - Falls back to the first/last move for edge cases (no moves, single move)
+2. Added `_resolve_batch_results(self)` helper that processes pending batch evaluations to update move statistics before UCB1 selection
+3. Modified `random_ts()` to call `_select_move_ucb1` instead of `random.choice(moves)`
+4. Periodic batch flushing: every `batch_size` (512) positions during the decision loop, call `_resolve_batch_results()` so UCB1 receives live win-rate feedback rather than stale stats
+5. Added `import math` for sqrt/log operations
+
+**Key Design**: UCB1 selection replaces random root-move selection but does NOT change the tree traversal logic itself — `treesearch()` and `treesearch_batch()` still use random node selection within each branch. This is a focused, minimal change.
+
+**Impact**:
+- **1.3-1.6x more visits** concentrated on the best move at the same round budget
+- **2-5% faster wall-clock time** per round (UCB1's deterministic scan is cheaper than numpy random generation)
+- Moves with higher win rates get explored more aggressively, weaker moves are deprioritized
+- With a trained NN (vs random weights), the win-rate signal becomes meaningful, so the benefit compounds — UCB1 converges to the correct move with fewer rounds
+
+**Benchmark Results** (baseRound=300, 5 trials each):
+```
+Random: 0.295s avg, top move = 206 visits, HHI = 0.145
+UCB1:   0.282s avg, top move = 298 visits, HHI = 0.157
+        (-4.2% time)  (+44.7% top visits)  (+8.3% concentration)
+
+Scaling (time per round, us):
+Rounds    Random    UCB1
+   50      967      919
+  100      962      953
+  200     1005      944
+  400      985      927
+  600      960      941
+ 1000      976      920
+```
+
+UCB1 is strictly Pareto-dominant: better visit distribution with negligibly less time. No tradeoff.
+
+**Files Modified**:
+- `library/decision/tmcts.py` - Added `_select_move_ucb1()`, `_resolve_batch_results()`, `math` import; modified `random_ts()` to use UCB1
+
+**New Files**:
+- `library/tests/bench_ucb1.py` - Benchmark script for visit concentration and overhead comparison
+
+---
+
+### Gumbel-Top-K Progressive Narrowing - COMPLETED
+
+**Problem**: At 12-ply tournament depth with parallel MCTS, the GPU/MLX remains underutilized because the root branching factor (7 legal moves in checkers) means visit counts spread thinly across candidates. Each simulation round that explores a weak move is wasted — and with parallelism, all N threads can independently waste rounds on different weak moves.
+
+**Solution Implemented**:
+
+1. **Root-level progressive narrowing in `tmcts.py`**: Before building the moveset for a decision, evaluates all legal moves via the NN (single batch call), adds Gumbel(0,1) noise scaled by temperature, and retains only top-K moves.
+
+2. **Root-level progressive narrowing in `parallel_tmcts.py`**: Same logic, but evaluated once in `_decide_impl` before spawning parallel threads. The narrowed move set is shared across all N parallel instances, so every thread only explores promising candidates.
+
+3. **Gumbel-Top-K stochasticity**: Instead of a hard/deterministic top-K, Gumbel noise enables stochastic exploration of sub-K candidates with probability proportionate to their raw score. Temperature controls exploration:
+   - T=0: deterministic top-K (highest visit concentration)
+   - T=0.5: mild noise, mostly top-K (good for tournament play)
+   - T=2.0+: near-uniform distribution (good for training)
+
+**Impact**:
+- **Visit concentration (HHI)**: 0.29 (7 moves) → 0.42 (K=3) in mock-NN benchmarks
+- **Entropy reduction**: 2.24 → 1.39 (fewer candidates, each gets more visits)
+- **Wall clock**: Flat in micro-benchmark (mock NN eval is 0.43ms) but with a real NN at 12 ply, fewer candidates means fewer tree traversals exploring bad moves, and more visits per good move = higher decision quality at same round budget
+- **The real gain**: Enables lowering `baseRound` — with narrowing, each round is more informative, so you can cut simulation count while maintaining or improving move quality
+
+**Default Parameters**:
+- `progressive_narrowing = True` (enabled)
+- `progressive_narrowing_k = 5` (7→5 at opening, no narrowing for small endgames)
+- `gumbel_temperature = 0.5` (mild exploration)
+
+**Files Modified**:
+- `library/decision/tmcts.py` - Added Gumbel-Top-K narrowing to `random_ts()` via NN evaluate_fast call
+- `library/decision/parallel_tmcts.py` - Added `progressive_narrowing_k`, `gumbel_temperature`, `_sample_gumbel()`, `_evaluate_root_moves()`, modified `_decide_impl` and `_run_instance` to use narrowed move set
+
+**New Files**:
+- `library/tests/bench_narrowing.py` - Benchmark: wall clock, HHI, entropy, temperature sweep, move diversity, simulation budget scaling
+
+**Test Status**:
+- All 120 tests passing
+- 27 new tests from TDD pass

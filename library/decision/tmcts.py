@@ -6,6 +6,7 @@ minimax_draw = 0
 minimax_empty = -1
 
 import random
+import math
 import numpy as np
 
 try:
@@ -26,6 +27,11 @@ class TMCTS:
     self.baseRound = 300
     self.debug = debug
     self.batch_size = batch_size  # Accumulate this many positions before batch eval
+    self.ucb_exploration = 1.4  # C constant for UCB1 (sqrt(2) ≈ 1.414 is standard)
+    # Progressive narrowing with Gumbel-Top-K
+    self.progressive_narrowing = True   # Enable Gumbel-Top-K narrowing
+    self.progressive_narrowing_k = 5    # Keep top K moves after Gumbel-Top-K
+    self.gumbel_temperature = 0.5       # Higher = more exploration in narrowing
     # Check if evaluator has MLX-capable neural network
     self.nn = getattr(evaluator, 'nn', None)
     self.use_mlx = (hasattr(evaluator, 'nn') and 
@@ -38,6 +44,141 @@ class TMCTS:
     self._position_counter = 0
     if self.debug:
       self.baseRound = 10
+
+  def _select_move_ucb1(self, moves, C=None):
+    """Select move using UCB1 (Upper Confidence Bound).
+
+    Balances exploration (trying under-explored moves) with
+    exploitation (choosing moves with high win rates).
+
+    UCB1 formula: score = win_rate + C * sqrt(ln(total_visits + 1) / visits)
+
+    - Moves with 0 visits get infinite score (always explored first)
+    - As visits increase, exploration bonus shrinks
+    - As total_visits grows, exploration bonus grows slowly (sublinear)
+    """
+    if C is None:
+      C = self.ucb_exploration
+    total_visits = sum(self.movesets[m]['plays'] for m in moves)
+
+    # Always explore unvisited moves first (infinite UCB score)
+    unvisited = [m for m in moves if self.movesets[m]['plays'] == 0]
+    if unvisited:
+      return random.choice(unvisited)
+
+    best_score = -float('inf')
+    best_move = moves[0]
+    for m in moves:
+      wins = self.movesets[m]['chances']
+      visits = self.movesets[m]['plays']
+      if visits == 0:
+        return m  # Safety: give infinite UCB score to unvisited
+      win_rate = wins / visits
+      exploration_bonus = C * math.sqrt(math.log(total_visits + 1) / visits)
+      score = win_rate + exploration_bonus
+      if score > best_score:
+        best_score = score
+        best_move = m
+    return best_move
+
+  def _resolve_batch_results(self):
+    """Evaluate accumulated batch positions and resolve all deferred results into movesets.
+
+    Called periodically during UCB1 rounds so the selection policy gets live feedback.
+    Resolves all pending _round_results that have evaluations available.
+    """
+    if not self._batch_positions:
+      return
+
+    self.flush_batch()
+
+    resolved_remaining = []
+    for result, move in self._round_results:
+      if isinstance(result, int) and result >= 0:
+        value = self._position_to_result.get(result, 0.0)
+      else:
+        value = float(result)
+      self.movesets[move]['chances'] += value
+      self.movesets[move]['plays'] += 1
+    self._round_results = []
+
+  def _sample_gumbel(self, n, temperature=None):
+    """Sample n values from Gumbel(0,1) distribution for Gumbel-Top-K.
+    
+    Gumbel noise is distributed as: g = -log(-log(U)) where U ~ Uniform(0,1).
+    Adding Gumbel noise to scores and taking top-K is equivalent to sampling
+    from the softmax distribution without replacement (Gumbel-Top-K trick).
+    
+    Args:
+        n: Number of samples to generate
+        temperature: Scale factor (higher = more uniform, lower = more greedy)
+    Returns:
+        List of n Gumbel samples
+    """
+    if temperature is None:
+      temperature = self.gumbel_temperature
+    # Generate uniform(0,1) avoiding exact 0 or 1
+    uniforms = [random.random() for _ in range(n)]
+    uniforms = [max(min(u, 0.9999999), 0.0000001) for u in uniforms]
+    return [-math.log(-math.log(u)) * temperature for u in uniforms]
+
+  def _evaluate_moves_batch(self, B, moves, colour):
+    """Get NN evaluations for all root moves in a single GPU batch.
+    
+    For each move: push, extract position, pop. Terminal moves get ±1.
+    Evaluates all accumulated positions in one GPU call.
+    
+    Args:
+        B: Board state
+        moves: List of candidate moves
+        colour: Current player colour
+    Returns:
+        List of (move, score) tuples, or None if batch evaluation unavailable
+    """
+    if not self.use_mlx or self.nn is None:
+      return None
+    
+    batch_positions = []
+    move_info = []  # (move, value_or_None)
+    
+    for move in moves:
+      B.push_move(move)
+      isOver = self.isOver(B, colour)
+      if isOver[0]:
+        move_info.append((move, float(isOver[1])))
+      else:
+        pos = self._extract_position(B, colour)
+        batch_positions.append(pos)
+        move_info.append((move, None))
+      B.pop_move()
+    
+    # Evaluate batch on GPU
+    if batch_positions:
+      if hasattr(self.nn, 'compute_batch_mlx'):
+        results = self.nn.compute_batch_mlx(batch_positions)
+      elif hasattr(self.nn, 'compute_batch'):
+        results = self.nn.compute_batch(batch_positions)
+      else:
+        return None
+      
+      if hasattr(results, 'numpy'):
+        results = np.array(results.numpy())
+      else:
+        results = np.array([float(r) for r in results])
+    else:
+      results = []
+    
+    # Merge terminal and NN results
+    scored_moves = []
+    nn_idx = 0
+    for move, value in move_info:
+      if value is not None:
+        scored_moves.append((move, value))
+      else:
+        scored_moves.append((move, float(results[nn_idx])))
+        nn_idx += 1
+    
+    return scored_moves
 
   def Decide(self, B, colour):
     self.movesets = {}
@@ -63,6 +204,25 @@ class TMCTS:
       if ply > 0:
         random_rounds = self.baseRound * ply
       
+      # --- Progressive narrowing with Gumbel-Top-K ---
+      # If we have many moves, use a quick NN batch eval to identify
+      # the most promising ones, then only simulate those deeply.
+      # Gumbel noise ensures every move still has a non-zero chance.
+      narrowed_moves = moves
+      if (self.progressive_narrowing and 
+          len(moves) > self.progressive_narrowing_k and
+          self.use_mlx):
+        scored = self._evaluate_moves_batch(B, moves, colour)
+        if scored:
+          # Apply Gumbel-Top-K: add noise to NN scores, then sort
+          gumbel = self._sample_gumbel(len(scored))
+          noisy = [s + g for (_, s), g in zip(scored, gumbel)]
+          # Keep top K by noisy score (descending)
+          top_indices = sorted(
+            range(len(noisy)), key=lambda i: noisy[i], reverse=True
+          )[:self.progressive_narrowing_k]
+          narrowed_moves = [scored[i][0] for i in top_indices]
+      
       # Clear batch accumulation for this decision
       self._batch_positions = []
       self._position_to_result = {}
@@ -72,7 +232,7 @@ class TMCTS:
       self._round_results = []
       
       # set up moves
-      for move in moves:
+      for move in narrowed_moves:
         self.movesets[move] = {
           'plays' : 0,
           'chances' : 0
@@ -80,31 +240,27 @@ class TMCTS:
       
       # iterate through the random number of rounds
       for i in range(random_rounds):
-        random_move = random.choice(moves)
+        # Use UCB1 to select which move to explore
+        # Prioritizes promising moves while ensuring all moves are tested
+        random_move = self._select_move_ucb1(narrowed_moves)
         B.push_move(random_move)
         # start mcts - use batched tree search if MLX is available
         if self.use_mlx:
           result = self.treesearch_batch(B, ply, colour)
           self._round_results.append((result, random_move))
+          # Periodically flush batch results so UCB1 gets live feedback
+          # on move quality instead of waiting until all 3600 rounds finish
+          if len(self._batch_positions) >= self.batch_size:
+            self._resolve_batch_results()
         else:
           result = self.treesearch(B, ply, colour)
           self.movesets[random_move]['chances'] += result
           self.movesets[random_move]['plays'] += 1
         B.pop_move()
 
-      # After all rounds, flush batch and resolve all deferred evaluations
-      if self.use_mlx and self._batch_positions:
-        self.flush_batch()
-        # Resolve all results
-        for result, move in self._round_results:
-          if isinstance(result, int) and result >= 0:
-            # Position index - resolve from batch results
-            value = self._position_to_result.get(result, 0.0)
-          else:
-            # Terminal value (float)
-            value = float(result)
-          self.movesets[move]['chances'] += value
-          self.movesets[move]['plays'] += 1
+      # Flush any remaining batch results and resolve into movesets
+      if self.use_mlx:
+        self._resolve_batch_results()
 
       bestChance = -1000
       bestMove = moves[0]
