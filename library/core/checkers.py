@@ -236,6 +236,8 @@ class CheckerBoard:
 
         self.jump = 0
         self.active, self.passive = self.passive, self.active
+        if self._has_core:
+            self._core.swap_active()
         if full_update:
             self.updateState()
         elif not self._has_core:
