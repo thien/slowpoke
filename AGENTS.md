@@ -41,10 +41,11 @@ Agent hierarchy:
 
 - Bitboard representation: 36-bit integers per colour (forward/backward/pieces)
 - `make_move(move, full_update=True)` — game moves use `full_update=True` (computes PDN + display state)
-- `push_move(move)` / `pop_move()` — MCTS search uses `full_update=False` internally, skipping PDN/display
-- `_update_rank()` — lightweight state update for search: only builds `AIBoardPos` + `turnCount`
-- Move generation: `get_moves()`, `get_jumps()`, `jumps_from()` — uses `_set_bits()` helper (bit-twiddling, not `bin()`)
-- `is_over()` calls `checkWinner()` which now uses bitboard checks (`self.pieces[color] != 0`)
+- `push_move(move)` / `pop_move()` — MCTS search uses `full_update=False` internally, skipping PDN/display and state update.
+  The search path does NOT maintain an intermediate rank list — NN evaluation reads bitboards directly.
+- `getBoardPosWeighted()` reads bitboards directly in a single pass (no intermediate rank list or dict lookup).
+- `get_moves()`, `get_jumps()`, `jumps_from()`, `make_move()` — all use `_set_bits()` helper (bit-twiddling, not `bin()`).
+- `is_over()` calls `checkWinner()` which uses bitboard checks (`self.pieces[color] != 0`).
 
 ## Concurrency
 
@@ -63,3 +64,4 @@ Agent hierarchy:
 - **Results** go to `results/` (gitignored). Champions saved as JSON per generation.
 - **MLX** optional — GPU batch evaluation for neural network. Enabled per-agent.
 - **`CheckerBoard.__slots__`** is defined; do not add ad-hoc attributes.
+- **Spelling**: Use British English throughout (colour, behaviour, centre, etc.).
