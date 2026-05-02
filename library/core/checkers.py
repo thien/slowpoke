@@ -173,8 +173,9 @@ class CheckerBoard:
             self.mandatoryJumps = self.jumps_from(destination)
             # now put the previous position on cache.
             positions = moveString.split("x")
-            self.multipleJumpStack.append(positions[0])
-            self.multipleJumpStack.append(positions[1])
+            if len(positions) >= 2:
+                self.multipleJumpStack.append(positions[0])
+                self.multipleJumpStack.append(positions[1])
             if self.mandatoryJumps:
                 return self
         else:

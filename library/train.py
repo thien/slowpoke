@@ -46,6 +46,13 @@ def train():
             options['plyDepth'] = 8
             options['NumberOfGenerations'] = 1500
             verifiedBool = True
+        
+        elif "vheavy" in sys.argv:
+            print("You are about to load a VERY HEAVY simulation (12 ply).")
+            print("This will be extremely computationally intensive!")
+            options['plyDepth'] = 12
+            options['NumberOfGenerations'] = 500
+            verifiedBool = True
 
         if "debug" in sys.argv:
             print("You are about to load a debug simulation.")
@@ -53,6 +60,19 @@ def train():
             options['debugMode'] = True
             options['NumberOfGenerations'] = 200
             verifiedBool = True
+        
+        # parallel threads option
+        if "--parallel" in sys.argv:
+            idx = sys.argv.index("--parallel")
+            if idx + 1 < len(sys.argv):
+                try:
+                    options['numParallel'] = int(sys.argv[idx + 1])
+                    print(f"Using {options['numParallel']} parallel threads.")
+                except ValueError:
+                    print("Invalid parallel count, using default (4).")
+                    options['numParallel'] = 4
+            else:
+                options['numParallel'] = 4
         
         # check for user input
         if verifiedBool:
@@ -64,11 +84,12 @@ def train():
                 readyBool = True
         else:
             print("You didn't use an available option.")
-            print("options: light, medium, heavy, debug, ohno")
+            print("options: light, medium, heavy, vheavy, debug, ohno")
     else:
         # no arguments loaded; ask user for load type.
         print("You'll need to load some argument into this file. for instance:")
         print("     python3 simulate.py light")
+        print("     python3 simulate.py vheavy --parallel 8")
     # run tournament
     if readyBool:
         t = tournament.Generator(options)

@@ -285,9 +285,11 @@ class TestEloIntegration(unittest.TestCase):
         pop.generateNextPopulation()
         
         # All players in new population should have games_played = 0
+        # Exclude baseline entity from this check
         for pid in pop.currentPopulation:
-            self.assertEqual(pop.players[pid].games_played, 0,
-                           f"Player {pid} should have games_played=0")
+            if pid != pop.baselineEntity.id if pop.baselineEntity else True:
+                self.assertEqual(pop.players[pid].games_played, 0,
+                               f"Player {pid} should have games_played=0")
     
     def test_elites_games_played_reset(self):
         """Elites should have games_played reset when moving to next generation."""
@@ -302,7 +304,8 @@ class TestEloIntegration(unittest.TestCase):
         pop.generateNextPopulation()
         
         # Elites should have games_played reset
-        elites = pop.currentPopulation[-5:]
+        # Exclude baseline entity (last in population) when checking elites
+        elites = pop.currentPopulation[-6:-1] if pop.baselineEntity else pop.currentPopulation[-5:]
         for elite_id in elites:
             self.assertEqual(pop.players[elite_id].games_played, 0)
     
@@ -311,12 +314,13 @@ class TestEloIntegration(unittest.TestCase):
         from core.population import Population
         pop = Population(numberOfPlayers=5, plyDepth=1)
         
-        # Set known Elo ratings
+        # Set known Elo ratings (excluding baseline)
         pop.players[pop.currentPopulation[0]].elo = 1400
         pop.players[pop.currentPopulation[1]].elo = 1300
         pop.players[pop.currentPopulation[2]].elo = 1200
         pop.players[pop.currentPopulation[3]].elo = 1100
         pop.players[pop.currentPopulation[4]].elo = 1000
+        # Baseline is at 500 by default
         
         output = pop.printEloStats()
         
@@ -326,10 +330,10 @@ class TestEloIntegration(unittest.TestCase):
         self.assertIn("Worst:", output)
         self.assertIn("P0", output)  # Best player should be P0 (1400)
         
-        # Check values
-        self.assertIn("1200.0", output)  # Average
+        # Check values - average is (1400+1300+1200+1100+1000+500)/6 = 1083.3
+        self.assertIn("1083.3", output)  # Average
         self.assertIn("1400.0", output)  # Best
-        self.assertIn("1000.0", output)  # Worst
+        self.assertIn("500.0", output)  # Worst (baseline)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

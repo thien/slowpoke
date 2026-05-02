@@ -38,7 +38,9 @@ def optionDefaults(options):
     'printStatus' : True,
     'connectMongo' : False,
     'NumberOfGamesPerPlayer' : 5,
-    'resultsLocation' : os.path.join("..", "results")
+    'resultsLocation' : os.path.join("..", "results"),
+    'useParallelMCTS' : None,  # None = auto (True when plyDepth > 1)
+    'numParallel' : 4  # Number of parallel threads for MCTS
   }
   for i in defaultOptions.keys():
     if i not in options:
@@ -55,7 +57,7 @@ class Generator:
     self.generations = options['NumberOfGenerations']
     self.populationSize = options['Population'] #number of players
     # generate the initial population.
-    self.population = pop.Population(self.populationSize, self.plyDepth, self.isDebugMode)
+    self.population = pop.Population(self.populationSize, self.plyDepth, self.isDebugMode, options['useParallelMCTS'], options['numParallel'])
     # time handlers
     self.StartTime = datetime.datetime.now().timestamp()
     self.AverageGameTime = 0
@@ -95,6 +97,7 @@ class Generator:
     self.generationStats = []
     self.folderName = str(self.cleanDate(self.StartTime, True)) + " " + str(self.plyDepth) + "ply"
     self.saveLocation = os.path.join(options['resultsLocation'],self.folderName)
+    self.options = options  # Store for reference
     # Set up logging
     self.log_file = os.path.join(self.saveLocation, 'training.log')
     self._setup_logging()
@@ -154,8 +157,14 @@ class Generator:
     Tournament; this determines the best players out of them all.
     returns the players in order of how good they are.
     """
+    self.log("=" * 60)
+    self.log("STARTING TOURNAMENT")
+    self.log(f"Generation: {self.currentGeneration}")
+    self.log(f"Population size: {len(self.population.currentPopulation)} players")
+    self.log(f"Games per player: {self.NumberOfGamesPerPlayer}")
     gamePool = []
     # initiate game results round robin style (where each player plays as b and w)
+    self.log("Scheduling games...")
     for player_id in self.population.currentPopulation:
       for x in range(self.NumberOfGamesPerPlayer):
         oppoment_id = player_id
@@ -178,19 +187,24 @@ class Generator:
           }
           # add it to the list of games that need to be played.
           gamePool.append(game)
+    self.log(f"Total games scheduled: {len(gamePool)}")
+    
     # run game simulations.
     results = []
     # close number of processes when map is done.
     threadCount = self.processors
     if self.processors > len(gamePool):
       threadCount = len(gamePool)
+    self.log(f"Running games with {threadCount} parallel processes...")
     with multiprocessing.Pool(processes=threadCount) as pool:
       chunksize = max(1, len(gamePool) // threadCount)
       results = pool.map(self.gameWorker, gamePool, chunksize=chunksize)
       pool.close()
       pool.join()
+    self.log("All games completed")
 
     # when the pool is done with processing, process the results.
+    self.log("Processing game results...")
     for i in range(len(results)):
       self.population.allocatePoints(results[i]['game'], results[i]['black'], results[i]['white'])
       # merge winning players move caches
@@ -203,19 +217,22 @@ class Generator:
       # nullify the cache since its not needed anymore
       results[i]['black_cache'] = None
       results[i]['white_cache'] = None
+    self.log("Results processed. Updating player rankings...")
 
     self.population.sortCurrentPopulationByPoints()
     self.population.addChampion()
+    self.log("Tournament complete. Population sorted by Elo.")
     return (self.population, results)
 
 
-  """
+  """ 
   This function is called for every generation.
   """
   def runGenerations(self):
     # loop through the generations.
     for i in range(self.generations):
       print("Initiating generation",i)
+      self.log(f"=" * 60)
       self.log(f"Starting generation {i}")
       # increment generation count
       self.currentGeneration = i
@@ -230,17 +247,22 @@ class Generator:
       self.previousGenerationRankings = self.population.printCurrentPopulationByPoints()
       
       # compute champion games (runs independently of others)
+      self.log("Running champion games...")
       self.runChampions()
       # save champions to file
+      self.log("Saving champions to file...")
       self.population.saveChampionsToFile(self.saveLocation)
       # save genomic details
+      self.log("Saving population genomes...")
       self.population.savePopulationGenomes(self.saveLocation)
       # get the best players and generate a new population from them.
+      self.log("Generating next population...")
       self.population.generateNextPopulation()
       self.populationSize = self.population.count
       # initiate end timestamp and add time difference length to list.
       timeDifference = (datetime.datetime.now() - startTime).total_seconds()
       self.GenerationTimeLengths = np.hstack((self.GenerationTimeLengths, timeDifference))
+      self.log(f"Generation complete ({timeDifference:.1f}s)")
       # need to store the results of this into a json file!
       self.generationStats.append({
         'stats' : [(str(i[0]), str(i[1])) for i in self.statusInfo()],

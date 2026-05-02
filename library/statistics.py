@@ -60,6 +60,8 @@ class Statistics:
       for p in range(len(lb)):
         lb[p] = lb[p].split("\t")
         lb[p][0]=lb[p][0].replace("Player ", "")
+        # Strip (baseline) suffix if present
+        lb[p][0]=lb[p][0].replace(" (baseline)", "")
       # add results into the dict.
       lbEntry['champion'] = lb[0][0]
       lbEntry['scores'] = lb

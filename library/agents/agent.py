@@ -12,9 +12,9 @@ import hashlib
 import time
 
 class Agent:
-  def __init__(self, bot, agent_id=None):
+  def __init__(self, bot, agent_id=None, initial_elo=None):
     self.bot = bot
-    self.elo = 1200  # Will be updated by Population.allocatePoints()
+    self.elo = initial_elo if initial_elo is not None else 1200  # Will be updated by Population.allocatePoints()
     self.points = 0
     self.champRange = 0
     self.champScore = 0

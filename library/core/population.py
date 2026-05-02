@@ -48,7 +48,7 @@ Black, White, empty = 0, 1, -1
 WinPt, DrawPt, LosePt = 2, 0, -1
 
 class Population:
-  def __init__(self, numberOfPlayers, plyDepth, isDebug=False):
+  def __init__(self, numberOfPlayers, plyDepth, isDebug=False, useParallelMCTS=None, numParallel=4, includeBaseline=True, baselineElo=500.0):
     # used for testing purposes.
     self.isDebug = isDebug
     
@@ -62,8 +62,27 @@ class Population:
     self.folderDirectory = os.path.join("..", "results", "champions")  # for champion saves
     # Elo rating system
     self.elo_system = EloRating(k_factor=32, initial_rating=1200)
+    self.baselineElo = baselineElo  # Baseline rating for random/uninitialized player
+    
+    # Parallel MCTS configuration
+    # Default: use parallel MCTS when plyDepth > 1
+    if useParallelMCTS is None:
+      self.useParallelMCTS = plyDepth > 1
+    else:
+      self.useParallelMCTS = useParallelMCTS
+    self.parallelThreads = numParallel  # Number of parallel threads per bot
+    
     # generate an initial population
     self.currentPopulation = self.generatePlayers(self.count)
+    
+    # Generate baseline entity AFTER population (uninitialized player with 1200 Elo)
+    # This serves as a reference point for the rating system
+    self.baselineEntity = None
+    if includeBaseline:
+      self.baselineEntity = self.generateBaselinePlayer()
+      # Add baseline to current population for tournaments (only if not already present)
+      if self.baselineEntity.id not in self.currentPopulation:
+        self.currentPopulation.append(self.baselineEntity.id)
 
     self.numberOfWeights = self.players[0].bot.nn.lenCoefficents
     self.tau = 1 / math.sqrt( 2 * math.sqrt(self.numberOfWeights))
@@ -82,11 +101,37 @@ class Population:
   generatePlayers() function!
   """
   def generatePlayer(self):
-    bot = sp.Slowpoke(self.plyDepth,debug=self.isDebug,use_mlx=True)
-    human = agent.Agent(bot)
+    # Use parallel MCTS for deeper ply depths
+    if self.useParallelMCTS:
+      from decision.parallel_tmcts import ParallelTMCTS
+      # Create a neural network for the bot (same as Slowpoke)
+      nn = NeuralNetwork([91, 40, 10, 1], use_mlx=True)
+      bot = ParallelTMCTS(self.plyDepth, evaluator=None, num_parallel=self.parallelThreads, debug=self.isDebug)
+      bot.nn = nn  # Attach the neural network
+      bot.layers = [91, 40, 10, 1]  # Set layers for compatibility
+      bot.use_mlx = True  # Enable MLX for batch evaluation
+    else:
+      bot = sp.Slowpoke(self.plyDepth, debug=self.isDebug, use_mlx=True)
+    human = agent.Agent(bot, initial_elo=self.baselineElo)
     # generate ID
     human.setID(self.playerCounter)
     self.playerCounter += 1
+    return human
+  
+  """
+  Generates a baseline player with uninitialized (random) weights.
+  This player has 1200 Elo and serves as a reference point in tournaments.
+  """
+  def generateBaselinePlayer(self):
+    # Prevent creating multiple baseline entities
+    if self.baselineEntity is not None:
+      return self.baselineEntity
+    # Create a Slowpoke with random/uninitialized weights
+    bot = sp.Slowpoke(self.plyDepth, debug=self.isDebug, use_mlx=True)
+    human = agent.Agent(bot, initial_elo=self.baselineElo)
+    human.setID(-1)  # Special ID for baseline entity
+    human.isBaseline = True  # Mark as baseline
+    self.players[human.id] = human
     return human
 
   """
@@ -106,17 +151,20 @@ class Population:
 
   """
   Self explanatory, prints the current population in order of
-  how good they are (in terms of points)
+  Elo rating (now the primary ranking metric).
   """
   def printCurrentPopulationByPoints(self):
     if self.debug:
       print("Current Population:",self.currentPopulation)
-    points = list(map(lambda x: (x,self.players[x].points, self.players[x].elo), self.currentPopulation))
-    # sort list of tuples
+    elo_ratings = list(map(lambda x: (x,self.players[x].elo, self.players[x].points), self.currentPopulation))
+    elo_ratings = sorted(elo_ratings, key=operator.itemgetter(1), reverse=True)
     output = ""
-    for i in points:
-      # i[0] is the player ID, i[1] is the player's score, i[2] is Elo
-      output += f"Player {i[0]}\tPts: {i[1]}\tElo: {i[2]:.1f}\n"
+    for i in elo_ratings:
+      # i[0] is the player ID, i[1] is Elo, i[2] is points
+      player_label = f"Player {i[0]}"
+      if self.baselineEntity and i[0] == self.baselineEntity.id:
+        player_label += " (baseline)"
+      output += f"{player_label}\tElo: {i[1]:.1f}\tPts: {i[2]}\n"
     return output
 
   """
@@ -129,7 +177,10 @@ class Population:
     elo_ratings = sorted(elo_ratings, key=operator.itemgetter(1), reverse=True)
     output = "Population by Elo Rating:\n"
     for i in elo_ratings:
-      output += f"Player {i[0]}\tElo: {i[1]:.1f}\tPts: {i[2]}\n"
+      player_label = f"Player {i[0]}"
+      if self.baselineEntity and i[0] == self.baselineEntity.id:
+        player_label += " (baseline)"
+      output += f"{player_label}\tElo: {i[1]:.1f}\tPts: {i[2]}\n"
     return output
 
   def printEloStats(self):
@@ -145,14 +196,15 @@ class Population:
 
   """
   order the players by how good they are.
+  Now sorts by Elo rating instead of points.
   """
   def sortCurrentPopulationByPoints(self):
-    # create tuple of players and their points
-    points = list(map(lambda x: (x,self.players[x].points), self.currentPopulation))
-    # sort list of tuples
-    points = sorted(points, key=operator.itemgetter(1), reverse=True)
-    # assign back the first half of the tuples to the list of players.
-    self.currentPopulation = [x[0] for x in points]
+    # create tuple of players and their elo ratings
+    elo_ratings = list(map(lambda x: (x,self.players[x].elo), self.currentPopulation))
+    # sort list of tuples by Elo (highest first)
+    elo_ratings = sorted(elo_ratings, key=operator.itemgetter(1), reverse=True)
+    # assign back the sorted player IDs
+    self.currentPopulation = [x[0] for x in elo_ratings]
 
   """
   Generate new population based on the player performance.
@@ -267,6 +319,12 @@ class Population:
       self.players[offspring_id].points = 0  # Also reset points for new generation
     
     newPopulation = offsprings + elites
+    # Preserve baseline entity across generations
+    if self.baselineEntity is not None:
+      newPopulation.append(self.baselineEntity.id)
+      # Reset baseline to configured Elo and 0 points each generation
+      self.players[self.baselineEntity.id].elo = self.baselineElo
+      self.players[self.baselineEntity.id].points = 0
     # assign this set of offsprings as the new population.
     self.currentPopulation = newPopulation
     self.count = len(self.currentPopulation)
@@ -502,12 +560,12 @@ class Population:
       os.makedirs(folderDirectory)
 
     agent = {}
-    for i in range(len(self.players)):
+    for player_id in self.currentPopulation:
       # store player and its weights.
-      agent[i] = {}
-      agent[i]['score'] = self.players[i].points
-      agent[i]['origin'] = self.players[i].origin
-      agent[i]['parents'] = self.players[i].parents
+      agent[player_id] = {}
+      agent[player_id]['score'] = self.players[player_id].points
+      agent[player_id]['origin'] = self.players[player_id].origin
+      agent[player_id]['parents'] = self.players[player_id].parents
   
     filename = "genomes.json"
     with open(os.path.join(folderDirectory, filename), 'w') as outfile:
@@ -585,13 +643,13 @@ class Population:
 
   """
   Helper function to retrieve cache if it exists,
-  otherwise return false.
+  otherwise return empty dict.
   """
   def getMoveCache(self,botID):
     if self.players[botID].bot.enableCache:
       return self.players[botID].bot.cache
     else:
-      return False
+      return {}  # Return empty dict instead of False
 
   """
   Kill the caches when we're done with mutations or whatever.
