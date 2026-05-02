@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import play as p
 
 import json
@@ -55,14 +57,14 @@ games = [
 
 cores = multiprocessing.cpu_count()-1
 
-def gameWorker(i):
+def gameWorker(i: int) -> dict:
   score = p.runGame(i['black'], i['white'], i['gameOpt']).winner
   print(score)
   return score
 
 # --------------------------
 
-def verifyClasses(games):
+def verifyClasses(games: list) -> None:
   try:
     for x in games:
       k = {
@@ -76,7 +78,7 @@ def verifyClasses(games):
     print("Error:",e, "isn't a recognised player type. Here's a traceback:")
     return False
 
-def create_csv(entry):
+def create_csv(entry: dict) -> str:
   csv_ent = []
   # add entries for headings
   headings = []
@@ -107,7 +109,7 @@ def create_csv(entry):
     csv_ent.append(ent)
   return csv_ent
 
-def printStatus(entry, startTime=None):
+def printStatus(entry: dict, startTime=None) -> None:
   print('\033c', end=None)
   for evaluate_id, _ in entry.items():
     scoreboard = str(entry[evaluate_id]['wins']) + ":" + str(entry[evaluate_id]['losses'])+":"+str(entry[evaluate_id]['draws'])
@@ -119,7 +121,7 @@ def printStatus(entry, startTime=None):
     print()
 
 # iterate through the games.
-def evaluate(games, numberOfGames=10, filename='evaluations'):
+def evaluate(games, numberOfGames: int = 10, filename: str = 'evaluations') -> None:
   if verifyClasses(games):
     entry = {}
     for x in games:

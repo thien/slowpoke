@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 import os
 import json
@@ -7,7 +9,7 @@ import core.checkers as checkers
 from termcolor import colored
 
 class Playback:
-	def __init__(self,defaultResultsPath=None):
+	def __init__(self, defaultResultsPath: str = None) -> None:
 		self.games = {}
 		self.debug = True
 		self.loadGM = True
@@ -15,7 +17,7 @@ class Playback:
 		self.timeDelay = 0.5
 		self.loadHowManyGames = 8
 
-	def loadChampGames(self, genObj, champ):
+	def loadChampGames(self, genObj: dict, champ: dict) -> list:
 		games = genObj['games']
 		if self.debug:
 			print("Finding games played by Player",champ)
@@ -45,12 +47,12 @@ class Playback:
 			print(gameMoveDistribution)
 		return champGames
 
-	def loadGeneration(self, generation=0):
+	def loadGeneration(self, generation: int = 0) -> dict:
 		if self.debug:
 			print("Loaded Generation",generation)
 		return self.statistics[generation]
 
-	def processLeaderboard(self,lb):
+	def processLeaderboard(self, lb: list) -> list:
 		l = None
 		# we know the leaderboard is the ones containing Player 
 		for i in lb:
@@ -69,7 +71,7 @@ class Playback:
 			print("The Champion is: Player", self.getChampion(l))
 		return l
 	
-	def runReplayProgramme(self,gameMoves,champ=None,gen=None):
+	def runReplayProgramme(self, gameMoves: list, champ=None, gen=None) -> None:
 		B = checkers.CheckerBoard()
 		# get some of the games.
 		games = gameMoves[:self.loadHowManyGames]
@@ -129,7 +131,7 @@ class Playback:
 
 
 
-	def processBoardDisplays(self,board_display):
+	def processBoardDisplays(self, board_display) -> None:
 		# calculate terminal row, column
 		_, TColumns = os.popen('stty size', 'r').read().split()
 		# print("CLI Rows:", TRows, "CLI Columns:",TColumns)
@@ -166,7 +168,7 @@ class Playback:
 		return self.printBoard(master)
 
 	@staticmethod
-	def addStaticBoardInfo(gameInfo, replayLen, champID=None):
+	def addStaticBoardInfo(gameInfo: dict, replayLen: int, champID: str = None) -> dict:
 		boardCol = 33
 		black_player = '%04d'%(int('000')+gameInfo['Black'])
 		black_player = "P" + black_player
@@ -210,15 +212,15 @@ class Playback:
 		return inp
 
 	@staticmethod
-	def printBoard(board):
+	def printBoard(board) -> None:
 		return "".join(map(lambda x: "".join(x), board))
 
 	@staticmethod
-	def getChampion(lb):
+	def getChampion(lb: list) -> dict:
 		return lb[0][0]
 
 	@staticmethod
-	def chooseGeneration():
+	def chooseGeneration() -> int:
 		chosenAnswer = False
 		option = False
 		generation = 0

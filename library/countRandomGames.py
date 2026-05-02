@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import play
 import multiprocessing
 
@@ -18,7 +20,7 @@ gameOptions = {
 numberOfGames = 100000
 games = [[p1,p2] for i in range(numberOfGames)]
 
-def f(i): return len(play.runGame(i[0],i[1], gameOptions).pdn['Moves'])
+def f(i: int) -> None: return len(play.runGame(i[0],i[1], gameOptions).pdn['Moves'])
 
 p = multiprocessing.Pool(multiprocessing.cpu_count())
 moves = p.map(f, games)

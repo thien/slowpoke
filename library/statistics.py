@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import matplotlib
 import multiprocessing
 # dirty mira check
@@ -17,7 +19,7 @@ import hashlib
 import random
 
 class Statistics:
-  def __init__(self, date, defaultResultsPath=None):
+  def __init__(self, date: str, defaultResultsPath: str = None) -> None:
     self.date = date
     self.path = os.path.join("..", "results")
     if defaultResultsPath:
@@ -30,7 +32,7 @@ class Statistics:
     self.enableTitles = True
     self.debug = True
   
-  def loadStatisticsFile(self, filename="statistics.json"):
+  def loadStatisticsFile(self, filename: str = "statistics.json") -> dict:
     filepath = os.path.join(self.directory, filename)
     if self.debug:
       print("Loading Statistics from file:")
@@ -45,7 +47,7 @@ class Statistics:
     except:
       return False
 
-  def parseLeaderboards(self): 
+  def parseLeaderboards(self) -> list: 
     leaderboards = []
     for i in range(len(self.statistics)):
       lbEntry = {}
@@ -203,7 +205,7 @@ class Statistics:
     randomint = 5
     return "#" + hex[randomint:randomint+6]
 
-  def saveChartToFile(self, title, chart, filetype="pdf"):
+  def saveChartToFile(self, title: str, chart, filetype: str = "pdf") -> None:
     directory = os.path.join(self.directory,"charts")
     if not os.path.isdir(directory):
       os.makedirs(directory)
@@ -216,7 +218,7 @@ class Statistics:
   """
   Gets tournament timing information
   """
-  def timeStatsPerGeneration(self):
+  def timeStatsPerGeneration(self) -> None:
     sx = []
     plotx = []
     ploty = []
@@ -293,7 +295,7 @@ class Statistics:
   """
   Calculates the average number of moves per generation.
   """
-  def averageNumMovesPerGeneration(self):
+  def averageNumMovesPerGeneration(self) -> None:
     if self.debug:
       print("Calculating Move Counts (Per Generation)")
     means = []
@@ -345,7 +347,7 @@ class Statistics:
   """
   Calculates the scores and learning rates
   """
-  def getLearningRate(self):
+  def getLearningRate(self) -> None:
     scores = []
     cummulative = []
     champRange = []
@@ -408,7 +410,7 @@ class Statistics:
   """
   Load GM file
   """
-  def loadGMFile(self):
+  def loadGMFile(self) -> None:
     filepath = os.path.join(self.directory, self.gmFilename)
     if self.debug:
       print("Loading Statistics from file:")
@@ -422,7 +424,7 @@ class Statistics:
   """
   Parse the GM performance
   """
-  def analyseGM(self):
+  def analyseGM(self) -> None:
     opp_names = []
     w,l,d = [], [], []
     aw_w, aw_l, aw_d = [],[],[]
@@ -473,7 +475,7 @@ class Statistics:
     
     return False
 
-  def createWDLChart(self, opp_names,data,title=None):
+  def createWDLChart(self, opp_names: list, data, title: str = None) -> None:
     ww,dw,lw,wb,db,lb = data
     #  normalise values to 100%
     totals = [i+j+k+l+m+n for i,j,k,l,m,n in zip(ww,dw,lw,wb,db,lb)]
@@ -568,13 +570,13 @@ class Statistics:
       colour = colour + col
     return "#" + colour
 
-  def saveCharts(self):
+  def saveCharts(self) -> None:
     self.averageNumMovesPerGeneration()
     self.getLearningRate()
     self.timeStatsPerGeneration()
     self.parseLeaderboards()
 
-def batchRun():
+def batchRun() -> None:
   """
   Loads all the files in the repo and creates charts for all files if
   it can.
@@ -607,7 +609,7 @@ def batchRun():
   runBatchCummulativeChart(stats)
   # measureBatchTimings(stats)
 
-def measureBatchTimings(stats):
+def measureBatchTimings(stats) -> None:
   timings ={}
   for ob in stats:
     folderName = ob['folder'][20:].replace(" generations)","")
@@ -656,7 +658,7 @@ def measureBatchTimings(stats):
   # plt.xlabel('Generation')
   plt.show()
 
-def runBatchCummulativeChart(stats):
+def runBatchCummulativeChart(stats) -> None:
   print("-----------")
   # parse the stats objects to get the cummulative items
   cummulatives = {}
@@ -709,7 +711,7 @@ def runBatchCummulativeChart(stats):
   s.saveChartToFile(title, plt)
   plt.close()
   
-def handleArguments():
+def handleArguments() -> object:
   for i in range(1,len(sys.argv)):
     entry = sys.argv[i]
     maxSize = len(sys.argv)-1

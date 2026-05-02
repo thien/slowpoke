@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 #!/usr/bin/python
 import core.tournament as tournament
 import sys
@@ -6,7 +8,7 @@ import datetime
 import evaluator
 import statistics
 
-def train():
+def train() -> None:
     try:
         from checkers_core import CheckerBoard as _RustCB
         print(f"[checkers-core] Rust backend active ({_RustCB.__module__})")

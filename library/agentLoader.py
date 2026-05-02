@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import termcolor
 # import ijson
@@ -6,7 +8,7 @@ import re
 
 
 class agentLoader:
-  def __init__(self):
+  def __init__(self) -> None:
     self.basepath = os.path.join("..", "results")
     self.championFiletype = ".json"
     self.championsFoldername = "champions"
@@ -15,7 +17,7 @@ class agentLoader:
     self.cacheFilename = "menuCache.json"
     self.checkDirectoryChange()
 
-  def checkDirectoryChange(self):
+  def checkDirectoryChange(self) -> None:
     cached = False
     # check if our cache file is there
     if self.cacheFilename in os.listdir(self.basepath):
@@ -33,7 +35,7 @@ class agentLoader:
       # when done, save to cache.
       self.saveCache()
 
-  def loadCache(self):
+  def loadCache(self) -> None:
     filepath = os.path.join(self.basepath, self.cacheFilename)
     cache = {}
     try:
@@ -44,7 +46,7 @@ class agentLoader:
     except:
       return False
 
-  def saveCache(self):
+  def saveCache(self) -> None:
     filepath = os.path.join(self.basepath, self.cacheFilename)
     cache = {
       "count" : self.countDirectoryitems(),
@@ -56,7 +58,7 @@ class agentLoader:
       json.dump(cache, outfile)
     return True
 
-  def countDirectoryitems(self):
+  def countDirectoryitems(self) -> int:
     count = 0
     for system in os.listdir(self.basepath):
       sysdir = os.path.join(self.basepath, system)
@@ -67,10 +69,10 @@ class agentLoader:
             count += 1
     return count
 
-  def loadCoefficents(self,filepath):
+  def loadCoefficents(self, filepath: str) -> object:
     return json.load(filepath)
 
-  def detectAgentFiles(self,path):
+  def detectAgentFiles(self, path: str) -> list:
     if os.path.isdir(path):
       contents = os.listdir(path)
       if self.statisticsFilename in contents:
@@ -80,7 +82,7 @@ class agentLoader:
             return True
     return False
 
-  def getLatestAgent(self,agentPath):
+  def getLatestAgent(self, agentPath: str) -> object:
     """
     returns path to the latest agent.
     """
@@ -90,10 +92,10 @@ class agentLoader:
     latestAgent = str(directory[-1]) + self.championFiletype
     return os.path.join(champPath, latestAgent)
 
-  def getNumberOfChampions(self,path):
+  def getNumberOfChampions(self, path: str) -> int:
     return len(os.listdir(os.path.join(path, self.championsFoldername)))
 
-  def scrapeStats(self, directory):
+  def scrapeStats(self, directory: str) -> list:
     statFilepath = os.path.join(directory, self.statisticsFilename)
     statistics = None
 
@@ -132,7 +134,7 @@ class agentLoader:
     }
     return stats
 
-  def rebuildCacheList(self):
+  def rebuildCacheList(self) -> list:
     # lets find all the items in the directory
     counter = 0
     print()
@@ -155,7 +157,7 @@ class agentLoader:
     self.systems = sorted(self.systems, key=lambda x: x["endScore"])[::-1]
 
 
-  def loadAgentUI(self):
+  def loadAgentUI(self) -> None:
     print("Select the system to load, by the index:")
     chosen = False
     while not chosen:
@@ -206,7 +208,7 @@ class agentLoader:
           print("That's an invalid response. Please try again..")
     return agentID
 
-  def findTheBest(self, ply=1):
+  def findTheBest(self, ply: int = 1) -> object:
     bestScore = 0
     bestSystem = None
     for i in self.systems:
@@ -218,7 +220,7 @@ class agentLoader:
           bestScore = i['bestScore']
     return bestSystem
   
-  def loadStatisticsFile(self,system):
+  def loadStatisticsFile(self, system: str) -> dict:
     filepath = os.path.join(system['baseDir'], self.statisticsFilename)
     stats = {}
     try:
@@ -229,7 +231,7 @@ class agentLoader:
     except:
       return False
 
-  def loadAgentWeights(self,system, pid):
+  def loadAgentWeights(self, system: str, pid: int) -> object:
     champfile = str(pid) + ".json"
     champpath = os.path.join(system['ChampDir'], champfile)
     agent = {}

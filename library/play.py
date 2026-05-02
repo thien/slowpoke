@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # import agents
 import agents.slowpoke as sp
 import agents.geodude as geo
@@ -23,14 +25,14 @@ coef_master = np.array(
 
 # Helper functions
 
-def genSlowpokeClass(plyCount=6, bot_layers=[91,40,10,1], weights=[]):
+def genSlowpokeClass(plyCount: int = 6, bot_layers: list = None, weights: list = None) -> object:
     # need to load the layers here.
     bot = sp.Slowpoke(plyDepth=plyCount, layers=bot_layers)
     if len(weights) > 0:
         bot.loadWeights(weights)
     return bot
 
-def generatePlayerOptions(plyCount=6):
+def generatePlayerOptions(plyCount: int = 6) -> list:
     playerTypes = {
         'geodude' : {
             "description" : "Geodude plays with a pure MCTS approach.",
@@ -59,7 +61,7 @@ def generatePlayerOptions(plyCount=6):
 
 # load agents
 
-def loadPlayerClass(i, playerTypes = generatePlayerOptions(4)):
+def loadPlayerClass(i: int, playerTypes: list = None) -> object:
     # try:
     title = i
     if "=" in i:
@@ -73,7 +75,7 @@ def loadPlayerClass(i, playerTypes = generatePlayerOptions(4)):
     #     print(KeyError)
     #     print("Error:",e, "isn't a recognised player type. Here's a traceback:")
 
-def handleArguments():
+def handleArguments() -> object:
     # check if "b=" is in one of the arguments
     blackPlayer = None
     whitePlayer = None
@@ -105,7 +107,7 @@ def handleArguments():
 
     return blackPlayer, whitePlayer
 
-def loadPlayer(options={}):
+def loadPlayer(options: dict = None) -> object:
     print("Who will be the", options['colour'], "player?")
     if options['colour'] == "Black":
         print("Note that Black plays first.")
@@ -138,7 +140,7 @@ def loadPlayer(options={}):
     print()
     return (agent.Agent(playerClass), player)
 
-def handleSlowpokeOptions():
+def handleSlowpokeOptions() -> dict:
     # handle slowpoke operations
     chosenPly = False
     plyDepth = 1
@@ -158,7 +160,7 @@ def handleSlowpokeOptions():
     botWeights = np.array(lo.loadAgentWeights(system, agentID))
     return  genSlowpokeClass(plyCount=plyDepth, weights=botWeights)
 
-def initiateAgents():
+def initiateAgents() -> None:
     """
     Loads white and black agents so we can play the game.
     """
@@ -175,7 +177,7 @@ defaultOptions = {
     'preload_moves' : []
 }
 
-def runGame(blackAgent, whiteAgent, options=defaultOptions):
+def runGame(blackAgent, whiteAgent, options: dict = None) -> None:
     """
     To be called once players are generated.
     """

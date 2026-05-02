@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 This program evaluates the performance of the simulator.
 """
@@ -13,7 +15,7 @@ import play as p
 import agents.agent as agent
 
 class Evaluate:
-  def __init__(self, date, ply, defaultResultsPath=None):
+  def __init__(self, date: str, ply: int, defaultResultsPath: str = None) -> None:
     self.date = date
     self.path = os.path.join("..", "results")
     if defaultResultsPath:
@@ -45,7 +47,7 @@ class Evaluate:
     self.filename = "gm_stats"
 
 
-  def loadChampions(self, extensions=True):
+  def loadChampions(self, extensions: bool = True) -> list:
     champsPath = os.path.join(self.directory,self.champFolderName)
     print("Loading Agents.. ", end="")
     files = os.listdir(champsPath)
@@ -78,12 +80,12 @@ class Evaluate:
     print("Done.")
     print("There are", len(self.agents.keys()), "loaded.")
 
-  def loadOtherAgents(self):
+  def loadOtherAgents(self) -> list:
     # let's import other agents too
     self.agents['random'] = p.loadPlayerClass('magikarp')[0]
     self.agents['pure_mcts'] = p.loadPlayerClass('geodude')[0]
 
-  def createGames(self):
+  def createGames(self) -> list:
     # we'll make a list of games that the GM will play against.
     games = []
     for agent in self.agents.keys():
@@ -91,7 +93,7 @@ class Evaluate:
         games.append(["gm", agent])
     return games
 
-  def evaluate(self,games):
+  def evaluate(self, games: list) -> None:
     ent = {}
     players = {}
     for x in games:
@@ -160,7 +162,7 @@ class Evaluate:
   """
   easy command to save to json.
   """
-  def saveResultsToJson(self, ent):
+  def saveResultsToJson(self, ent: dict) -> None:
     filename = self.filename+".json"
     filepath = os.path.join(self.directory,filename)
     with open(filepath, 'w') as outfile:
@@ -169,13 +171,13 @@ class Evaluate:
   """
   This gets called by the map (as part of multithread)
   """
-  def gameWorker(self,i):
+  def gameWorker(self, i: int) -> dict:
     black = self.initAgentClass(i['black'], self.agents[i['black']])
     white = self.initAgentClass(i['white'], self.agents[i['white']])
     return p.runGame(black,white, i['gameOpt']).winner
 
   @staticmethod
-  def loadAgentFile(ply,pID,location):
+  def loadAgentFile(ply: int, pID: int, location: str) -> object:
     # returns an numpy array
     filetype = ".json"
     filename = str(pID) + filetype
@@ -187,7 +189,7 @@ class Evaluate:
     return p.genSlowpokeClass(plyCount=ply, weights=coefs)
 
   @staticmethod
-  def initAgentClass(id, bot):
+  def initAgentClass(id: str, bot) -> object:
     return (agent.Agent(bot),id)
 
 if __name__ == '__main__':
