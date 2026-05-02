@@ -168,9 +168,11 @@ class CheckerBoard:
         moveString = f"{src}x{dst}" if move < 0 else f"{src}-{dst}"
 
         if self._has_core:
+            pre_active = self._core.get_active()
+            pre_passive = self._core.get_passive()
             self._core.make_move(move)
-            active = 1 - self._core.get_active()
-            passive = 1 - active
+            active = pre_active
+            passive = pre_passive
             destination = 1 << dst_bit
         else:
             # ── Python fallback: bitboard ops ──
@@ -233,11 +235,7 @@ class CheckerBoard:
             self.pdn["Moves"].append(moveString)
 
         self.jump = 0
-        if self._has_core:
-            self.active = self._core.get_active()
-            self.passive = self._core.get_passive()
-        else:
-            self.active, self.passive = self.passive, self.active
+        self.active, self.passive = self.passive, self.active
         if full_update:
             self.updateState()
         elif not self._has_core:
@@ -405,7 +403,7 @@ class CheckerBoard:
             return True
         return False
 
-    def is_over(self):
+    def is_over(self, check_repetition=True):
         if self.noEatCount == boringNoEatLimit:
             self.checkWinner()
             return True
@@ -416,10 +414,14 @@ class CheckerBoard:
         elif len(self.get_moves()) == 0:
             self.checkWinner()
             return True
-        lastmoves = self.altMoveStack[-repetitionLimits:]
-        if len(lastmoves) == repetitionLimits:
-            p1 = set(lastmoves[0::2])
-            p2 = set(lastmoves[1::2])
+        if check_repetition and len(self.altMoveStack) >= repetitionLimits:
+            p1 = set()
+            p2 = set()
+            for i, m in enumerate(self.altMoveStack[-repetitionLimits:]):
+                if i % 2 == 0:
+                    p1.add(m)
+                else:
+                    p2.add(m)
             if len(p1) < 4 and len(p2) < 4:
                 self.checkWinner()
                 return True
@@ -498,13 +500,25 @@ class CheckerBoard:
 
     def push_move(self, move):
         if self._has_core:
+            move_abs = abs(move)
+            bits = _set_bits(move_abs)
+            src = 1 + bits[0] - bits[0] // 9
+            dst = 1 + bits[1] - bits[1] // 9
+            mv_str = f"{src}x{dst}" if move < 0 else f"{src}-{dst}"
             self._history.append((
                 tuple(self.mandatoryJumps),
                 tuple(self.multipleJumpStack),
                 len(self.moves),
                 len(self.altMoveStack),
+                self.active,
+                self.passive,
             ))
             self._core.push_move(move)
+            self._core.swap_active()
+            self.active = self._core.get_active()
+            self.passive = self._core.get_passive()
+            self.altMoveStack.append((self._history[-1][4], mv_str))
+            self.moves.append((self._history[-1][4], mv_str))
         else:
             self._history.append((
                 self.active, self.passive,
@@ -533,6 +547,8 @@ class CheckerBoard:
             self.multipleJumpStack = list(entry[1])
             del self.moves[entry[2]:]
             del self.altMoveStack[entry[3]:]
+            self.active = entry[4]
+            self.passive = entry[5]
         else:
             self.active = entry[0]
             self.passive = entry[1]
@@ -653,9 +669,7 @@ class CheckerBoard:
             raw_arr = self._core.get_rank()
             self.AIBoardPos = [int(x) for x in raw_arr]
             self._AIBoardArray = raw_arr
-            self.turnCount = self._core.get_turn_count() + 1
-            self.active = self._core.get_active()
-            self.passive = self._core.get_passive()
+            self.turnCount += 1
             # Build display state + PDN strings from rank
             state = [[None for _ in range(8)] for _ in range(4)]
             blackPieces = []

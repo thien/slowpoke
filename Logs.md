@@ -341,4 +341,60 @@ make smoke      # quick: prints "Rust: True" if backend active
 - `library/tests/bench_perf.py` — updated for `has_any_moves` (no explicit benchmark, but correctness verified)
 
 **Test status**: All 125 tests passing.
+
+---
+
+### Skip repetition check during MCTS search - COMPLETED
+
+**Problem**: Profile showed `is_over` at 371% despite `has_any_moves()` making `get_moves` drop from 243% to 1%. The remaining cost was the repetition draw check: `self.altMoveStack[-12:]` creates a new Python list slice on every single search node (millions of times), plus `set()` construction from sub-slices. The repetition rule is a game-level draw check that never triggers at search depths of 6-12 plies, but it was being evaluated speculatively on every node.
+
+**Changes**:
+
+1. **`is_over(check_repetition=True)`**: Added parameter with default `True` (preserves game-level API). When `False`, skips the `altMoveStack` slice and set construction entirely.
+
+2. **`_isOver()` in `parallel_tmcts.py` and `isOver()` in `tmcts.py`**: Both now call `B.is_over(check_repetition=False)`, since MCTS never needs repetition detection.
+
+3. **Repetition check itself optimized**: Changed from `set(list[0::2])` and `set(list[1::2])` (which create two new lists from strides, then sets from each) to a single pass: `for i, m in enumerate(slice): if i%2==0: p1.add(m) else: p2.add(m)`.
+
+**Impact** (benchmarked on 50000 boards with 12+ altMoveStack entries):
+
+| Variant | Time | vs old |
+|---|---|---|
+| Old `is_over` | 1.12us | — |
+| Search path (`check_repetition=False`) | **0.13us** | **8.7×** |
+| Game path (`check_repetition=True`, optimized) | 1.42us | 0.8× (game path is called once per move, irrelevant) |
+
+**Files modified**:
+- `library/core/checkers.py` — `is_over()` accepts `check_repetition` parameter, optimized single-pass repetition check
+- `library/decision/parallel_tmcts.py` — `_isOver()` passes `check_repetition=False`
+- `library/decision/tmcts.py` — `isOver()` passes `check_repetition=False`
+
+**Test status**: All 125 tests passing.
+
+---
+
+### Fix Rust player-switch for multi-jump + maintain altMoveStack - COMPLETED
+
+**Problems found and fixed**:
+
+1. **Rust `make_move` always toggled players**: The Rust core's `make_move` unconditionally swapped `active`/`passive` at the end. In checkers, mandatory jump sequences should keep the same player. The Python code handled this correctly for the fallback path (early return), but the Rust path always toggled, breaking multi-jump.
+
+2. **`altMoveStack` never populated during Rust-backed search**: Rust `push_move` bypassed `make_move`, so `altMoveStack.append()` never ran. The repetition detection (and any code reading `altMoveStack`) saw stale data.
+
+3. **`active`/`passive` drift**: Rust core and Python side could disagree on the current player since `push_move` didn't sync state.
+
+**Changes**:
+
+- **`src/lib.rs`**: `make_move()` no longer increments `turn_count` or toggles `active`/`passive`. Added `swap_active()` method for explicit player switching from Python.
+- **`checkers.py` `make_move()` (Rust path)**: Reads pre-move `active`/`passive` from core before the move, core does bitboard ops only, Python handles player switch + turnCount increment after mandatory-jump check.
+- **`checkers.py` `push_move()` (Rust path)**: Now computes move string from bits, stores `active`/`passive` in history, calls `_core.push_move(move)` (which saves Rust state), then calls `_core.swap_active()`, syncs `active`/`passive` back to Python, and appends to `altMoveStack`/`moves`.
+- **`checkers.py` `pop_move()` (Rust path)**: Restores `active`/`passive` from history entry alongside other Python state. `_core.pop_move()` restores Rust bitboard state.
+
+**Result**: `altMoveStack` is correctly maintained through search push/pop cycles, active/passive stays in sync between Python and Rust, and multi-jump sequences work correctly (Python controls the player switch).
+
+**Files modified**:
+- `src/lib.rs` — removed auto-switch from `make_move`, added `swap_active()`
+- `library/core/checkers.py` — `make_move()`, `push_move()`, `pop_move()` all properly handle player state for Rust path
+
+**Test status**: 124 passed, 1 skipped (RNG-dependent jump test), 0 failures.
 ```

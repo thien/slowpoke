@@ -197,10 +197,7 @@ impl CheckerBoard {
             self.forward[WHITE as usize] |= dest;
         }
 
-        self.turn_count += 1;
         self.jump = false;
-        self.active = self.passive;
-        self.passive = if self.active == BLACK { WHITE } else { BLACK };
         (src_bit, dst_bit)
     }
 
@@ -228,6 +225,7 @@ impl CheckerBoard {
 
     pub fn get_active(&self) -> u8 { self.active }
     pub fn get_passive(&self) -> u8 { self.passive }
+    pub fn swap_active(&mut self) { self.active = self.passive; self.passive = if self.active == BLACK { WHITE } else { BLACK }; }
     pub fn get_turn_count(&self) -> u32 { self.turn_count }
     pub fn get_no_eat_count(&self) -> u32 { self.no_eat_count }
     pub fn get_jump_flag(&self) -> bool { self.jump }

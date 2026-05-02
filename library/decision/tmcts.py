@@ -459,7 +459,7 @@ class TMCTS:
     return np.asarray(boardStatus, dtype=np.float32)
 
   def isOver(self, B, colour):
-    if B.is_over():
+    if B.is_over(check_repetition=False):
       if B.winner != minimax_empty:
         if B.winner == colour:
           return (True, minimax_win)

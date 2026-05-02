@@ -450,7 +450,7 @@ class ParallelTMCTS:
         minimax_draw = 0
         minimax_empty = -1
         
-        if B.is_over():
+        if B.is_over(check_repetition=False):
             if B.winner != minimax_empty:
                 return (True, minimax_win if B.winner == colour else minimax_lose)
             return (True, minimax_draw)
