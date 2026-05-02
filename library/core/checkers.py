@@ -15,10 +15,14 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-import numpy as np
+from __future__ import annotations
+
 import datetime
-from termcolor import colored
 from itertools import groupby
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
+from termcolor import colored
 
 try:
     from checkers_core import CheckerBoard as _RustCB
@@ -45,7 +49,7 @@ repetitionLimits = 12
 unusedBits = 0b100000000100000000100000000100000000
 
 
-def _reconstruct_board(state):
+def _reconstruct_board(state: Dict[str, Any]) -> "CheckerBoard":
     """Recreate a CheckerBoard from a pickled state dict."""
     B = CheckerBoard(_skip_core=True)
     for k, v in state.items():
@@ -53,7 +57,7 @@ def _reconstruct_board(state):
     return B
 
 
-def _set_bits(n):
+def _set_bits(n: int) -> List[int]:
     """Return list of set bit positions in n (LSB first), only looping over set bits.
 
     Much faster than bin(n)[::-1] enumerate for sparse bitboards.
@@ -78,10 +82,10 @@ class CheckerBoard:
         'blackPieces', 'whitePieces', '_history', 'AIBoardPos', '_AIBoardArray', '_core', '_has_core', 'is_over_called'
     )
     
-    def __init__(self, _skip_core=False):
+    def __init__(self, _skip_core: bool = False) -> None:
         if _skip_core:
-            self._core = None
-            self._has_core = False
+            self._core: Any = None
+            self._has_core: bool = False
         else:
             self._core = _RustCB() if _HAS_RUST_CORE else None
             self._has_core = self._core is not None
@@ -89,45 +93,34 @@ class CheckerBoard:
         self.backward = [None, None]
         self.pieces = [None, None]
         self.new_game()
-        if self._has_core:
-            self.updateState()
-        else:
-            self.updateState()
+        self.updateState()
 
-    """
-    Initiates the PGN for the game (for export).
-    """
-    def init_pgn(self):
+    def init_pgn(self) -> Dict[str, Any]:
+        """Initialise the PGN dictionary for game export."""
         currentDateTime = datetime.datetime.now()
         return {
-            "Event" : "Some Event",
-            "Date"  : currentDateTime.strftime("%y/%m/%d"),
-            "Time"  : currentDateTime.strftime("%H:%M:%S"),
+            "Event": "Some Event",
+            "Date": currentDateTime.strftime("%y/%m/%d"),
+            "Time": currentDateTime.strftime("%H:%M:%S"),
             "Result": "*",
-            "FEN"   : "B:W21-32:B1-16",
-            "Moves" : []
+            "FEN": "B:W21-32:B1-16",
+            "Moves": [],
         }
 
-    """
-    Prints the PGN of the game.
-    """
-    def print_pgn(self):
+    def print_pgn(self) -> Dict[str, Any]:
+        """Return the PGN dictionary."""
         return self.pdn
-    
-    """
-    Prints the PGN of the game.
-    """
-    def setID(self, game_id):
+
+    def setID(self, game_id: str) -> None:
+        """Set the game ID in PGN metadata."""
         self.pdn["_id"] = game_id
 
-    def setColours(self, blackID, whiteID):
+    def setColours(self, blackID: str, whiteID: str) -> None:
+        """Set player names in PGN metadata."""
         self.pdn["Black"] = blackID
         self.pdn["White"] = whiteID
-    
-    """
-    Resets current state to new game.
-    """
-    def new_game(self):
+
+    def new_game(self) -> None:
         if self._has_core:
             self._core.new_game()
         self.forward = [0x1eff, 0]
@@ -157,7 +150,7 @@ class CheckerBoard:
     A legal move is represented by an integer with exactly two
     bits turned on: the old position and the new position.
     """
-    def make_move(self, move, full_update=True):
+    def make_move(self, move: int, full_update: bool = True) -> "CheckerBoard":
         move_abs = abs(move)
         bits = _set_bits(move_abs)
         src_bit = bits[0]
@@ -293,24 +286,31 @@ class CheckerBoard:
     These methods return an integer whose active bits are those squares
     that can make the move indicated by the method name.
     """
-    def right_forward(self):
+    def right_forward(self) -> int:
         return (self.empty >> 4) & self.forward[self.active]
-    def left_forward(self):
+
+    def left_forward(self) -> int:
         return (self.empty >> 5) & self.forward[self.active]
-    def right_backward(self):
+
+    def right_backward(self) -> int:
         return (self.empty << 4) & self.backward[self.active]
-    def left_backward(self):
+
+    def left_backward(self) -> int:
         return (self.empty << 5) & self.backward[self.active]
-    def right_forward_jumps(self):
+
+    def right_forward_jumps(self) -> int:
         return (self.empty >> 8) & (self.pieces[self.passive] >> 4) & self.forward[self.active]
-    def left_forward_jumps(self):
+
+    def left_forward_jumps(self) -> int:
         return (self.empty >> 10) & (self.pieces[self.passive] >> 5) & self.forward[self.active]
-    def right_backward_jumps(self):
+
+    def right_backward_jumps(self) -> int:
         return (self.empty << 8) & (self.pieces[self.passive] << 4) & self.backward[self.active]
-    def left_backward_jumps(self):
+
+    def left_backward_jumps(self) -> int:
         return (self.empty << 10) & (self.pieces[self.passive] << 5) & self.backward[self.active]
 
-    def get_moves(self):
+    def get_moves(self) -> List[int]:
         if self.jump:
             return self.mandatoryJumps
         if self._has_core:
@@ -338,7 +338,7 @@ class CheckerBoard:
             moves.append(0x21 << (i - 5))
         return moves
 
-    def get_jumps(self):
+    def get_jumps(self) -> List[int]:
         if self._has_core:
             return list(self._core.get_jumps())
 
@@ -358,7 +358,7 @@ class CheckerBoard:
                 moves.append(-(0x401 << (i - 10)))
         return moves
 
-    def jumps_from(self, piece):
+    def jumps_from(self, piece: int) -> List[int]:
         if self._has_core:
             return list(self._core.jumps_from(piece))
 
@@ -393,7 +393,7 @@ class CheckerBoard:
         return moves
 
     # Returns true of the passed piece can be taken by the active player.
-    def takeable(self, piece):
+    def takeable(self, piece: int) -> bool:
         active = self.active
         if (self.forward[active] & (piece >> 4)) != 0 and (self.empty & (piece << 4)) != 0:
             return True
@@ -405,7 +405,7 @@ class CheckerBoard:
             return True
         return False
 
-    def is_over(self, check_repetition=True):
+    def is_over(self, check_repetition: bool = True) -> bool:
         if self.noEatCount == boringNoEatLimit:
             self.checkWinner()
             return True
@@ -429,7 +429,7 @@ class CheckerBoard:
                 return True
         return False
 
-    def checkWinner(self):
+    def checkWinner(self) -> None:
         if self.noEatCount == boringNoEatLimit:
             self.winner = empty
             self.pdn["Winner"] = empty
@@ -459,7 +459,7 @@ class CheckerBoard:
         self.pdn['replay'] = self.moves
 
     # Prints winner message (when needed)
-    def getWinnerMessage(self):
+    def getWinnerMessage(self) -> None:
         if self.winner == Black:
             print ("Congrats Black, you win!")
         elif self.winner == empty:
@@ -468,7 +468,7 @@ class CheckerBoard:
             print ("Congrats White, you win!")
 
     # Returns the current player
-    def current_player(self,board=None):
+    def current_player(self, board: Optional["CheckerBoard"] = None) -> int:
         if board:
             return board.current_player()
         else:
@@ -477,13 +477,13 @@ class CheckerBoard:
             else:
                 return White
 
-    def __reduce__(self):
-        # Pickle without the Rust core — workers create their own
+    def __reduce__(self) -> Tuple[Any, Tuple[Dict[str, Any]]]:
+        """Pickle without the Rust core — workers create their own."""
         state = {s: getattr(self, s, None) for s in self.__slots__
                  if s not in ('_core', '_has_core')}
         return (_reconstruct_board, (state,))
 
-    def copy(self):
+    def copy(self) -> "CheckerBoard":
         B = CheckerBoard()
         if self._has_core:
             B._core = self._core.copy()
@@ -500,7 +500,7 @@ class CheckerBoard:
         B._AIBoardArray = self._AIBoardArray.copy()
         return B
 
-    def push_move(self, move):
+    def push_move(self, move: int) -> Optional["CheckerBoard"]:
         if self._has_core:
             move_abs = abs(move)
             bits = _set_bits(move_abs)
@@ -539,7 +539,7 @@ class CheckerBoard:
             ))
             return self.make_move(move, full_update=False)
 
-    def pop_move(self):
+    def pop_move(self) -> Optional["CheckerBoard"]:
         if not self._history:
             return self
         entry = self._history.pop()
@@ -573,7 +573,7 @@ class CheckerBoard:
     """
     Returns a list of possible moves that the player can choose to make.
     """
-    def get_move_strings(self):
+    def get_move_strings(self) -> List[str]:
         # First check if we are in a jump sequence
         if self.jump and self.mandatoryJumps:
             # Convert mandatoryJumps to strings for display purposes
@@ -640,7 +640,7 @@ class CheckerBoard:
         return moves
 
 
-    def _update_rank(self):
+    def _update_rank(self) -> None:
         bk = self.backward[Black]
         bm = self.forward[Black] ^ bk
         wk = self.forward[White]
@@ -666,7 +666,7 @@ class CheckerBoard:
     Returns a record of the positions of the pieces on the board.
     This also updates the FEN.
     """
-    def updateState(self):
+    def updateState(self) -> None:
         if self._has_core:
             raw_arr = self._core.get_rank()
             self.AIBoardPos = [int(x) for x in raw_arr]
@@ -764,7 +764,7 @@ class CheckerBoard:
     """
     Returns the positions of the pieces for the AI.
     """
-    def getBoardPos(self, colour):
+    def getBoardPos(self, colour: int) -> List[int]:
         if colour == Black:
             return self.AIBoardPos
         else:
@@ -777,7 +777,7 @@ class CheckerBoard:
     """
     Same as above, but option to convert weights.
     """
-    def getBoardPosWeighted(self, colour, weights):
+    def getBoardPosWeighted(self, colour: int, weights: Dict[str, float]) -> np.ndarray:
         w = weights
         if self._has_core:
             return self._core.get_board_pos_weighted(
@@ -794,7 +794,7 @@ class CheckerBoard:
             return lookup[np.flip(arr) + 1]
 
     
-    def generateASCIIBoard(self, blackPOV=True):
+    def generateASCIIBoard(self, blackPOV: bool = True) -> List[Any]:
         """
         Param:
             blackPOV: True
@@ -849,11 +849,11 @@ class CheckerBoard:
             board = board[::-1]
         return board
     
-    def printBoard(self, blackPOV=True):
+    def printBoard(self, blackPOV: bool = True) -> str:
         return "".join(map(lambda x: "".join(x), self.generateASCIIBoard(blackPOV)))
     
     # Prints out the checkerboard. Mapped to default __str__ value; use if needed.
-    def __str__(self):
+    def __str__(self) -> str:
         # print('\033c', end=None)
         return  "".join(map(lambda x: "".join(x), self.generateASCIIBoard()))
         # return self.generateASCIIBoard()
