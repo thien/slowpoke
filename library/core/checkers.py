@@ -39,15 +39,17 @@ unusedBits = 0b100000000100000000100000000100000000
 
 
 def _set_bits(n):
-    """Yield positions of set bits in n (LSB first), only looping over set bits.
-    
+    """Return list of set bit positions in n (LSB first), only looping over set bits.
+
     Much faster than bin(n)[::-1] enumerate for sparse bitboards.
     """
     n = int(n)
+    out = []
     while n:
         lsb = n & -n
-        yield lsb.bit_length() - 1
+        out.append(lsb.bit_length() - 1)
         n ^= lsb
+    return out
 
 
 class CheckerBoard:
@@ -58,7 +60,7 @@ class CheckerBoard:
         'forward', 'backward', 'pieces', 'active', 'passive',
         'empty', 'jump', 'mandatoryJumps', 'turnCount', 'multipleJumpStack',
         'state', 'winner', 'noEatCount', 'altMoveStack', 'moves', 'pdn',
-        'blackPieces', 'whitePieces', '_history', 'AIBoardPos', 'is_over_called'
+        'blackPieces', 'whitePieces', '_history', 'AIBoardPos', '_AIBoardArray', 'is_over_called'
     )
     
     def __init__(self):
@@ -129,6 +131,7 @@ class CheckerBoard:
         self.altMoveStack = []
         self.moves = []
         self._history = []  # For push/pop move operations
+        self._AIBoardArray = np.empty(0, dtype=np.int8)  # set by _update_rank or updateState
 
     """
     Updates the game state to reflect the effects of the input
@@ -139,7 +142,7 @@ class CheckerBoard:
     """
     def make_move(self, move, full_update=True):
         move_abs = abs(move)
-        bits = list(_set_bits(move_abs))
+        bits = _set_bits(move_abs)
         src_bit = bits[0]
         dst_bit = bits[1]
         
@@ -185,6 +188,8 @@ class CheckerBoard:
                 self.multipleJumpStack.append(positions[0])
                 self.multipleJumpStack.append(positions[1])
             if self.mandatoryJumps:
+                if not full_update:
+                    self._update_rank()
                 return self
         else:
             self.noEatCount += 1
@@ -212,6 +217,8 @@ class CheckerBoard:
         self.active, self.passive = self.passive, self.active
         if full_update:
             self.updateState()
+        else:
+            self._update_rank()
         return self
 
     # """
@@ -454,6 +461,7 @@ class CheckerBoard:
         B.noEatCount = self.noEatCount
         # B.pdn = self.pdn
         B.altMoveStack = self.altMoveStack[-repetitionLimits+2:]
+        B._AIBoardArray = self._AIBoardArray.copy()
         return B
 
     def push_move(self, move):
@@ -471,6 +479,7 @@ class CheckerBoard:
             self.turnCount,
             len(self.moves),
             len(self.altMoveStack),
+            self._AIBoardArray.tobytes(),
         )
         self._history.append(history_entry)
         return self.make_move(move, full_update=False)
@@ -495,6 +504,7 @@ class CheckerBoard:
         self.turnCount = entry[13]
         del self.moves[entry[14]:]
         del self.altMoveStack[entry[15]:]
+        self._AIBoardArray = np.frombuffer(entry[16], dtype=np.int8).copy()
 
     """
     Returns a list of possible moves that the player can choose to make.
@@ -566,6 +576,28 @@ class CheckerBoard:
         return moves
 
 
+    def _update_rank(self):
+        bk = self.backward[Black]
+        bm = self.forward[Black] ^ bk
+        wk = self.forward[White]
+        wm = self.backward[White] ^ wk
+        rank = [empty] * 32
+        for i in range(4):
+            base = 9 * i
+            for j in range(8):
+                cell = 1 << (base + j)
+                idx = 8 * i + j
+                if cell & bm:
+                    rank[idx] = Black
+                elif cell & wm:
+                    rank[idx] = White
+                elif cell & bk:
+                    rank[idx] = blackKing
+                elif cell & wk:
+                    rank[idx] = whiteKing
+        self._AIBoardArray = np.array(rank, dtype=np.int8)
+        self.turnCount += 1
+
     """
     Returns a record of the positions of the pieces on the board.
     This also updates the FEN.
@@ -630,6 +662,7 @@ class CheckerBoard:
                     rank.append(empty)
         # print("Rank", rank)
         self.AIBoardPos = rank
+        self._AIBoardArray = np.array(rank, dtype=np.int8)
         self.state = state
         self.turnCount += 1
         genPDN(blackPieces,whitePieces)
@@ -652,45 +685,15 @@ class CheckerBoard:
     """
     def getBoardPosWeighted(self, colour, weights):
         w = weights
-        bk = self.backward[Black]
-        bm = self.forward[Black] ^ bk
-        wk = self.forward[White]
-        wm = self.backward[White] ^ wk
-        out = np.empty(32, dtype=np.float32)
-
+        arr = self._AIBoardArray
         if colour == Black:
-            for i in range(4):
-                base = 9 * i
-                for j in range(8):
-                    cell = 1 << (base + j)
-                    idx = 8 * i + j
-                    if cell & bm:
-                        out[idx] = w['Black']
-                    elif cell & wm:
-                        out[idx] = w['White']
-                    elif cell & bk:
-                        out[idx] = w['blackKing']
-                    elif cell & wk:
-                        out[idx] = w['whiteKing']
-                    else:
-                        out[idx] = w['empty']
+            lookup = np.array([w['empty'], w['Black'], w['White'],
+                               w['blackKing'], w['whiteKing']], dtype=np.float32)
+            return lookup[arr + 1]
         else:
-            for i in range(4):
-                base = 9 * i
-                for j in range(8):
-                    cell = 1 << (base + j)
-                    idx = 31 - (8 * i + j)
-                    if cell & bm:
-                        out[idx] = w['White']
-                    elif cell & wm:
-                        out[idx] = w['Black']
-                    elif cell & bk:
-                        out[idx] = w['whiteKing']
-                    elif cell & wk:
-                        out[idx] = w['blackKing']
-                    else:
-                        out[idx] = w['empty']
-        return out
+            lookup = np.array([w['empty'], w['White'], w['Black'],
+                               w['whiteKing'], w['blackKing']], dtype=np.float32)
+            return lookup[np.flip(arr) + 1]
 
     
     def generateASCIIBoard(self, blackPOV=True):
