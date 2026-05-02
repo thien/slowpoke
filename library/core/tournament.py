@@ -123,7 +123,7 @@ class Generator:
       pass
   
   def _setup_logging(self):
-    """Set up logging to file instead of repeated console prints."""
+    """Set up logging to both file and console."""
     # Ensure save directory exists
     if not os.path.isdir(self.saveLocation):
       os.makedirs(self.saveLocation)
@@ -457,15 +457,14 @@ class Generator:
     return messsages
 
   def displayStatusInfo(self, force_display=False):
-    """Log status info to file. Only display to console on generation boundaries."""
+    """Log status info to file. Always display to console."""
     self.logStatusInfo()
-    # Only print to console for key generation events
-    if force_display:
-      print("SLOWPOKE - Generation", self.currentGeneration)
-      for i in self.statusInfo():
-        if i[0] not in [" ", "Previous Scoreboard", "Debug Mode:"]:
-          print("{0:30} {1}".format(str(i[0]), str(i[1])))
-      print("----------------------")
+    # Always print to console
+    print("SLOWPOKE - Generation", self.currentGeneration)
+    for i in self.statusInfo():
+      if i[0] not in [" ", "Previous Scoreboard", "Debug Mode:"]:
+        print("{0:30} {1}".format(str(i[0]), str(i[1])))
+    print("----------------------")
 
   @staticmethod
   def cleanDate(timestamp, unixDefault=False):

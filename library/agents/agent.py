@@ -14,12 +14,13 @@ import time
 class Agent:
   def __init__(self, bot, agent_id=None):
     self.bot = bot
-    self.elo = 1200
+    self.elo = 1200  # Will be updated by Population.allocatePoints()
     self.points = 0
     self.champRange = 0
     self.champScore = 0
     self.move_function = bot.move_function
     self.colour = None
+    self.games_played = 0  # Track games played for K-factor calibration
     
     # check for ID
     if agent_id is not None:

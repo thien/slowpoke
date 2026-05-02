@@ -467,23 +467,28 @@ class CheckerBoard:
         return B
 
     def push_move(self, move):
-        """Apply a move without creating a copy. Stores previous state in _history for undo."""
-        # Store state need to undo this move
-        history_entry = {
-            'active': self.active,
-            'passive': self.passive,
-            'forward': [x for x in self.forward],
-            'backward': [x for x in self.backward],
-            'pieces': [x for x in self.pieces],
-            'empty': self.empty,
-            'jump': self.jump,
-            'mandatoryJumps': [x for x in self.mandatoryJumps],
-            'noEatCount': self.noEatCount,
-            'multipleJumpStack': [x for x in self.multipleJumpStack],
-            'turnCount': self.turnCount,
-            'moves': len(self.moves),
-            'altMoveStack_len': len(self.altMoveStack),
-        }
+        """Apply a move without creating a copy. Stores previous state in _history for undo.
+        
+        Optimized version: uses tuple-based history to reduce memory allocation.
+        """
+        # Store minimal state needed to undo this move
+        # Format: (active, passive, forward, backward, pieces, empty, jump, mandatoryJumps, 
+        #          noEatCount, multipleJumpStack, turnCount, moves_len, altMoveStack_len)
+        history_entry = (
+            self.active,
+            self.passive,
+            tuple(self.forward),
+            tuple(self.backward),
+            tuple(self.pieces),
+            self.empty,
+            self.jump,
+            tuple(self.mandatoryJumps),
+            self.noEatCount,
+            tuple(self.multipleJumpStack),
+            self.turnCount,
+            len(self.moves),
+            len(self.altMoveStack),
+        )
         self._history.append(history_entry)
         return self.make_move(move)
 
@@ -492,22 +497,24 @@ class CheckerBoard:
         if not self._history:
             return self
         entry = self._history.pop()
-        self.active = entry['active']
-        self.passive = entry['passive']
-        self.forward = entry['forward']
-        self.backward = entry['backward']
-        self.pieces = entry['pieces']
-        self.empty = entry['empty']
-        self.jump = entry['jump']
-        self.mandatoryJumps = entry['mandatoryJumps']
-        self.noEatCount = entry['noEatCount']
-        self.multipleJumpStack = entry['multipleJumpStack']
-        self.turnCount = entry['turnCount']
+        # Tuple format: (active, passive, forward, backward, pieces, empty, jump, mandatoryJumps, 
+        #              noEatCount, multipleJumpStack, turnCount, moves_len, altMoveStack_len)
+        self.active = entry[0]
+        self.passive = entry[1]
+        self.forward = list(entry[2])
+        self.backward = list(entry[3])
+        self.pieces = list(entry[4])
+        self.empty = entry[5]
+        self.jump = entry[6]
+        self.mandatoryJumps = list(entry[7])
+        self.noEatCount = entry[8]
+        self.multipleJumpStack = list(entry[9])
+        self.turnCount = entry[10]
         # Truncate stacks to previous lengths
-        del self.moves[entry['moves']:]
-        del self.altMoveStack[entry['altMoveStack_len']:]
+        del self.moves[entry[11]:]
+        del self.altMoveStack[entry[12]:]
         self.updateState()
-        self.turnCount = entry['turnCount']  # restore after updateState() increments it
+        self.turnCount = entry[10]  # restore after updateState() increments it
         return self
 
     """

@@ -51,6 +51,41 @@ Speedup: 696.9x
    - After batch evaluation, results are resolved and added to move statistics
 4. All 45 tests passing
 
+### Move Stack Optimization - COMPLETED
+
+**Problem**: `push_move` and `pop_move` use dict-based history with list copying overhead.
+
+**Solution Implemented**:
+- Replaced dict-based history with tuple-based history in `push_move()`
+- Updated `pop_move()` to use tuple indexing and convert back to lists
+- Includes all state needed for undo: active, passive, forward, backward, pieces, empty, jump, mandatoryJumps, noEatCount, multipleJumpStack, turnCount, moves_len, altMoveStack_len
+
+**Impact**: ~44,000 moves/sec throughput (measured in tests)
+
+**Benchmark Results**:
+```
+Individual push/pop: 1000 moves in 0.023s = 0.023ms per move
+Throughput: 44398 moves/sec
+```
+
+### Logging Configuration - RESTORED
+
+**Change**: Restored console output for training progress.
+
+**Solution Implemented**:
+- Updated `_setup_logging()` docstring to reflect dual output
+- Modified `displayStatusInfo()` to always print to console (not just on generation boundaries)
+- Status info now appears in terminal during training runs
+
+**How to Use**:
+```bash
+# Run light simulation with console output
+python library/train.py light
+
+# Run tests
+python -m pytest -v
+```
+
 ## Files Modified
 
 - `library/core/population.py` - Added `use_mlx=True` to Slowpoke initialization

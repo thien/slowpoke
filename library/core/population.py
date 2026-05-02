@@ -12,6 +12,37 @@ import os
 import datetime
 import multiprocessing
 
+
+class EloRating:
+    """
+    Elo rating system with anchoring and K-factor calibration.
+    K=32 for new players (<10 games), K=24 for intermediate (10-50 games), K=10 for established (>50 games).
+    """
+    def __init__(self, k_factor=32, initial_rating=1200):
+        self.k_factor = k_factor
+        self.initial_rating = initial_rating
+    
+    def get_k_factor(self, games_played):
+        """Get K-factor based on number of games played."""
+        if games_played < 10:
+            return 32  # New player - high volatility
+        elif games_played < 50:
+            return 24  # Intermediate - moderate volatility
+        else:
+            return 10  # Established - low volatility
+    
+    def expected_score(self, player_rating, opponent_rating):
+        return 1 / (1 + 10 ** ((opponent_rating - player_rating) / 400))
+    
+    def update_rating(self, player_rating, opponent_rating, actual_score, games_played=0):
+        expected = self.expected_score(player_rating, opponent_rating)
+        # Use dynamic K-factor if games_played > 0, otherwise use fixed K-factor
+        if games_played > 0:
+            k = self.get_k_factor(games_played)
+        else:
+            k = self.k_factor
+        return player_rating + k * (actual_score - expected)
+
 Black, White, empty = 0, 1, -1
 
 WinPt, DrawPt, LosePt = 2, 0, -1
@@ -29,6 +60,8 @@ class Population:
     self.champions = []     # here we list the champions
     self.playerCounter = 0    # used to create playerID's.
     self.folderDirectory = os.path.join("..", "results", "champions")  # for champion saves
+    # Elo rating system
+    self.elo_system = EloRating(k_factor=32, initial_rating=1200)
     # generate an initial population
     self.currentPopulation = self.generatePlayers(self.count)
 
@@ -78,12 +111,36 @@ class Population:
   def printCurrentPopulationByPoints(self):
     if self.debug:
       print("Current Population:",self.currentPopulation)
-    points = list(map(lambda x: (x,self.players[x].points), self.currentPopulation))
+    points = list(map(lambda x: (x,self.players[x].points, self.players[x].elo), self.currentPopulation))
     # sort list of tuples
     output = ""
     for i in points:
-      # i[0] is the player ID, i[1] is the player's score.
-      output += "Player "+str(i[0])+ "\t" + str(i[1])+"\n"
+      # i[0] is the player ID, i[1] is the player's score, i[2] is Elo
+      output += f"Player {i[0]}\tPts: {i[1]}\tElo: {i[2]:.1f}\n"
+    return output
+
+  """
+  Prints the current population in order of Elo rating.
+  """
+  def printCurrentPopulationByElo(self):
+    if self.debug:
+      print("Current Population:",self.currentPopulation)
+    elo_ratings = list(map(lambda x: (x,self.players[x].elo, self.players[x].points), self.currentPopulation))
+    elo_ratings = sorted(elo_ratings, key=operator.itemgetter(1), reverse=True)
+    output = "Population by Elo Rating:\n"
+    for i in elo_ratings:
+      output += f"Player {i[0]}\tElo: {i[1]:.1f}\tPts: {i[2]}\n"
+    return output
+
+  def printEloStats(self):
+    """Print Elo statistics for the current population."""
+    elos = [self.players[pid].elo for pid in self.currentPopulation]
+    avg_elo = sum(elos) / len(elos)
+    best_elo = max(elos)
+    worst_elo = min(elos)
+    best_player = max(self.currentPopulation, key=lambda pid: self.players[pid].elo)
+    
+    output = f"Elo Stats - Avg: {avg_elo:.1f} | Best: {best_elo:.1f} (P{best_player}) | Worst: {worst_elo:.1f}\n"
     return output
 
   """
@@ -109,7 +166,9 @@ class Population:
     # start with the top 5 players from the previous generation
     elites = self.currentPopulation[:5]
     # reset scores for these elites
-    for i in elites: self.players[i].points = 0
+    for i in elites:
+      self.players[i].points = 0
+      self.players[i].games_played = 0  # Reset games for elites moving to next generation
     # create list of offsprings
     offsprings = []
     # create magic crossover from new parents
@@ -180,11 +239,33 @@ class Population:
     # for i in offsprings:
     #   mutations.append(self.mutate(i))
     print("Finished computing mutations.")
-
+    
     # now that we have the mutations, load them to each agent.
     for mutation in mutations:
       self.players[mutation[0]].bot.nn.loadCoefficents(mutation[1])
-
+    
+    # Set Elo ratings for offspring based on parent means
+    for i in range(0,2):
+      parent_a_ID, parent_b_ID = self.currentPopulation[i], self.currentPopulation[i+1]
+      parent_a_elo = self.players[parent_a_ID].elo
+      parent_b_elo = self.players[parent_b_ID].elo
+      mean_elo = (parent_a_elo + parent_b_elo) / 2
+      # Children from crossover get mean of parents
+      self.players[offsprings[i*4]].elo = mean_elo
+      self.players[offsprings[i*4 + 1]].elo = mean_elo
+      # Children from copy get parent's Elo
+      self.players[offsprings[i*4 + 2]].elo = parent_a_elo
+      self.players[offsprings[i*4 + 3]].elo = parent_b_elo
+    
+    # Set Elo for remainder offspring (copies of 4th and 5th place)
+    self.players[offsprings[-2]].elo = self.players[self.currentPopulation[3]].elo
+    self.players[offsprings[-1]].elo = self.players[self.currentPopulation[4]].elo
+    
+    # Reset games_played for all offspring (they start fresh)
+    for offspring_id in offsprings:
+      self.players[offspring_id].games_played = 0
+      self.players[offspring_id].points = 0  # Also reset points for new generation
+    
     newPopulation = offsprings + elites
     # assign this set of offsprings as the new population.
     self.currentPopulation = newPopulation
@@ -455,14 +536,36 @@ class Population:
 
   """
   Allocates points to players based on the game outcomes
+  Also updates Elo ratings for both players.
   """
   def allocatePoints(self, results, black, white):
+    # Get ratings and games played
+    black_rating = self.players[black].elo
+    white_rating = self.players[white].elo
+    black_games = self.players[black].games_played
+    white_games = self.players[white].games_played
+    
+    # Increment games played for both players
+    self.players[black].games_played += 1
+    self.players[white].games_played += 1
+    
+    # Allocate points (existing logic)
     if results["Winner"] == Black:
       self.players[black].points += WinPt
       self.players[white].points += LosePt
+      # Update Elo: black wins (score=1.0), white loses (score=0.0)
+      self.players[black].elo = self.elo_system.update_rating(black_rating, white_rating, 1.0, black_games)
+      self.players[white].elo = self.elo_system.update_rating(white_rating, black_rating, 0.0, white_games)
     elif results["Winner"] == White:
       self.players[black].points += LosePt
       self.players[white].points += WinPt
+      # Update Elo: white wins (score=1.0), black loses (score=0.0)
+      self.players[black].elo = self.elo_system.update_rating(black_rating, white_rating, 0.0, black_games)
+      self.players[white].elo = self.elo_system.update_rating(white_rating, black_rating, 1.0, white_games)
+    else:
+      # Draw case (if implemented)
+      self.players[black].elo = self.elo_system.update_rating(black_rating, white_rating, 0.5, black_games)
+      self.players[white].elo = self.elo_system.update_rating(white_rating, black_rating, 0.5, white_games)
 
   """
   Adds the champion to the list of champions
