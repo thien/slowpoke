@@ -1,10 +1,7 @@
-"""
-Bot - Base class for all game AI bots.
+from __future__ import annotations
 
-All bots must implement move_function(board, colour).
-Additional attributes (nn, cache, evaluate_board, etc.) are optional
-and specific to the bot type.
-"""
+from typing import Any
+
 
 class Bot:
     """Base class for game AI bots.
@@ -15,7 +12,7 @@ class Bot:
     depending on their capabilities.
     """
 
-    def move_function(self, board, colour):
+    def move_function(self, board: Any, colour: int) -> int:
         """Return a legal move for the given board position and colour.
 
         Args:

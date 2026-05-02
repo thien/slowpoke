@@ -1,12 +1,11 @@
-# We arbitrarily defined the value of a winning board as +1.0 and a losing board as −1.0. All other boards would receive values between −1.0 and +1.0, with a neural network favouring boards with higher values.
+"""TMCTS — tree-based Monte Carlo tree search with UCB1 and batched NN eval."""
 
-minimax_win = 1
-minimax_lose = -minimax_win
-minimax_draw = 0
-minimax_empty = -1
+from __future__ import annotations
 
-import random
 import math
+import random
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 
 try:
@@ -16,12 +15,18 @@ except ImportError:
   mx = None
   MLX_AVAILABLE = False
 
-# Special marker for terminal values (negative index indicates terminal state)
+minimax_win = 1
+minimax_lose = -minimax_win
+minimax_draw = 0
+minimax_empty = -1
+
 TERMINAL_VALUE_MARKER = -1
 
-class TMCTS:
 
-  def __init__(self, ply, evaluator, debug=False, batch_size=512):
+class TMCTS:
+  """Tree-based Monte Carlo Tree Search with UCB1 selection and batched NN evaluation."""
+
+  def __init__(self, ply: int, evaluator: Any, debug: bool = False, batch_size: int = 512) -> None:
     self.ply = ply
     self.evaluator = evaluator
     self.baseRound = 300
@@ -56,7 +61,7 @@ class TMCTS:
     if self.debug:
       self.baseRound = 10
 
-  def _select_move_ucb1(self, moves, C=None):
+  def _select_move_ucb1(self, moves: List[int], C: Optional[float] = None) -> int:
     """Select move using UCB1 (Upper Confidence Bound).
 
     Balances exploration (trying under-explored moves) with
@@ -92,7 +97,7 @@ class TMCTS:
         best_move = m
     return best_move
 
-  def _resolve_batch_results(self):
+  def _resolve_batch_results(self) -> None:
     """Evaluate accumulated batch positions and resolve all deferred results into movesets.
 
     Called periodically during UCB1 rounds so the selection policy gets live feedback.
@@ -113,18 +118,19 @@ class TMCTS:
       self.movesets[move]['plays'] += 1
     self._round_results = []
 
-  def _sample_gumbel(self, n, temperature=None):
+  def _sample_gumbel(self, n: int, temperature: Optional[float] = None) -> List[float]:
     """Sample n values from Gumbel(0,1) distribution for Gumbel-Top-K.
-    
+
     Gumbel noise is distributed as: g = -log(-log(U)) where U ~ Uniform(0,1).
     Adding Gumbel noise to scores and taking top-K is equivalent to sampling
     from the softmax distribution without replacement (Gumbel-Top-K trick).
-    
+
     Args:
-        n: Number of samples to generate
-        temperature: Scale factor (higher = more uniform, lower = more greedy)
+        n: Number of samples to generate.
+        temperature: Scale factor (higher = more uniform, lower = more greedy).
+
     Returns:
-        List of n Gumbel samples
+        List of n Gumbel samples.
     """
     if temperature is None:
       temperature = self.gumbel_temperature
@@ -133,18 +139,19 @@ class TMCTS:
     uniforms = [max(min(u, 0.9999999), 0.0000001) for u in uniforms]
     return [-math.log(-math.log(u)) * temperature for u in uniforms]
 
-  def _evaluate_moves_batch(self, B, moves, colour):
+  def _evaluate_moves_batch(self, B: Any, moves: List[int], colour: int) -> Optional[List[Tuple[int, float]]]:
     """Get NN evaluations for all root moves in a single GPU batch.
-    
-    For each move: push, extract position, pop. Terminal moves get ±1.
+
+    For each move: push, extract position, pop. Terminal moves get +-1.
     Evaluates all accumulated positions in one GPU call.
-    
+
     Args:
-        B: Board state
-        moves: List of candidate moves
-        colour: Current player colour
+        B: Board state.
+        moves: List of candidate moves.
+        colour: Current player colour.
+
     Returns:
-        List of (move, score) tuples, or None if batch evaluation unavailable
+        List of (move, score) tuples, or None if batch evaluation unavailable.
     """
     if not self.use_mlx or self.nn is None:
       return None
@@ -191,18 +198,18 @@ class TMCTS:
     
     return scored_moves
 
-  def Decide(self, B, colour):
+  def Decide(self, B: Any, colour: int) -> int:
+    """Return the best move found by TMCTS UCB1 search."""
     self.movesets = {}
     return self.random_ts(B, self.ply, colour)
 
-  def decide(self, B, colour):
+  def decide(self, B: Any, colour: int) -> int:
     """Lowercase alias for Decide()."""
     return self.Decide(B, colour)
 
   # -------------------------------------------------------
 
-  def random_ts(self, B, ply, colour, printDebug=False):
-    # colour = 1 if colour == 0 else 0
+  def random_ts(self, B: Any, ply: int, colour: int, printDebug: bool = False) -> int:
     moves = B.get_moves()
 
     # if theres only one move to make theres no point evaluating future moves.
@@ -295,7 +302,7 @@ class TMCTS:
       
       return bestMove
 
-  def treesearch(self, B, ply, colour):
+  def treesearch(self, B: Any, ply: int, colour: int) -> float:
     """Standard tree search with individual evaluations."""
     isOver = self.isOver(B, colour)
     if isOver[0]:
@@ -334,9 +341,9 @@ class TMCTS:
           B.pop_move()  # pop enemy move
           return result
 
-  def treesearch_batch(self, B, ply, colour):
+  def treesearch_batch(self, B: Any, ply: int, colour: int) -> Union[int, float]:
     """MLX-native tree search with batched position accumulation.
-    
+
     Uses a persistent node cache for tree reuse across turns:
     - At every node (leaf or internal), checks cache first
     - Cached MCTS values from previous turns / pruned subtrees
@@ -393,13 +400,14 @@ class TMCTS:
     self._node_cache[pos_key] = result
     return result
 
-  def flush_batch(self):
+  def flush_batch(self) -> np.ndarray:
     """Evaluate all accumulated positions in a single batch.
-    
+
     Maps batch results back to individual positions using position indices.
     Stores results in _position_to_result for resolution.
-    
-    Returns: np.array with evaluation results
+
+    Returns:
+        np.array with evaluation results.
     """
     if not self._batch_positions:
       return np.array([0.0])
@@ -443,7 +451,7 @@ class TMCTS:
     
     return results
 
-  def _extract_position(self, B, colour):
+  def _extract_position(self, B: Any, colour: int) -> np.ndarray:
     """Extract board position for neural network evaluation."""
     boardStatus = B.getBoardPosWeighted(colour, {
       "Black": 1,
@@ -458,7 +466,7 @@ class TMCTS:
 
     return np.asarray(boardStatus, dtype=np.float32)
 
-  def isOver(self, B, colour):
+  def isOver(self, B: Any, colour: int) -> Tuple[bool, int]:
     if B.is_over(check_repetition=False):
       if B.winner != minimax_empty:
         if B.winner == colour:

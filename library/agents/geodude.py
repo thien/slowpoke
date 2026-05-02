@@ -1,41 +1,9 @@
-"""
-  Geodude
-                                                  _,.---.
-                                              _,-'       `.
-                                          _,'  ,          \
-                                        ,'  _,'   .        `.
-                                        /  ,'     ,'          `.
-              __                       .,'    _,'              `.
-          _,..'  `-....___              :    ,'     '             \
-        ,'   /            :             /`.,'      /               `
-      /    /  ._         |         __..|  `.    .'       ,         `.
-      |   |   ,'"--._    |      ,-'    `-._`.,-'       ,:            .
-      .'\   \     _,'.    `'___.'           `"`.     _,' /            |
-      |  \   \---'       ,"'  .-""'"----.       `.  '  ,'             |
-      `. `-.'          /    /                    `-..^._             '
-        |._|    _.    /    /                            `._           .
-        `...:--'--+..'   ,'                              /            |
-            '._  `|   ,-'       _..._                   j     \       |
-              |` |   /       ,-'     `-.__              |      L      |
-              |  |  /      ,'                           |      |      |
-              |_,'        /         _,-                  .     |      |
-              ,'  ,   |  ,'        ,|            ,..._     \    |      '
-            ,     \ j  '       _." |           /     `-.__'    '    ,'
-              +._   '|       ,'|    |          /        ,'    .'    /
-              |  `._  `-' .:|  |    '.       -'        '           j
-              '    |`    ' |'  |     |                             |
-              `.  |       |--'     _|        .                    |
-                \ |       '----'"'"'           \      __,....-+----'
-                | '                            `---""      .' 
-                `. `.                                     ,
-                  `" \_...-"''"'--..         _+          ,'
-                        '            -.'  `'  `.  ."-..'
-                        `-..'._            _____,.'
-                              `-'-'.....,-"' mh
-"""
+"""Geodude — checkers AI that uses plain MCTS for decision making."""
 
-# import decision files
+from __future__ import annotations
+
 import sys
+from typing import Any
 
 sys.path.insert(0, "..")
 import decision.mcts as mcts
@@ -43,16 +11,17 @@ from agents.bot import Bot
 
 
 class Geodude(Bot):
-    def __init__(self, plyDepth=4):
-        """
-        Initialise Agent
+    """MCTS-based checkers bot with no neural network."""
 
-        Note that we keep the weights since it is
-        essential for the bot to evaluate the board.
+    def __init__(self, plyDepth: int = 4) -> None:
+        """Initialise Geodude agent.
+
+        Args:
+            plyDepth: Number of plies for MCTS search.
         """
         self.ply = plyDepth
         self.decisionFunction = mcts.MCTS(self.ply)
 
-    def move_function(self, board, colour):
-        # return self.mcts_code(board,self.ply, colour)
+    def move_function(self, board: Any, colour: int) -> int:
+        """Return a move using plain MCTS."""
         return self.decisionFunction.Decide(board, colour)

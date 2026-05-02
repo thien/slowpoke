@@ -1,14 +1,11 @@
-"""
-Onix — heuristic-based checkers bot. No neural network, no MLX.
+"""Onix — heuristic-based checkers bot with TMCTS search."""
 
-Uses hand-crafted heuristics (material, kings, advancement, centre,
-mobility, back-rank defence) evaluated directly from bitboards.
-Search is powered by serial TMCTS at the configured ply depth.
-"""
+from __future__ import annotations
 
+import math
 import os
 import sys
-import math
+from typing import Any, Dict
 
 _lib_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _lib_dir not in sys.path:
@@ -16,31 +13,27 @@ if _lib_dir not in sys.path:
 
 from agents import minimax_draw, minimax_empty, minimax_lose, minimax_win
 
-# Bitboard masks for each of the 4 rows of playable squares
-# Row 0: bits 0-7  |  Row 1: bits 9-16  |  Row 2: bits 18-25  |  Row 3: bits 27-34
-_ROW_MASKS = [0xFF, 0x1FE00, 0x3FC0000, 0x7F8000000]
-
-# Centre squares (bit positions 12, 13, 21, 22)
-_CENTRE_MASK = (1 << 12) | (1 << 13) | (1 << 21) | (1 << 22)
+_ROW_MASKS: list = [0xFF, 0x1FE00, 0x3FC0000, 0x7F8000000]
+_CENTRE_MASK: int = (1 << 12) | (1 << 13) | (1 << 21) | (1 << 22)
 
 
 class Onix:
     """Heuristic-based checkers bot with TMCTS search."""
 
-    def __init__(self, plyDepth=4, debug=False):
+    def __init__(self, plyDepth: int = 4, debug: bool = False) -> None:
         self.ply = plyDepth
         self.debug = debug
         self.enableCache = False
-        self.cache = {}
+        self.cache: Dict[Any, float] = {}
 
         from decision.tmcts import TMCTS
         self.decisionFunction = TMCTS(plyDepth, self, debug=debug)
 
-    def move_function(self, board, colour):
+    def move_function(self, board: Any, colour: int) -> int:
         """Entry point called by Agent.make_move()."""
         return self.decisionFunction.Decide(board, colour)
 
-    def evaluate_board(self, board, colour):
+    def evaluate_board(self, board: Any, colour: int) -> float:
         """Heuristic evaluation from colour's perspective.
 
         Returns a float in [-1, 1] where positive means good for colour.

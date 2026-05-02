@@ -8,11 +8,17 @@ and its move function.
 It also has a default ELO.
 """
 
+from __future__ import annotations
+
 import hashlib
 import time
+from typing import Any, Dict, List, Optional
+
+from core import checkers
+
 
 class Agent:
-  def __init__(self, bot, agent_id=None, initial_elo=None):
+  def __init__(self, bot: Any, agent_id: Optional[str] = None, initial_elo: Optional[float] = None) -> None:
     self.bot = bot
     self.elo = initial_elo if initial_elo is not None else 1200  # Will be updated by Population.allocatePoints()
     self.points = 0
@@ -34,47 +40,43 @@ class Agent:
     self.parents = []
     self.generateOrigin()
 
-  def generateOrigin(self):
-    # generates hiearchy in order to determine successful evolution strategies.
+  def generateOrigin(self) -> None:
+    """Generate genesis origin block for evolution tracking."""
+    self.origin.append([0, 0, 0])
 
-    # index guide:
-    # 0: crossover
-    # 0: mutation
-    # 0: continued
-
-    # this is the genesis block.
-    self.origin.append([0,0,0])
-
-  def genID(self):
+  def genID(self) -> None:
+    """Generate a unique ID from NN coefficients or timestamp."""
     try:
       self.id = hashlib.md5(self.bot.nn.getAllCoefficents()).hexdigest()
-    except:
-      # default into using the time as the checksum
+    except Exception:
       k = str(time.time()).encode('utf-8')
       self.id = hashlib.md5(k).hexdigest()
 
-  def setID(self, value):
+  def setID(self, value: str) -> None:
+    """Set the agent ID explicitly."""
     self.id = value
 
-  def getDict(self):
+  def getDict(self) -> Dict[str, Any]:
+    """Serialize agent state to a dictionary."""
     try:
         weights = self.bot.nn.weights.tolist()
     except AttributeError:
         weights = None
     return {
-      "_id" : self.id,
+      "_id": self.id,
       'weights': weights,
       'elo': self.elo,
-      'points' : self.points
+      'points': self.points,
     }
 
-  def assignColour(self,colID):
-    # black is 0, white is 1
+  def assignColour(self, colID: int) -> None:
+    """Assign colour to agent (0=black, 1=white)."""
     self.colour = colID
     try:
       self.bot.currentColour = colID
     except AttributeError:
       pass
 
-  def make_move(self, board, colour):
+  def make_move(self, board: checkers.CheckerBoard, colour: int) -> int:
+    """Make a move by delegating to the bot's move_function."""
     return self.bot.move_function(board, colour)

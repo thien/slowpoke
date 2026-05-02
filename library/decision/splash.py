@@ -1,13 +1,21 @@
+"""Splash — random move selection agent."""
+
+from __future__ import annotations
+
 import random
+from typing import Any
+
 
 class Splash:
-    # Splash is a random move..
-    def __init__(self):
-      pass
-        
-    def Decide(self, B, colour):
-        return random.choice(B.get_moves())
-    
-    def Decide(self, B):
-        return random.choice(B.get_moves())
+    """Agent that makes a random legal move."""
 
+    def __init__(self) -> None:
+        pass
+
+    def Decide(self, B: Any) -> int:
+        """Return a random legal move.
+
+        Note: the second overload (Decide(self, B, colour)) is intentionally
+        removed — the single-argument variant is the canonical interface.
+        """
+        return random.choice(B.get_moves())

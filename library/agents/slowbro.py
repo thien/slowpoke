@@ -1,17 +1,13 @@
-"""
-Slowbro — evolved Slowpoke that uses fused 32-input neural network directly.
+"""Slowbro — evolved Slowpoke with fused 32-input NN. Tournament agent."""
 
-The 91-element subsquares vector has been fused into the first-layer weights,
-so Slowbro receives 32-element board positions straight from getBoardPosWeighted()
-with no subsquares call. Supports both serial TMCTS and parallel TMCTS.
-
-Slowbro is the tournament agent — cleaner, faster, no external NN attachment needed.
-"""
+from __future__ import annotations
 
 import os
 import sys
+from typing import Any, Dict, List, Optional
 
-# Ensure library/ is in sys.path for decision.* imports
+import numpy as np
+
 _lib_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _lib_dir not in sys.path:
     sys.path.insert(0, _lib_dir)
@@ -22,27 +18,29 @@ from .evaluator.neural import NeuralNetwork
 
 
 class Slowbro:
+    """Tournament agent with fused 32-input NN. Supports serial and parallel TMCTS."""
+
     def __init__(
         self,
-        plyDepth=4,
-        layers=None,
-        weights=None,
-        use_mlx=False,
-        use_parallel=False,
-        num_parallel=4,
-        debug=False,
-    ):
+        plyDepth: int = 4,
+        layers: Optional[List[int]] = None,
+        weights: Optional[np.ndarray] = None,
+        use_mlx: bool = False,
+        use_parallel: bool = False,
+        num_parallel: int = 4,
+        debug: bool = False,
+    ) -> None:
         """
         Initialise Slowbro agent.
 
         Args:
-            plyDepth: MCTS search depth
-            layers: NN architecture (default [32,40,10,1])
-            weights: Optional flat coefficient vector (auto-fuses legacy [91,40,10,1] if needed)
-            use_mlx: Enable MLX GPU evaluation
-            use_parallel: Use ParallelTMCTS instead of serial TMCTS
-            num_parallel: Number of parallel threads (for parallel mode)
-            debug: Enable debug output
+            plyDepth: MCTS search depth.
+            layers: NN architecture (default [32,40,10,1]).
+            weights: Optional flat coefficient vector (auto-fuses legacy [91,...] if needed).
+            use_mlx: Enable MLX GPU evaluation.
+            use_parallel: Use ParallelTMCTS instead of serial TMCTS.
+            num_parallel: Number of parallel threads (for parallel mode).
+            debug: Enable debug output.
         """
         self.debug = debug
         self.ply = plyDepth
@@ -81,46 +79,38 @@ class Slowbro:
 
             self.decisionFunction = tmcts.TMCTS(plyDepth, self, debug=debug)
 
-    def loadWeights(self, weights):
+    def loadWeights(self, weights: np.ndarray) -> None:
         """Load weights, auto-fusing legacy [91,40,10,1] coefficients if needed."""
         if len(weights) != self.nn.lenCoefficents:
-            # Legacy [91,40,10,1] weights — fuse into [32,40,10,1] via subsquares matrix
             from .evaluator.subsquares import make_fused_nn
 
             legacy_nn = NeuralNetwork([91, 40, 10, 1])
             legacy_nn.loadCoefficents(weights)
             fused_nn = make_fused_nn(legacy_nn)
             self.nn = fused_nn
-            # Sync MLX if enabled
             if self.use_mlx:
                 self.nn._init_mlx_weights()
         else:
             self.nn.loadCoefficents(weights)
 
-    def move_function(self, board, colour):
+    def move_function(self, board: Any, colour: int) -> int:
         """Entry point called by Agent.make_move()."""
         return self.decisionFunction.Decide(board, colour)
 
-    def evaluate_board(self, board, colour):
-        """
-        Evaluate board position using direct 32-input neural network.
-        No subsquares call — the 91->32 fusion is in the weights.
-        """
+    def evaluate_board(self, board: Any, colour: int) -> float:
+        """Evaluate board position using direct 32-input neural network."""
         if board.is_over():
             if board.winner != minimax_empty:
                 return minimax_win if board.winner == colour else minimax_lose
             return minimax_draw
 
-        # Get 32-element board vector
         boardStatus = board.getBoardPosWeighted(colour, self.pieceWeights)
 
-        # Check cache (tuple is fast for small arrays)
         if self.enableCache:
             hashd = tuple(boardStatus)
             if hashd in self.cache:
                 return self.cache[hashd]
 
-        # Direct NN evaluation — no subsquares
         val = self.nn.compute(boardStatus)
 
         if self.enableCache:

@@ -1,49 +1,16 @@
-"""
-    Magikarp
-    
-                                     __.--.._,-'""-.
-                                  ,-' .' ,'  .-"''-.`.       .--.
-                                ,'    |  |  '`-.    \ \       `-.|
-                               /       .   /    `.   \ \        ||
-                              /         `..`.    `.   \ .       ||
-                             /        . .    `.    \   . .      '.
-                    ."-.    .  ,""'-. | |      \    \   `.`.__,'.'
-                     `. `. .   |     `. |       \    .    `-..-'
-           _______     .  `|   |   '   .'        .   |...--._
-           `.     `"--.'   '    .      | .        .  |""''"-._"-._
-             `.             \    `-._..'. .       |  |---.._  `-.__"-..
-        -.     `.           |\           `.`      |  |'`-.  `-._   +"-'
-        `.`.     `-.        | `            .`.       | `. `.    `,"
-          `.`.      `.      |  '.           ` `      `.  \  `   /
-          | `.`.    __`.    |`/  `.     ...  `.`.     |   `.   .
-          |   \ .  `._      | `. / `. .'.' |   \ \    |     \  |
-          |.   ` \    `-.   |   \   .'.'/' |    \ \   |      ._'
-          | `.  `.\      `. |    \ / , '.  |_    . \  '-.
-         ,     .  .\       `|     . ' / |  | `-...\ \'   `._
-         `.     `.  \       |.    '/ .  |  |       ' .      `-.
-          .`._    \` \      | `. /'  '  |  |       | |       ,.'
-           .  `-.  \`.\    ,|   //  '   |  |__  .' | |      |
-           |     `._`| `--' `  //  .    |  '  `"  /| |   . -'
-           '        `|       `//   '    |   .    / | |   |
-          /....._____|       //   .  ___|   |   /  | |  ,|
-         .         _.'      /, _.--"'-._ `".| ,'   | |.'
-         |      _,' / ___   `-'.        `. _|'     |,
-         |  _,-"  ,'.'   `-.._  `.      _,'         `
-         '-"   _,','          "- ....--'
-        /  _.-"_.'
-       /_,'_,-'
-     .'_.-'
-     '"
+"""Magikarp is a draughts AI that plays completely randomly."""
 
-Magikarp is a draughts AI that plays completely randomly.
+from __future__ import annotations
 
-"""
 import random
+from typing import Any, Optional
+
 
 class Magikarp:
-  
-  def __init__(self):
-    self.null = None
 
-  def move_function(self, B, colour=None):
+  def __init__(self) -> None:
+    self.null: Optional[Any] = None
+
+  def move_function(self, B: Any, colour: Optional[int] = None) -> int:
+    """Return a random legal move."""
     return random.choice(B.get_moves())

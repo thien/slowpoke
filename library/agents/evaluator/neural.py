@@ -1,6 +1,9 @@
-import numpy as np
-import random
+from __future__ import annotations
+
 import math
+from typing import Any, List, Optional, Union
+
+import numpy as np
 
 try:
   import agents.evaluator.subsquares as subsquares
@@ -8,13 +11,14 @@ except ImportError:
   from library.agents.evaluator import subsquares
 
 try:
-  import mlx
   import mlx.core as mx
   MLX_AVAILABLE = True
 except ImportError:
+  mx = None
   MLX_AVAILABLE = False
 
-def showVector(v, dec):
+
+def showVector(v: np.ndarray, dec: int) -> None:
   fmt = "%." + str(dec) + "f" # like %.4f
   for i in range(len(v)):
     x = v[i]
@@ -22,13 +26,13 @@ def showVector(v, dec):
     print(fmt % x + '  ', end='')
 
 class NeuralNetwork:
-  __slots__ = ['layer_size', 'NumberOfLayers', 'NumberOfHiddenLayers', 'layers', \
-               'weights', 'biases', 'lenCoefficents', 'rebuildCoefficents', 'rnd', 'ravel',\
-               '_use_mlx', '_mx_weights', '_mx_biases', '_mx_compiled_forward',\
-               '_last_input_size', '_input_size_91']
-  
-  def __init__(self, layer_list=[32,40,10,1], use_mlx=False):
-    self.layer_size = layer_list
+  __slots__ = ('layer_size', 'NumberOfLayers', 'NumberOfHiddenLayers', 'layers',
+               'weights', 'biases', 'lenCoefficents', 'rebuildCoefficents', 'rnd', 'ravel',
+               '_use_mlx', '_mx_weights', '_mx_biases', '_mx_compiled_forward',
+               '_last_input_size', '_input_size_91')
+
+  def __init__(self, layer_list: Optional[List[int]] = None, use_mlx: bool = False) -> None:
+    self.layer_size = layer_list if layer_list is not None else [32, 40, 10, 1]
     self.NumberOfLayers = len(self.layer_size)
     self.NumberOfHiddenLayers = self.NumberOfLayers - 2
     self.layers = []
@@ -42,7 +46,7 @@ class NeuralNetwork:
     self._mx_biases = None
     self._mx_compiled_forward = None
     self._last_input_size = 0
-    self._input_size_91 = (layer_list[0] == 91)
+    self._input_size_91 = (self.layer_size[0] == 91)
     # initiate layers
     self.initiateLayers()
     self.initiateWeights()
@@ -52,31 +56,30 @@ class NeuralNetwork:
     if self._use_mlx:
       self._init_mlx_weights()
 
-  def _init_mlx_weights(self):
+  def _init_mlx_weights(self) -> None:
     """Convert numpy weights to MLX arrays for GPU evaluation."""
-    if not MLX_AVAILABLE:
+    if not MLX_AVAILABLE or mx is None:
       self._use_mlx = False
       return
-    
+
     self._mx_weights = [mx.array(w.astype(np.float32)) for w in self.weights]
     self._mx_biases = [mx.array(b.astype(np.float32)) for b in self.biases]
 
-  def initiateLayers(self):
+  def initiateLayers(self) -> None:
     for i in self.layer_size:
       nodes = np.zeros(shape=[i], dtype=np.float32)
       self.layers.append(nodes)
-  
-  def initiateWeights(self):
+
+  def initiateWeights(self) -> None:
     for i in range(self.NumberOfLayers-1):
       inputNodes = self.layer_size[i]
       outputNodes = self.layer_size[i+1]
-      # increment the number of coefficents
       self.lenCoefficents += inputNodes * outputNodes
-      weights = np.random.random_sample([inputNodes,outputNodes])
+      weights = np.random.random_sample([inputNodes, outputNodes])
       weights = self.normaliseVectors(weights)
       self.weights.append(weights)
-  
-  def initiateBiases(self):
+
+  def initiateBiases(self) -> None:
     for i in range(self.NumberOfLayers-1):
       biasNodes = self.layer_size[i+1]
       self.lenCoefficents += biasNodes
@@ -84,7 +87,7 @@ class NeuralNetwork:
       biases = self.normaliseVectors(biases)
       self.biases.append(biases)
 
-  def getAllCoefficents(self):
+  def getAllCoefficents(self) -> np.ndarray:
     """Optimised: collect all weights and biases in one pass."""
     arrays = []
     for w in self.weights:
@@ -92,8 +95,8 @@ class NeuralNetwork:
     for b in self.biases:
       arrays.append(np.ravel(b))
     return np.concatenate(arrays)
-  
-  def loadCoefficents(self, ravelled):
+
+  def loadCoefficents(self, ravelled: np.ndarray) -> bool:
     if len(ravelled) != self.lenCoefficents:
       raise ValueError('The number of coefficents do not match.')
     # calculate number of weights to split array from
@@ -129,7 +132,7 @@ class NeuralNetwork:
     
     return True
 
-  def compute(self, x):
+  def compute(self, x: np.ndarray) -> Union[float, np.ndarray]:
     """
     Optimised forward pass through the neural network.
     Returns Python float for compatibility with existing code.
@@ -154,7 +157,7 @@ class NeuralNetwork:
     # Return scalar value (Python float for compatibility)
     return float(current[0]) if current.size == 1 else current
 
-  def compute_mlx(self, x):
+  def compute_mlx(self, x: np.ndarray) -> Any:
     """
     MLX-accelerated forward pass that returns mx.array.
     For native MLX tree search - keeps values on GPU.
@@ -190,7 +193,7 @@ class NeuralNetwork:
     
     return result[0]  # Return scalar mx.array
 
-  def compute_batch_mlx(self, batch_inputs):
+  def compute_batch_mlx(self, batch_inputs: List[np.ndarray]) -> Any:
     """
     Batched MLX evaluation that returns mx.array.
     For native tree search with accumulated positions.
@@ -224,7 +227,7 @@ class NeuralNetwork:
     
     return current.flatten()  # Returns mx.array
 
-  def compute_batch(self, batch_inputs):
+  def compute_batch(self, batch_inputs: List[np.ndarray]) -> np.ndarray:
     """
     Batch evaluation returning NumPy array for backward compatibility.
     """
@@ -235,44 +238,40 @@ class NeuralNetwork:
     return np.array(mx_results)
 
   @staticmethod
-  def subsquares(x):
-    """
-    Calculates 3x3 to 8x8 set of subsquares on the checkerboard.
-    """
+  def subsquares(x: np.ndarray) -> np.ndarray:
+    """Calculate subsquare features from 32-element board vector."""
     return subsquares.subsquares(x)
 
   @staticmethod
-  def normaliseVectors(vector):
-    # normalise to a range from -0.2 to 0.2
-    return (vector-0.5) * 0.4
-    # normalise to a range from -1 to 1
-    # return (vector-0.5) * 2
+  def normaliseVectors(vector: np.ndarray) -> np.ndarray:
+    """Normalise to a range from -0.2 to 0.2."""
+    return (vector - 0.5) * 0.4
 
-  def nonlinear_function(self,val):
-    # tanh/sigmoid
+  def nonlinear_function(self, val: np.ndarray) -> np.ndarray:
+    """Apply the nonlinear function (tanh) to values."""
     return self.tanh(val)
-    # return self.crelu(val)
-    # return self.relu(val)
 
   @staticmethod
-  def tanh(val):
+  def tanh(val: np.ndarray) -> np.ndarray:
+    """Hyperbolic tangent activation."""
     return np.tanh(val)
 
   @staticmethod
-  def relu(x):
-    # rectifier method; it turns out that this is not very effective at all.
-    x[x<0] =0
+  def relu(x: np.ndarray) -> np.ndarray:
+    """ReLU activation: clamp negatives to 0."""
+    x = x.copy()
+    x[x < 0] = 0
     return x
 
   @staticmethod
-  def crelu(x):
-    # linear cap from -1
-    x[x<-1] =-1
+  def crelu(x: np.ndarray) -> np.ndarray:
+    """Capped ReLU: clamp values below -1 to -1."""
+    x = x.copy()
+    x[x < -1] = -1
     return x
 
-
-  @staticmethod  
-  def softmax(oSums):
+  @staticmethod
+  def softmax(oSums: np.ndarray) -> np.ndarray:
     """
     Function to softmax output values.
     """
