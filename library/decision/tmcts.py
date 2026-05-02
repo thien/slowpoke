@@ -442,24 +442,17 @@ class TMCTS:
   def _extract_position(self, B, colour):
     """Extract board position for neural network evaluation."""
     boardStatus = B.getBoardPosWeighted(colour, {
-      "Black": 1, 
+      "Black": 1,
       "White": -1,
       "empty": 0,
       "blackKing": 1.5,
       "whiteKing": -1.5
     })
-    
-    # Handle both NeuralNetwork objects and other evaluators
-    layer_size = None
-    if self.nn is not None and hasattr(self.nn, 'layer_size'):
-      layer_size = self.nn.layer_size[0]
-    elif hasattr(self.evaluator, 'layer_size'):
-      layer_size = self.evaluator.layer_size[0]
-    
-    if layer_size == 91:
-      boardStatus = self.nn.subsquares(boardStatus) if self.nn else boardStatus
-    
-    return np.array(boardStatus, dtype=np.float32)
+
+    if self.nn and hasattr(self.nn, 'layer_size') and self.nn.layer_size[0] == 91:
+      boardStatus = self.nn.subsquares(boardStatus)
+
+    return np.asarray(boardStatus, dtype=np.float32)
 
   def isOver(self, B, colour):
     if B.is_over():

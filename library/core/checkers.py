@@ -38,6 +38,17 @@ repetitionLimits = 12
 unusedBits = 0b100000000100000000100000000100000000
 
 
+def _set_bits(n):
+    """Yield positions of set bits in n (LSB first), only looping over set bits.
+    
+    Much faster than bin(n)[::-1] enumerate for sparse bitboards.
+    """
+    while n:
+        lsb = n & -n
+        yield lsb.bit_length() - 1
+        n ^= lsb
+
+
 class CheckerBoard:
     """
     Initiates board via new_game().
@@ -125,7 +136,7 @@ class CheckerBoard:
     A legal move is represented by an integer with exactly two
     bits turned on: the old position and the new position.
     """
-    def make_move(self, move):
+    def make_move(self, move, full_update=True):
         # Extract move string directly from move bits (no validation needed - caller ensures legality)
         move_abs = abs(move)
         # The move bit has exactly two 1-bits. Extract their positions.
@@ -202,8 +213,10 @@ class CheckerBoard:
         # reset the number of jumps, switch players and continue.
         self.jump = 0
         self.active, self.passive = self.passive, self.active
-        # now we can update the state of the board.
-        self.updateState()
+        if full_update:
+            self.updateState()
+        else:
+            self._update_rank()
         return self
 
     # """
@@ -272,48 +285,31 @@ class CheckerBoard:
     def left_backward_jumps(self):
         return (self.empty << 10) & (self.pieces[self.passive] << 5) & self.backward[self.active]
 
-    # returns a list of possible moves
     def get_moves(self):
-        """
-        Returns a list of all possible moves.
-
-        A legal move is represented by an integer with exactly two
-        bits turned on: the old position and the new position.
-
-        Jumps are indicated with a negative sign.
-        """
-        # First check if we are in a jump sequence
         if self.jump:
             return self.mandatoryJumps
 
-        # Next check if there are jumps
         jumps = self.get_jumps()
         if jumps:
             return jumps
 
-        # If not, then find normal moves
-        else:
-            rf = self.right_forward()
-            lf = self.left_forward()
-            rb = self.right_backward()
-            lb = self.left_backward()
+        rf = self.right_forward()
+        lf = self.left_forward()
+        rb = self.right_backward()
+        lb = self.left_backward()
 
-            moves =  [0x11 << i for (i, bit) in enumerate(bin(rf)[::-1]) if bit == '1']
-            moves += [0x21 << i for (i, bit) in enumerate(bin(lf)[::-1]) if bit == '1']
-            moves += [0x11 << i - 4 for (i, bit) in enumerate(bin(rb)[::-1]) if bit == '1']
-            moves += [0x21 << i - 5 for (i, bit) in enumerate(bin(lb)[::-1]) if bit == '1']
-            return moves
+        moves = []
+        for i in _set_bits(rf):
+            moves.append(0x11 << i)
+        for i in _set_bits(lf):
+            moves.append(0x21 << i)
+        for i in _set_bits(rb):
+            moves.append(0x11 << (i - 4))
+        for i in _set_bits(lb):
+            moves.append(0x21 << (i - 5))
+        return moves
 
-    # returns a list of possible jumps
     def get_jumps(self):
-        """
-        Returns a list of all possible jumps.
-
-        A legal move is represented by an integer with exactly two
-        bits turned on: the old position and the new position.
-
-        Jumps are indicated with a negative sign.
-        """
         rfj = self.right_forward_jumps()
         lfj = self.left_forward_jumps()
         rbj = self.right_backward_jumps()
@@ -322,26 +318,22 @@ class CheckerBoard:
         moves = []
 
         if (rfj | lfj | rbj | lbj) != 0:
-            moves += [-0x101 << i for (i, bit) in enumerate(bin(rfj)[::-1]) if bit == '1']
-            moves += [-0x401 << i for (i, bit) in enumerate(bin(lfj)[::-1]) if bit == '1']
-            moves += [-0x101 << i - 8 for (i, bit) in enumerate(bin(rbj)[::-1]) if bit == '1']
-            moves += [-0x401 << i - 10 for (i, bit) in enumerate(bin(lbj)[::-1]) if bit == '1']
+            for i in _set_bits(rfj):
+                moves.append(-(0x101 << i))
+            for i in _set_bits(lfj):
+                moves.append(-(0x401 << i))
+            for i in _set_bits(rbj):
+                moves.append(-(0x101 << (i - 8)))
+            for i in _set_bits(lbj):
+                moves.append(-(0x401 << (i - 10)))
 
         return moves
 
-    # returns list of all possible jumps from the piece indicated
     def jumps_from(self, piece):
-        """
-        Returns list of all possible jumps from the piece indicated.
-
-        The argument piece should be of the form 2**n, where n + 1 is
-        the square of the piece in question (using the internal numeric
-        representaiton of the board).
-        """
         if self.active == Black:
             rfj = (self.empty >> 8) & (self.pieces[self.passive] >> 4) & piece
             lfj = (self.empty >> 10) & (self.pieces[self.passive] >> 5) & piece
-            if piece & self.backward[self.active]: # piece at square is a king
+            if piece & self.backward[self.active]:
                 rbj = (self.empty << 8) & (self.pieces[self.passive] << 4) & piece
                 lbj = (self.empty << 10) & (self.pieces[self.passive] << 5) & piece
             else:
@@ -350,7 +342,7 @@ class CheckerBoard:
         else:
             rbj = (self.empty << 8) & (self.pieces[self.passive] << 4) & piece
             lbj = (self.empty << 10) & (self.pieces[self.passive] << 5) & piece
-            if piece & self.forward[self.active]: # piece at square is a king
+            if piece & self.forward[self.active]:
                 rfj = (self.empty >> 8) & (self.pieces[self.passive] >> 4) & piece
                 lfj = (self.empty >> 10) & (self.pieces[self.passive] >> 5) & piece
             else:
@@ -359,10 +351,14 @@ class CheckerBoard:
 
         moves = []
         if (rfj | lfj | rbj | lbj) != 0:
-            moves += [-0x101 << i for (i, bit) in enumerate(bin(rfj)[::-1]) if bit == '1']
-            moves += [-0x401 << i for (i, bit) in enumerate(bin(lfj)[::-1]) if bit == '1']
-            moves += [-0x101 << i - 8 for (i, bit) in enumerate(bin(rbj)[::-1]) if bit == '1']
-            moves += [-0x401 << i - 10 for (i, bit) in enumerate(bin(lbj)[::-1]) if bit == '1']
+            for i in _set_bits(rfj):
+                moves.append(-(0x101 << i))
+            for i in _set_bits(lfj):
+                moves.append(-(0x401 << i))
+            for i in _set_bits(rbj):
+                moves.append(-(0x101 << (i - 8)))
+            for i in _set_bits(lbj):
+                moves.append(-(0x401 << (i - 10)))
         return moves
 
     # Returns true of the passed piece can be taken by the active player.
@@ -407,17 +403,15 @@ class CheckerBoard:
         else:
             return itHas
 
-    # Checks for a winner.
     def checkWinner(self):
-        # check if nobody's pieces have been taken in a while.
         if self.noEatCount == boringNoEatLimit:
             self.winner = empty
             self.pdn["Winner"] = empty
             self.pdn["Result"] = "1/2-1/2"
         else:
-        # check if players have pieces on the board.
-            if (len(self.blackPieces) > 0) and (len(self.whitePieces) > 0):
-                # it's still a draw.
+            has_black = self.pieces[Black] != 0
+            has_white = self.pieces[White] != 0
+            if has_black and has_white:
                 self.winner = empty
                 self.pdn["Winner"] = empty
                 self.pdn["Result"] = "1/2-1/2"
@@ -468,19 +462,12 @@ class CheckerBoard:
         return B
 
     def push_move(self, move):
-        """Apply a move without creating a copy. Stores previous state in _history for undo.
-        
-        Optimized version: uses tuple-based history to reduce memory allocation.
-        """
-        # Store minimal state needed to undo this move
-        # Format: (active, passive, forward, backward, pieces, empty, jump, mandatoryJumps, 
-        #          noEatCount, multipleJumpStack, turnCount, moves_len, altMoveStack_len)
         history_entry = (
             self.active,
             self.passive,
-            tuple(self.forward),
-            tuple(self.backward),
-            tuple(self.pieces),
+            self.forward[0], self.forward[1],
+            self.backward[0], self.backward[1],
+            self.pieces[0], self.pieces[1],
             self.empty,
             self.jump,
             tuple(self.mandatoryJumps),
@@ -489,34 +476,33 @@ class CheckerBoard:
             self.turnCount,
             len(self.moves),
             len(self.altMoveStack),
+            list(self.AIBoardPos),
         )
         self._history.append(history_entry)
-        return self.make_move(move)
+        return self.make_move(move, full_update=False)
 
     def pop_move(self):
-        """Undo the last push_move operation."""
         if not self._history:
             return self
         entry = self._history.pop()
-        # Tuple format: (active, passive, forward, backward, pieces, empty, jump, mandatoryJumps, 
-        #              noEatCount, multipleJumpStack, turnCount, moves_len, altMoveStack_len)
         self.active = entry[0]
         self.passive = entry[1]
-        self.forward = list(entry[2])
-        self.backward = list(entry[3])
-        self.pieces = list(entry[4])
-        self.empty = entry[5]
-        self.jump = entry[6]
-        self.mandatoryJumps = list(entry[7])
-        self.noEatCount = entry[8]
-        self.multipleJumpStack = list(entry[9])
-        self.turnCount = entry[10]
-        # Truncate stacks to previous lengths
-        del self.moves[entry[11]:]
-        del self.altMoveStack[entry[12]:]
-        self.updateState()
-        self.turnCount = entry[10]  # restore after updateState() increments it
-        return self
+        self.forward[0] = entry[2]
+        self.forward[1] = entry[3]
+        self.backward[0] = entry[4]
+        self.backward[1] = entry[5]
+        self.pieces[0] = entry[6]
+        self.pieces[1] = entry[7]
+        self.empty = entry[8]
+        self.jump = entry[9]
+        self.mandatoryJumps = list(entry[10])
+        self.noEatCount = entry[11]
+        self.multipleJumpStack = list(entry[12])
+        self.turnCount = entry[13]
+        del self.moves[entry[14]:]
+        del self.altMoveStack[entry[15]:]
+        self.AIBoardPos = list(entry[16])
+        # No updateState() needed — AIBoardPos restored directly
 
     """
     Returns a list of possible moves that the player can choose to make.
@@ -587,6 +573,34 @@ class CheckerBoard:
                 moves = reverse_moves + regular_moves
         return moves
 
+
+    """
+    Fast state update for tree search. Only maintains AIBoardPos and turnCount.
+    Skips PDN strings, display state, and piece-name formatting.
+    """
+    def _update_rank(self):
+        blackKings = self.backward[Black]
+        blackMen = self.forward[Black] ^ blackKings
+        whiteKings = self.forward[White]
+        whiteMen = self.backward[White] ^ whiteKings
+
+        rank = [empty] * 32
+        for i in range(4):
+            base = 9 * i
+            for j in range(8):
+                cell = 1 << (base + j)
+                idx = 8 * i + j
+                if cell & blackMen:
+                    rank[idx] = Black
+                elif cell & whiteMen:
+                    rank[idx] = White
+                elif cell & blackKings:
+                    rank[idx] = blackKing
+                elif cell & whiteKings:
+                    rank[idx] = whiteKing
+
+        self.AIBoardPos = rank
+        self.turnCount += 1
 
     """
     Returns a record of the positions of the pieces on the board.
@@ -673,26 +687,15 @@ class CheckerBoard:
     Same as above, but option to convert weights.
     """
     def getBoardPosWeighted(self, colour, weights):
-        results = self.AIBoardPos.copy()
-        rep = {
-            Black:weights['Black'], 
-            White:weights['White'], 
-            empty:weights['empty'], 
-            whiteKing:weights['whiteKing'], 
-            blackKing:weights['blackKing']
-        }
-        if colour == White:
-            # swap board and change weights so we always
-            # evaluate from black's perspective.
-            results.reverse()
-            rep = {
-                Black:weights['White'], 
-                White:weights['Black'], 
-                empty:weights['empty'], 
-                whiteKing:weights['blackKing'], 
-                blackKing:weights['whiteKing']
-            }
-        return np.array([rep[n] if n in rep else n for n in results],dtype=np.float32)
+        w = weights
+        if colour == Black:
+            rep = {Black: w['Black'], White: w['White'], empty: w['empty'],
+                   blackKing: w['blackKing'], whiteKing: w['whiteKing']}
+            return np.array([rep[n] for n in self.AIBoardPos], dtype=np.float32)
+        else:
+            rep = {Black: w['White'], White: w['Black'], empty: w['empty'],
+                   blackKing: w['whiteKing'], whiteKing: w['blackKing']}
+            return np.array([rep[n] for n in reversed(self.AIBoardPos)], dtype=np.float32)
 
     
     def generateASCIIBoard(self, blackPOV=True):

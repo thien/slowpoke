@@ -59,25 +59,26 @@ class SharedBatchAccumulator:
         
         Returns an index which can be resolved via get_result().
         Checks persistent cache first to avoid redundant evaluations.
+        Cache read is lock-free (atomic under CPython GIL) to reduce contention.
         """
         pos_key = pos.tobytes()
-        with self._lock:
-            # Check persistent node cache first (tree reuse across turns)
-            if pos_key in self._node_cache:
+        # Lock-free cache read — atomic dict lookup under CPython GIL
+        cached = self._node_cache.get(pos_key)
+        if cached is not None:
+            with self._lock:
                 pos_idx = self._position_counter
                 self._position_counter += 1
-                # Store cached result directly so _run_instance can find it
-                self._position_to_result[pos_idx] = self._node_cache[pos_key]
+                self._position_to_result[pos_idx] = cached
                 return pos_idx
-            
+
+        with self._lock:
             pos_idx = self._position_counter
             self._position_counter += 1
             self._batch_positions.append((pos_idx, pos))
             self._total_positions += 1
-            
-            # Auto-flush if batch is full
+
             if self._auto_flush and len(self._batch_positions) >= self._batch_size:
-                return -1  # Signal to flush
+                return -1
             return pos_idx
     
     def get_batch(self) -> Tuple[List[int], List[np.ndarray]]:
@@ -115,24 +116,24 @@ class SharedBatchAccumulator:
                 self._position_to_result[idx] = float(result)
     
     def get_result(self, pos_idx: int) -> float:
-        """Get the evaluation result for a position."""
-        with self._lock:
-            return self._position_to_result.get(pos_idx, 0.0)
-    
-    def get_cached_value(self, pos_key: bytes) -> Optional[float]:
-        """Check if a position has a cached MCTS value (thread-safe).
+        """Get the evaluation result for a position.
         
-        Returns cached value or None if not cached.
+        Lock-free read — atomic dict lookup under CPython GIL.
+        """
+        return self._position_to_result.get(pos_idx, 0.0)
+
+    def get_cached_value(self, pos_key: bytes) -> Optional[float]:
+        """Check if a position has a cached MCTS value.
+        
+        Lock-free read — atomic dict lookup under CPython GIL.
         Used by _treesearch_batch for tree reuse across turns.
         """
-        with self._lock:
-            return self._node_cache.get(pos_key)
-    
+        return self._node_cache.get(pos_key)
+
     def store_cached_value(self, pos_key: bytes, value: float):
-        """Store an MCTS value in the persistent node cache (thread-safe).
+        """Store an MCTS value in the persistent node cache.
         
-        Used by _treesearch_batch to cache internal node results
-        for tree reuse across turns.
+        Only writes need the lock to protect against concurrent eviction.
         """
         with self._lock:
             if len(self._node_cache) >= self._max_cache_size:
@@ -434,16 +435,10 @@ class ParallelTMCTS:
             "blackKing": 1.5, "whiteKing": -1.5
         })
         
-        layer_size = None
-        if self.nn and hasattr(self.nn, 'layer_size'):
-            layer_size = self.nn.layer_size[0]
-        elif hasattr(self.evaluator, 'layer_size'):
-            layer_size = self.evaluator.layer_size[0]
+        if self.nn and hasattr(self.nn, 'layer_size') and self.nn.layer_size[0] == 91:
+            boardStatus = self.nn.subsquares(boardStatus)
         
-        if layer_size == 91:
-            boardStatus = self.nn.subsquares(boardStatus) if self.nn else boardStatus
-        
-        return np.array(boardStatus, dtype=np.float32)
+        return np.asarray(boardStatus, dtype=np.float32)
     
     def _isOver(self, B, colour: int) -> Tuple[bool, int]:
         minimax_win = 1
