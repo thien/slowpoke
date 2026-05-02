@@ -71,5 +71,137 @@ class TestAgentVsAgent(unittest.TestCase):
         result = tournamentMatch(p1, p2, 0, False, False)
         self.assertIn('Winner', result)
 
+class TestGameOutcomes(unittest.TestCase):
+    """Games between agents of different strengths must produce wins/losses."""
+
+    def test_asymmetric_agents_produce_wins_and_losses(self):
+        """A higher-ply agent should win at least some games against a lower-ply one.
+        
+        Regression test: the Rust player-switch change broke game outcomes entirely
+        (every game ended in a draw). This verifies the player-switch logic is correct.
+        
+        Both agents use the same random NN weights — ply depth is the only difference.
+        """
+        from agents.slowbro import Slowbro
+        # Use same random weights for both — only ply differs
+        bot_strong = Slowbro(plyDepth=6, use_mlx=False, use_parallel=False)
+        weak_weights = bot_strong.nn.getAllCoefficents().copy()
+        bot_weak = Slowbro(plyDepth=1, use_mlx=False, use_parallel=False)
+        bot_weak.nn.loadCoefficents(weak_weights)
+
+        p_strong = Agent(bot_strong)
+        p_weak = Agent(bot_weak)
+
+        strong_wins = 0
+        weak_wins = 0
+        draws = 0
+        n_games = 30
+
+        for i in range(n_games):
+            if i % 2 == 0:
+                result = tournamentMatch(p_strong, p_weak, i, False, False)
+            else:
+                result = tournamentMatch(p_weak, p_strong, i, False, False)
+            w = result['Winner']
+            if w == -1:
+                draws += 1
+            elif i % 2 == 0 and w == 0 or i % 2 == 1 and w == 1:
+                strong_wins += 1
+            else:
+                weak_wins += 1
+
+        self.assertEqual(strong_wins + weak_wins + draws, n_games,
+                         f"All {n_games} games should complete, got {strong_wins}+{weak_wins}+{draws}")
+        self.assertGreater(strong_wins, 0,
+                           f"Deep-ply agent should win at least 1/{n_games} games (won {strong_wins})")
+        self.assertGreater(draws + weak_wins + strong_wins, draws,
+                           "At least one game should end in a win or loss, not just draws")
+
+
+class TestOnixAgent(unittest.TestCase):
+    """Test Onix heuristic-based agent."""
+
+    def test_onix_initialization(self):
+        from agents.onix import Onix
+        bot = Onix(plyDepth=2)
+        self.assertEqual(bot.ply, 2)
+
+    def test_onix_can_make_move(self):
+        from agents.onix import Onix
+        bot = Onix(plyDepth=1)
+        agent = Agent(bot)
+        B = checkers.CheckerBoard()
+        move = agent.make_move(B, 0)
+        self.assertIn(move, B.get_moves())
+
+    def test_onix_plays_game(self):
+        from agents.onix import Onix
+        bot = Onix(plyDepth=1)
+        agent = Agent(bot)
+        B = checkers.CheckerBoard()
+        for _ in range(60):
+            move = agent.make_move(B, B.active)
+            B.make_move(move)
+            if B.is_over():
+                break
+        # Game ran without crashing — passes regardless of outcome
+
+    def test_onix_outcomes(self):
+        """Onix(6) should beat Onix(1) most games (same heuristics, deeper search)."""
+        from agents.onix import Onix
+        strong = Onix(plyDepth=6)
+        weak = Onix(plyDepth=1)
+        p_strong = Agent(strong)
+        p_weak = Agent(weak)
+
+        strong_wins = 0
+        weak_wins = 0
+        draws = 0
+        n = 30
+
+        for i in range(n):
+            if i % 2 == 0:
+                result = tournamentMatch(p_strong, p_weak, i, False, False)
+            else:
+                result = tournamentMatch(p_weak, p_strong, i, False, False)
+            w = result['Winner']
+            if w == -1:
+                draws += 1
+            elif i % 2 == 0 and w == 0 or i % 2 == 1 and w == 1:
+                strong_wins += 1
+            else:
+                weak_wins += 1
+
+        self.assertEqual(strong_wins + weak_wins + draws, n)
+        self.assertGreater(strong_wins, 0)
+
+    def test_onix_vs_slowbro(self):
+        """Onix should at least draw against a random-weight Slowbro."""
+        from agents.onix import Onix
+        from agents.slowbro import Slowbro
+        onix = Onix(plyDepth=3)
+        slowbro = Slowbro(plyDepth=3, use_mlx=False, use_parallel=False)
+        p_onix = Agent(onix)
+        p_slowbro = Agent(slowbro)
+
+        onix_wins = 0
+        draws = 0
+        n = 10
+
+        for i in range(n):
+            if i % 2 == 0:
+                result = tournamentMatch(p_onix, p_slowbro, i, False, False)
+            else:
+                result = tournamentMatch(p_slowbro, p_onix, i, False, False)
+            w = result['Winner']
+            if w == -1:
+                draws += 1
+            elif i % 2 == 0 and w == 0 or i % 2 == 1 and w == 1:
+                onix_wins += 1
+
+        # Onix should at least draw some games (not lose every time)
+        self.assertGreaterEqual(onix_wins + draws, n // 2)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

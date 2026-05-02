@@ -225,10 +225,13 @@ impl CheckerBoard {
 
     pub fn get_active(&self) -> u8 { self.active }
     pub fn get_passive(&self) -> u8 { self.passive }
-    pub fn swap_active(&mut self) { self.active = self.passive; self.passive = if self.active == BLACK { WHITE } else { BLACK }; }
     pub fn get_turn_count(&self) -> u32 { self.turn_count }
     pub fn get_no_eat_count(&self) -> u32 { self.no_eat_count }
     pub fn get_jump_flag(&self) -> bool { self.jump }
+    pub fn get_pieces(&self) -> [u64; 2] { self.pieces }
+    pub fn get_forward(&self) -> [u64; 2] { self.forward }
+    pub fn get_backward(&self) -> [u64; 2] { self.backward }
+    pub fn swap_active(&mut self) { self.active = self.passive; self.passive = if self.active == BLACK { WHITE } else { BLACK }; }
 
     /// Returns numpy float32[32] weighted board position for NN evaluation.
     pub fn get_board_pos_weighted<'py>(&self, py: Python<'py>, colour: u8,
