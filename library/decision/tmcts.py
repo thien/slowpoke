@@ -195,6 +195,10 @@ class TMCTS:
     self.movesets = {}
     return self.random_ts(B, self.ply, colour)
 
+  def decide(self, B, colour):
+    """Lowercase alias for Decide()."""
+    return self.Decide(B, colour)
+
   # -------------------------------------------------------
 
   def random_ts(self, B, ply, colour, printDebug=False):

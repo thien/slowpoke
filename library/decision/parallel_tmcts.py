@@ -230,6 +230,10 @@ class ParallelTMCTS:
     def Decide(self, B, colour: int) -> Any:
         """Run parallel MCTS and return best move."""
         return self._decide_impl(B, colour)
+
+    def decide(self, B, colour: int) -> Any:
+        """Lowercase alias for Decide()."""
+        return self.Decide(B, colour)
     
     def _decide_impl(self, B, colour: int) -> Any:
         """Internal implementation of decide."""

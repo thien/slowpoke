@@ -6,7 +6,8 @@ import numpy as np
 import pytest
 import time
 import sys
-sys.path.insert(0, 'library')
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from core.checkers import CheckerBoard
 from decision.tmcts import TMCTS
