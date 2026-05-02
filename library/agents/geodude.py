@@ -13,15 +13,15 @@ from agents.bot import Bot
 class Geodude(Bot):
     """MCTS-based checkers bot with no neural network."""
 
-    def __init__(self, plyDepth: int = 4) -> None:
+    def __init__(self, ply_depth: int = 4) -> None:
         """Initialise Geodude agent.
 
         Args:
-            plyDepth: Number of plies for MCTS search.
+            ply_depth: Number of plies for MCTS search.
         """
-        self.ply = plyDepth
-        self.decisionFunction = mcts.MCTS(self.ply)
+        self.ply = ply_depth
+        self.decision_function = mcts.MCTS(self.ply)
 
     def move_function(self, board: Any, colour: int) -> int:
         """Return a move using plain MCTS."""
-        return self.decisionFunction.Decide(board, colour)
+        return self.decision_function.decide(board, colour)

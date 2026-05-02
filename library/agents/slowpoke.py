@@ -8,10 +8,9 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 
 sys.path.insert(0, "..")
-import decision.mcts as mcts
 import decision.minimax as minimax
 import decision.tmcts as tmcts
-from agents import minimax_draw, minimax_empty, minimax_lose, minimax_win, pieceWeights
+from agents import minimax_draw, minimax_empty, minimax_lose, minimax_win
 
 from .evaluator.neural import NeuralNetwork
 
@@ -21,7 +20,7 @@ class Slowpoke:
 
     def __init__(
         self,
-        plyDepth: int = 4,
+        ply_depth: int = 4,
         kingWeight: float = 1.5,
         weights: Optional[List[float]] = None,
         layers: Optional[List[int]] = None,
@@ -32,7 +31,7 @@ class Slowpoke:
         """Initialise Slowpoke agent.
 
         Args:
-            plyDepth: MCTS search depth.
+            ply_depth: MCTS search depth.
             kingWeight: Relative weight of kings vs men.
             weights: Optional flat coefficient vector.
             layers: NN architecture (default [91, 40, 10, 1]).
@@ -43,7 +42,7 @@ class Slowpoke:
         self.debug = debug
         self.chooseMinimax = isminimax
         self.nn = False
-        self.ply = plyDepth
+        self.ply = ply_depth
         self.layers = layers if layers is not None else [91, 40, 10, 1]
         self.pieceWeights = {
             "Black": 1,
@@ -53,34 +52,41 @@ class Slowpoke:
             "whiteKing": -kingWeight,
         }
 
-        self.initiateNeuralNetwork(self.layers, weights if weights else [], use_mlx=use_mlx)
+        self.init_neural_network(
+            self.layers, weights if weights else [], use_mlx=use_mlx
+        )
         self.movesConsidered = []
 
-        self.decisionFunction = None
+        self.decision_function = None
         if isminimax:
-            self.decisionFunction = minimax.MiniMax(self.ply, self.evaluate_board)
+            self.decision_function = minimax.MiniMax(self.ply, self.evaluate_board)
         else:
-            self.decisionFunction = tmcts.TMCTS(self.ply, self, debug=self.debug)
+            self.decision_function = tmcts.TMCTS(self.ply, self, debug=self.debug)
 
         self.cache: Dict[Any, float] = {}
-        self.enableCache = True
+        self.enable_cache = True
         self.use_mlx = use_mlx and self.nn._use_mlx
         self._batch_inputs = []
         self._batch_refs = []
 
-    def initiateNeuralNetwork(self, layers: List[int], weights: Optional[List[float]] = None, use_mlx: bool = False) -> None:
+    def init_neural_network(
+        self,
+        layers: List[int],
+        weights: Optional[List[float]] = None,
+        use_mlx: bool = False,
+    ) -> None:
         """Create and optionally load weights into the neural network."""
         self.nn = NeuralNetwork(layers, use_mlx=use_mlx)
         if weights:
-            self.loadWeights(weights)
+            self.load_weights(weights)
 
-    def loadWeights(self, weights: np.ndarray) -> None:
+    def load_weights(self, weights: np.ndarray) -> None:
         """Load weights into the neural network."""
-        self.nn.loadCoefficents(weights)
+        self.nn.load_coefficients(weights)
 
     def move_function(self, board: Any, colour: int) -> int:
         """Make a move by delegating to the decision function."""
-        return self.decisionFunction.Decide(board, colour)
+        return self.decision_function.decide(board, colour)
 
     def evaluate_board(self, board: Any, colour: int) -> float:
         """Evaluate board position using neural network.
@@ -97,20 +103,20 @@ class Slowpoke:
             else:
                 return minimax_draw
 
-        boardStatus = board.getBoardPosWeighted(colour, self.pieceWeights)
+        boardStatus = board.get_board_pos_weighted(colour, self.pieceWeights)
 
         if self.layers[0] == 91:
             boardStatus = self.nn.subsquares(boardStatus)
 
         hashd = None
-        if self.enableCache:
+        if self.enable_cache:
             hashd = tuple(boardStatus)
             if hashd in self.cache:
                 return self.cache[hashd]
 
         val = self.nn.compute(boardStatus)
 
-        if self.enableCache:
+        if self.enable_cache:
             self.cache[hashd] = val
         return val
 
@@ -125,10 +131,11 @@ class Slowpoke:
             else:
                 return float(minimax_draw)
 
-        boardStatus = board.getBoardPosWeighted(colour, self.pieceWeights)
+        boardStatus = board.get_board_pos_weighted(colour, self.pieceWeights)
 
         if self.layers[0] == 91:
             boardStatus = self.nn.subsquares(boardStatus)
 
         import mlx.core as mx
+
         return mx.array([float(self.nn.compute(boardStatus))])

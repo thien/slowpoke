@@ -3,9 +3,10 @@
 import unittest
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.evaluator.neural import NeuralNetwork, MLX_AVAILABLE
+from agents.evaluator.neural import NeuralNetwork
 import numpy as np
 
 
@@ -23,36 +24,36 @@ class TestNeuralNetworkInit(unittest.TestCase):
         self.assertEqual(nn.layer_size, [16, 8, 4, 1])
 
     def test_layer_count_property(self):
-        """NumberOfLayers should equal len(layer_size)."""
+        """num_layers should equal len(layer_size)."""
         nn = NeuralNetwork([32, 20, 10, 1])
-        self.assertEqual(nn.NumberOfLayers, 4)
+        self.assertEqual(nn.num_layers, 4)
 
     def test_hidden_layer_count_property(self):
-        """NumberOfHiddenLayers should be NumberOfLayers - 2."""
+        """num_hidden_layers should be num_layers - 2."""
         nn = NeuralNetwork([32, 20, 10, 1])
-        self.assertEqual(nn.NumberOfHiddenLayers, 2)
+        self.assertEqual(nn.num_hidden_layers, 2)
 
     def test_init_creates_layers(self):
-        """initiateLayers should be called during __init__."""
+        """init_layers should be called during __init__."""
         nn = NeuralNetwork([32, 20, 10, 1])
         self.assertEqual(len(nn.layers), 4)
         self.assertEqual(len(nn.layers[0]), 32)
 
     def test_init_creates_weights(self):
-        """initiateWeights should be called during __init__."""
+        """init_weights should be called during __init__."""
         nn = NeuralNetwork([32, 20, 10, 1])
         self.assertEqual(len(nn.weights), 3)
 
     def test_init_creates_biases(self):
-        """initiateBiases should be called during __init__."""
+        """init_biases should be called during __init__."""
         nn = NeuralNetwork([32, 20, 10, 1])
         self.assertEqual(len(nn.biases), 3)
 
     def test_init_sets_coefficient_count(self):
-        """lenCoefficents should be correctly set."""
+        """len_coefficients should be correctly set."""
         nn = NeuralNetwork([32, 40, 10, 1])
         expected = 32 * 40 + 40 + 40 * 10 + 10 + 10 * 1 + 1
-        self.assertEqual(nn.lenCoefficents, expected)
+        self.assertEqual(nn.len_coefficients, expected)
 
     def test_91_input_detection(self):
         """layer_size[0] == 91 should set _input_size_91."""
@@ -83,34 +84,36 @@ class TestNeuralNetworkWeights(unittest.TestCase):
         self.assertEqual(len(nn.biases[2]), 1)
 
     def test_get_all_coefficients_returns_flat_array(self):
-        """getAllCoefficents should return a 1D array."""
+        """get_all_coefficients should return a 1D array."""
         nn = NeuralNetwork([32, 20, 10, 1])
-        coeffs = nn.getAllCoefficents()
+        coeffs = nn.get_all_coefficients()
         self.assertEqual(len(coeffs.shape), 1)
 
     def test_get_all_coefficients_length_matches(self):
-        """Length of flattened coefficients should match lenCoefficents."""
+        """Length of flattened coefficients should match len_coefficients."""
         nn = NeuralNetwork([32, 20, 10, 1])
-        coeffs = nn.getAllCoefficents()
-        self.assertEqual(len(coeffs), nn.lenCoefficents)
+        coeffs = nn.get_all_coefficients()
+        self.assertEqual(len(coeffs), nn.len_coefficients)
 
     def test_load_coefficients_restores_state(self):
         """Loading coefficients should restore the exact same state."""
         nn = NeuralNetwork([32, 20, 10, 1])
-        coeffs = nn.getAllCoefficents()
+        coeffs = nn.get_all_coefficients()
 
         nn2 = NeuralNetwork([32, 20, 10, 1])
-        nn2.loadCoefficents(coeffs)
+        nn2.load_coefficients(coeffs)
 
-        np.testing.assert_allclose(nn.getAllCoefficents(), nn2.getAllCoefficents(), rtol=1e-5)
+        np.testing.assert_allclose(
+            nn.get_all_coefficients(), nn2.get_all_coefficients(), rtol=1e-5
+        )
 
     def test_load_coefficients_updates_weights(self):
         """Loading should update weight values."""
         nn = NeuralNetwork([32, 5, 1])
-        orig_weights = nn.weights[0].copy()
-        new_coeffs = nn.getAllCoefficents().copy()
-        new_coeffs[:32 * 5] = 0.5  # Set first layer weights to 0.5
-        nn.loadCoefficents(new_coeffs)
+        nn.weights[0].copy()
+        new_coeffs = nn.get_all_coefficients().copy()
+        new_coeffs[: 32 * 5] = 0.5  # Set first layer weights to 0.5
+        nn.load_coefficients(new_coeffs)
         self.assertTrue(np.all(nn.weights[0] == 0.5))
 
     def test_load_invalid_coefficient_count_raises(self):
@@ -118,7 +121,7 @@ class TestNeuralNetworkWeights(unittest.TestCase):
         nn = NeuralNetwork([32, 20, 10, 1])
         wrong = np.zeros(50)
         with self.assertRaises(ValueError):
-            nn.loadCoefficents(wrong)
+            nn.load_coefficients(wrong)
 
     def test_weights_normalised_range(self):
         """Weights should be normalised to approximate [-0.2, 0.2]."""
@@ -239,9 +242,9 @@ class TestNeuralNetworkActivations(unittest.TestCase):
         np.testing.assert_allclose(result, expected)
 
     def test_normalise_vectors_range(self):
-        """normaliseVectors should map [0,1] to [-0.2, 0.2]."""
+        """normalise_vectors should map [0,1] to [-0.2, 0.2]."""
         v = np.array([0.0, 0.5, 1.0])
-        result = NeuralNetwork.normaliseVectors(v)
+        result = NeuralNetwork.normalise_vectors(v)
         expected = (v - 0.5) * 0.4
         np.testing.assert_allclose(result, expected)
 

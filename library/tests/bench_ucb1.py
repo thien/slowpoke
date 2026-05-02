@@ -5,9 +5,11 @@ Measures two things:
 1. Does UCB1 concentrate tree searches on promising moves?
 2. What's the computational overhead of UCB1 selection vs random.choice?
 """
+
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import time as time_module
 import numpy as np
@@ -19,6 +21,7 @@ Black = 0
 
 class SimpleEval:
     """Minimal evaluator — returns random values like the test suite."""
+
     def evaluate_board(self, board, colour):
         return float(np.random.random() * 2 - 1)
 
@@ -27,20 +30,22 @@ def run_once(evaluator, use_random, base_round, ply=4):
     """Run one TMCTS decision, return (best_move, elapsed, stats)."""
     board = CheckerBoard()
     tc = TMCTS(ply=ply, evaluator=evaluator, debug=False)
-    tc.baseRound = base_round
+    tc.base_round = base_round
     if use_random:
-        tc._select_move_ucb1 = lambda moves, C=None: np.random.choice(moves) if moves else None
+        tc._select_move_ucb1 = lambda moves, C=None: (
+            np.random.choice(moves) if moves else None
+        )
     start = time_module.time()
-    move = tc.Decide(board, Black)
+    move = tc.decide(board, Black)
     elapsed = time_module.time() - start
     return move, elapsed, dict(tc.movesets)
 
 
 def compute_hhi(stats):
-    total = sum(s['plays'] for s in stats.values())
+    total = sum(s["plays"] for s in stats.values())
     if total == 0:
         return 0.0
-    return sum((s['plays']/total)**2 for s in stats.values())
+    return sum((s["plays"] / total) ** 2 for s in stats.values())
 
 
 # ============================================================
@@ -62,17 +67,23 @@ for base_round in [100, 300, 600]:
     np.random.seed(42)
     m_u, t_u, s_u = run_once(SimpleEval(), use_random=False, base_round=base_round)
 
-    top_r = max(s['plays'] for s in s_r.values())
-    top_u = max(s['plays'] for s in s_u.values())
+    top_r = max(s["plays"] for s in s_r.values())
+    top_u = max(s["plays"] for s in s_u.values())
     hhi_r = compute_hhi(s_r)
     hhi_u = compute_hhi(s_u)
     n_r = len(s_r)
     n_u = len(s_u)
 
-    print(f"\n  baseRound={base_round}:")
-    print(f"    {'Random':>12} time={t_r:.3f}s  top={top_r:>4d}  HHI={hhi_r:.4f}  moves={n_r}")
-    print(f"    {'UCB1':>12}   time={t_u:.3f}s  top={top_u:>4d}  HHI={hhi_u:.4f}  moves={n_u}")
-    print(f"    {'Gain':>12}   {t_r/t_u:.1f}x time     {top_u/top_r:.1f}x top     {hhi_u/hhi_r:.1f}x HHI")
+    print(f"\n  base_round={base_round}:")
+    print(
+        f"    {'Random':>12} time={t_r:.3f}s  top={top_r:>4d}  HHI={hhi_r:.4f}  moves={n_r}"
+    )
+    print(
+        f"    {'UCB1':>12}   time={t_u:.3f}s  top={top_u:>4d}  HHI={hhi_u:.4f}  moves={n_u}"
+    )
+    print(
+        f"    {'Gain':>12}   {t_r / t_u:.1f}x time     {top_u / top_r:.1f}x top     {hhi_u / hhi_r:.1f}x HHI"
+    )
 
 # --- B. overhead scaling ---
 print("\n\nB. OVERHEAD PER ROUND")
@@ -88,7 +99,9 @@ for label, use_rand in [("Random", True), ("UCB1", False)]:
         times.append(elapsed)
         if label == "UCB1":
             us_per_round = elapsed * 1_000_000 / br
-            print(f"  {label} @ {br:>5d}: {elapsed:.4f}s  ({us_per_round:.1f} us/round)")
+            print(
+                f"  {label} @ {br:>5d}: {elapsed:.4f}s  ({us_per_round:.1f} us/round)"
+            )
 
 print("\n  UCB1 overhead is negligible — a few extra ops per round")
 print("  (one compute + compare per move vs random.choice)")
@@ -108,10 +121,10 @@ for base_round in [300]:
         ucb_times.append(t_u)
     r_avg = np.mean(rand_times)
     u_avg = np.mean(ucb_times)
-    print(f"  baseRound={base_round}:")
+    print(f"  base_round={base_round}:")
     print(f"    Random: {r_avg:.3f}s avg, {np.std(rand_times):.4f}s std")
     print(f"    UCB1:   {u_avg:.3f}s avg, {np.std(ucb_times):.4f}s std")
-    print(f"    Diff:   {((u_avg/r_avg)-1)*100:+.1f}%")
+    print(f"    Diff:   {((u_avg / r_avg) - 1) * 100:+.1f}%")
 
 # --- D. scalablity summary ---
 print("\n\nD. SCALING SUMMARY")

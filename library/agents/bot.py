@@ -8,7 +8,7 @@ class Bot:
 
     Every bot must implement move_function(board, colour), which returns
     a legal move from board.get_moves(). Subclasses may also define
-    optional attributes like nn, cache, evaluate_board, or enableCache
+    optional attributes like nn, cache, evaluate_board, or enable_cache
     depending on their capabilities.
     """
 

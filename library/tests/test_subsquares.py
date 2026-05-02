@@ -3,6 +3,7 @@
 import unittest
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.evaluator.subsquares import (
@@ -96,7 +97,7 @@ class TestMakeFusedNN(unittest.TestCase):
     def test_fused_network_has_smaller_coefficient_count(self):
         """Fused network should have fewer coefficients (32 first layer vs 91)."""
         fused = make_fused_nn(self.nn_91)
-        self.assertLess(fused.lenCoefficents, self.nn_91.lenCoefficents)
+        self.assertLess(fused.len_coefficients, self.nn_91.len_coefficients)
 
     def test_output_parity_with_subsquares(self):
         """Fused 32-input NN should produce same output as 91-input NN + subsquares."""
@@ -110,8 +111,12 @@ class TestMakeFusedNN(unittest.TestCase):
 
             out_original = self.nn_91.compute(x_91)
 
-            self.assertAlmostEqual(out_fused, out_original, places=5,
-                                   msg="Fused NN output should match original NN + subsquares")
+            self.assertAlmostEqual(
+                out_fused,
+                out_original,
+                places=5,
+                msg="Fused NN output should match original NN + subsquares",
+            )
 
     def test_output_parity_with_terminal_layer_contribution(self):
         """The 32-input path uses np.sum(x) while 91-input uses x[-1]*32.

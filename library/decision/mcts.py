@@ -11,6 +11,7 @@ import numpy as np
 
 try:
     import mlx.core as mx
+
     MLX_AVAILABLE = True
 except ImportError:
     mx = None
@@ -20,7 +21,13 @@ except ImportError:
 class MCTS:
     """Monte Carlo Tree Search with UCB1 move selection."""
 
-    def __init__(self, ply: int, evaluator: Optional[Any] = None, debug: bool = False, batch_size: int = 512) -> None:
+    def __init__(
+        self,
+        ply: int,
+        evaluator: Optional[Any] = None,
+        debug: bool = False,
+        batch_size: int = 512,
+    ) -> None:
         """Initialise MCTS.
 
         Args:
@@ -35,12 +42,12 @@ class MCTS:
         self.debug = debug
         self.batch_size = batch_size
         self.use_mlx = False
-        if evaluator is not None and hasattr(evaluator, 'nn'):
-            self.use_mlx = getattr(evaluator.nn, '_use_mlx', False)
+        if evaluator is not None and hasattr(evaluator, "nn"):
+            self.use_mlx = getattr(evaluator.nn, "_use_mlx", False)
         self.mcts_plays: Dict[Any, int] = {}
         self.mcts_chances: Dict[Any, float] = {}
 
-    def Decide(self, B: Any, colour: int) -> Optional[int]:
+    def decide(self, B: Any, colour: int) -> Optional[int]:
         """Return the best move found by MCTS search."""
         return self.mcts_code(B, self.ply, colour)
 
@@ -79,29 +86,43 @@ class MCTS:
         move_states = []
         for i in moves:
             B.push_move(i)
-            FEN_hash = hash(B.pdn['FEN'])
+            FEN_hash = hash(B.pdn["FEN"])
             move_states.append((i, FEN_hash))
             B.pop_move()
 
         percent_winchance, best_move = max(
-            (self.mcts_chances.get((colour, S), 0) / self.mcts_plays.get((colour, S), 1), p)
+            (
+                self.mcts_chances.get((colour, S), 0)
+                / self.mcts_plays.get((colour, S), 1),
+                p,
+            )
             for p, S in move_states
         )
 
         if colour == 1:
             percent_winchance, best_move = min(
-                (self.mcts_chances.get((colour, S), 0) / self.mcts_plays.get((colour, S), 1), p)
+                (
+                    self.mcts_chances.get((colour, S), 0)
+                    / self.mcts_plays.get((colour, S), 1),
+                    p,
+                )
                 for p, S in move_states
             )
 
         if self.debug:
             goods = sorted(
-                ((100 * self.mcts_chances.get((colour, S), 0) /
-                  self.mcts_plays.get((colour, S), 1),
-                  self.mcts_chances.get((colour, S), 0),
-                  self.mcts_plays.get((colour, S), 0), p)
-                 for p, S in move_states),
-                reverse=True
+                (
+                    (
+                        100
+                        * self.mcts_chances.get((colour, S), 0)
+                        / self.mcts_plays.get((colour, S), 1),
+                        self.mcts_chances.get((colour, S), 0),
+                        self.mcts_plays.get((colour, S), 0),
+                        p,
+                    )
+                    for p, S in move_states
+                ),
+                reverse=True,
             )
             for i in goods:
                 print(i[3], "Moves:", i[2], "Good Moves", i[1], str(i[0]) + "%")
@@ -138,7 +159,7 @@ class MCTS:
             move_states = []
             for i in legal_moves:
                 B.push_move(i)
-                FEN_hash = hash(B.pdn['FEN'])
+                FEN_hash = hash(B.pdn["FEN"])
                 move_states.append((i, FEN_hash))
                 B.pop_move()
 
@@ -148,7 +169,9 @@ class MCTS:
                 value, move, FEN_hash = max(
                     (
                         self.mcts_chances[(player, S)] / self.mcts_plays[(player, S)]
-                        + self.c * math.sqrt(log_total / self.mcts_plays[(player, S)]), p, S
+                        + self.c * math.sqrt(log_total / self.mcts_plays[(player, S)]),
+                        p,
+                        S,
                     )
                     for p, S in move_states
                 )
@@ -173,9 +196,16 @@ class MCTS:
                     current_ply = t
 
                 if self.use_mlx and self.evaluator:
-                    boardStatus = B.getBoardPosWeighted(B.current_player(), {
-                        "Black": 1, "White": -1, "empty": 0, "blackKing": 1.5, "whiteKing": -1.5
-                    })
+                    boardStatus = B.get_board_pos_weighted(
+                        B.current_player(),
+                        {
+                            "Black": 1,
+                            "White": -1,
+                            "empty": 0,
+                            "blackKing": 1.5,
+                            "whiteKing": -1.5,
+                        },
+                    )
                     if self.evaluator.layers[0] == 91:
                         boardStatus = self.evaluator.nn.subsquares(boardStatus)
                     position_batch.append(np.array(boardStatus, dtype=np.float32))

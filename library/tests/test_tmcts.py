@@ -3,6 +3,7 @@
 import unittest
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from decision import tmcts
@@ -16,6 +17,7 @@ Black, White = 0, 1
 
 class ConstantEvaluator:
     """Evaluator that returns a constant value."""
+
     def __init__(self, value=0.0):
         self.value = value
 
@@ -43,7 +45,7 @@ class TestTMCTSInit(unittest.TestCase):
     def test_default_base_round(self):
         """Default base round should be 300."""
         tc = TMCTS(ply=1, evaluator=ConstantEvaluator())
-        self.assertEqual(tc.baseRound, 300)
+        self.assertEqual(tc.base_round, 300)
 
     def test_default_ucb_exploration(self):
         """Default UCB exploration constant should be 1.4."""
@@ -68,7 +70,7 @@ class TestTMCTSInit(unittest.TestCase):
     def test_debug_reduces_base_round(self):
         """Debug mode should reduce base round to 10."""
         tc = TMCTS(ply=1, evaluator=ConstantEvaluator(), debug=True)
-        self.assertEqual(tc.baseRound, 10)
+        self.assertEqual(tc.base_round, 10)
 
     def test_batch_size_default(self):
         """Default batch size should be 512."""
@@ -100,37 +102,40 @@ class TestTMCTSIsOver(unittest.TestCase):
     def test_not_over_initial(self):
         """Initial board should not be over."""
         B = checkers.CheckerBoard()
-        result = self.tc.isOver(B, Black)
+        result = self.tc.is_over(B, Black)
         self.assertFalse(result[0])
         self.assertEqual(result[1], -1)
 
     def test_terminal_win(self):
         """Winning terminal state should return (True, 1)."""
         from unittest import mock
-        with mock.patch.object(checkers.CheckerBoard, 'is_over', return_value=True):
+
+        with mock.patch.object(checkers.CheckerBoard, "is_over", return_value=True):
             B = checkers.CheckerBoard()
             B.winner = Black
-            result = self.tc.isOver(B, Black)
+            result = self.tc.is_over(B, Black)
             self.assertTrue(result[0])
             self.assertEqual(result[1], tmcts.minimax_win)
 
     def test_terminal_loss(self):
         """Losing terminal state should return (True, -1)."""
         from unittest import mock
-        with mock.patch.object(checkers.CheckerBoard, 'is_over', return_value=True):
+
+        with mock.patch.object(checkers.CheckerBoard, "is_over", return_value=True):
             B = checkers.CheckerBoard()
             B.winner = White
-            result = self.tc.isOver(B, Black)
+            result = self.tc.is_over(B, Black)
             self.assertTrue(result[0])
             self.assertEqual(result[1], tmcts.minimax_lose)
 
     def test_terminal_draw(self):
         """Draw terminal state should return (True, 0)."""
         from unittest import mock
-        with mock.patch.object(checkers.CheckerBoard, 'is_over', return_value=True):
+
+        with mock.patch.object(checkers.CheckerBoard, "is_over", return_value=True):
             B = checkers.CheckerBoard()
             B.winner = -1
-            result = self.tc.isOver(B, Black)
+            result = self.tc.is_over(B, Black)
             self.assertTrue(result[0])
             self.assertEqual(result[1], tmcts.minimax_draw)
 
@@ -188,8 +193,8 @@ class TestTMCTSUCB1(unittest.TestCase):
     def test_select_unvisited_first(self):
         """Unvisited moves should be selected first."""
         moves = [1, 2, 3]
-        self.tc.movesets = {m: {'plays': 0, 'chances': 0} for m in moves}
-        self.tc.movesets[1] = {'plays': 5, 'chances': 3}
+        self.tc.movesets = {m: {"plays": 0, "chances": 0} for m in moves}
+        self.tc.movesets[1] = {"plays": 5, "chances": 3}
         # Move 1 has visits, moves 2 and 3 don't
         selected = self.tc._select_move_ucb1(moves)
         self.assertIn(selected, [2, 3])
@@ -198,8 +203,8 @@ class TestTMCTSUCB1(unittest.TestCase):
         """Move with highest UCB should be selected when all visited."""
         moves = [1, 2]
         self.tc.movesets = {
-            1: {'plays': 10, 'chances': 9},   # 90% win rate
-            2: {'plays': 10, 'chances': 5},   # 50% win rate
+            1: {"plays": 10, "chances": 9},  # 90% win rate
+            2: {"plays": 10, "chances": 5},  # 50% win rate
         }
         selected = self.tc._select_move_ucb1(moves, C=0.0)  # No exploration bonus
         self.assertEqual(selected, 1)
@@ -208,8 +213,8 @@ class TestTMCTSUCB1(unittest.TestCase):
         """Lower-visited moves should get exploration bonus."""
         moves = [1, 2]
         self.tc.movesets = {
-            1: {'plays': 100, 'chances': 60},  # 60% win, many visits
-            2: {'plays': 2, 'chances': 1},     # 50% win, few visits
+            1: {"plays": 100, "chances": 60},  # 60% win, many visits
+            2: {"plays": 2, "chances": 1},  # 50% win, few visits
         }
         # With high C, move 2 gets large exploration bonus
         selected = self.tc._select_move_ucb1(moves, C=10.0)
@@ -217,14 +222,14 @@ class TestTMCTSUCB1(unittest.TestCase):
 
     def test_single_move(self):
         """Single move should always be selected."""
-        self.tc.movesets = {1: {'plays': 5, 'chances': 3}}
+        self.tc.movesets = {1: {"plays": 5, "chances": 3}}
         selected = self.tc._select_move_ucb1([1])
         self.assertEqual(selected, 1)
 
     def test_returns_random_from_unvisited(self):
         """Multiple unvisited moves should return one at random."""
         moves = [1, 2, 3]
-        self.tc.movesets = {m: {'plays': 0, 'chances': 0} for m in moves}
+        self.tc.movesets = {m: {"plays": 0, "chances": 0} for m in moves}
         selections = set()
         for _ in range(30):
             selections.add(self.tc._select_move_ucb1(moves))
@@ -232,21 +237,21 @@ class TestTMCTSUCB1(unittest.TestCase):
         self.assertEqual(selections, {1, 2, 3})
 
 
-class TestTMCTSDecide(unittest.TestCase):
+class TestTMCTSdecide(unittest.TestCase):
     """Test TMCTS decision making."""
 
     def test_returns_valid_move(self):
-        """Decide should return a valid move."""
+        """decide should return a valid move."""
         tc = TMCTS(ply=1, evaluator=ConstantEvaluator(0.0), debug=True)
         B = checkers.CheckerBoard()
-        move = tc.Decide(B, Black)
+        move = tc.decide(B, Black)
         self.assertIn(move, B.get_moves())
 
     def test_returns_integer(self):
         """Returned move should be an integer."""
         tc = TMCTS(ply=1, evaluator=ConstantEvaluator(0.0), debug=True)
         B = checkers.CheckerBoard()
-        move = tc.Decide(B, Black)
+        move = tc.decide(B, Black)
         self.assertIsInstance(move, int)
 
     def test_single_move_returns_immediately(self):
@@ -259,7 +264,7 @@ class TestTMCTSDecide(unittest.TestCase):
                 break
             B.make_move(moves[0])
         if len(B.get_moves()) == 1:
-            move = tc.Decide(B, B.active)
+            move = tc.decide(B, B.active)
             self.assertEqual(move, B.get_moves()[0])
 
     def test_decide_alias(self):
@@ -270,10 +275,10 @@ class TestTMCTSDecide(unittest.TestCase):
         self.assertIn(move, B.get_moves())
 
     def test_movesets_created(self):
-        """After Decide, movesets should be populated."""
+        """After decide, movesets should be populated."""
         tc = TMCTS(ply=1, evaluator=ConstantEvaluator(0.0), debug=True)
         B = checkers.CheckerBoard()
-        tc.Decide(B, Black)
+        tc.decide(B, Black)
         self.assertIsInstance(tc.movesets, dict)
         self.assertTrue(len(tc.movesets) > 0)
 
@@ -281,53 +286,56 @@ class TestTMCTSDecide(unittest.TestCase):
 class TestTMCTSTreeSearch(unittest.TestCase):
     """Test TMCTS tree search functions."""
 
-    def test_treesearch_returns_numeric(self):
-        """treesearch should return a numeric value."""
+    def test_tree_search_returns_numeric(self):
+        """tree_search should return a numeric value."""
         tc = TMCTS(ply=2, evaluator=ConstantEvaluator(0.5))
         B = checkers.CheckerBoard()
-        result = tc.treesearch(B, 1, Black)
+        result = tc.tree_search(B, 1, Black)
         self.assertIsInstance(result, (int, float))
 
-    def test_treesearch_no_ply(self):
-        """treesearch at ply=0 should call evaluator."""
+    def test_tree_search_no_ply(self):
+        """tree_search at ply=0 should call evaluator."""
         tc = TMCTS(ply=1, evaluator=ConstantEvaluator(0.3))
         B = checkers.CheckerBoard()
-        result = tc.treesearch(B, 0, Black)
+        result = tc.tree_search(B, 0, Black)
         self.assertEqual(result, 0.3)
 
-    def test_treesearch_calls_evaluator_board(self):
-        """treesearch should call evaluator.evaluate_board if available."""
+    def test_tree_search_calls_evaluator_board(self):
+        """tree_search should call evaluator.evaluate_board if available."""
+
         class ObjEvaluator:
             def evaluate_board(self, board, colour):
                 return 0.7
+
         tc = TMCTS(ply=1, evaluator=ObjEvaluator())
         B = checkers.CheckerBoard()
-        result = tc.treesearch(B, 0, Black)
+        result = tc.tree_search(B, 0, Black)
         self.assertEqual(result, 0.7)
 
-    def test_treesearch_single_ply(self):
-        """treesearch at ply=1 should work."""
+    def test_tree_search_single_ply(self):
+        """tree_search at ply=1 should work."""
         tc = TMCTS(ply=1, evaluator=ConstantEvaluator(0.5))
         B = checkers.CheckerBoard()
-        result = tc.treesearch(B, 1, Black)
+        result = tc.tree_search(B, 1, Black)
         self.assertIsInstance(result, (int, float))
 
-    def test_treesearch_terminal(self):
-        """Terminal state in treesearch should return immediately."""
+    def test_tree_search_terminal(self):
+        """Terminal state in tree_search should return immediately."""
         from unittest import mock
+
         tc = TMCTS(ply=1, evaluator=ConstantEvaluator(0.5))
         B = checkers.CheckerBoard()
-        with mock.patch.object(checkers.CheckerBoard, 'is_over', return_value=True):
+        with mock.patch.object(checkers.CheckerBoard, "is_over", return_value=True):
             B.winner = Black
-            result = tc.treesearch(B, 1, Black)
+            result = tc.tree_search(B, 1, Black)
             self.assertEqual(result, tmcts.minimax_win)
 
-    def test_treesearch_restores_board(self):
-        """Board state should be restored after treesearch."""
+    def test_tree_search_restores_board(self):
+        """Board state should be restored after tree_search."""
         tc = TMCTS(ply=1, evaluator=ConstantEvaluator(0.5))
         B = checkers.CheckerBoard()
         original_moves = B.get_moves()
-        tc.treesearch(B, 1, Black)
+        tc.tree_search(B, 1, Black)
         self.assertEqual(B.get_moves(), original_moves)
 
 
@@ -413,10 +421,10 @@ class TestTMCTSNodeCache(unittest.TestCase):
         tc = TMCTS(ply=1, evaluator=ConstantEvaluator(0.0))
         B = checkers.CheckerBoard()
         # First call populates cache
-        tc.treesearch_batch(B, 0, Black)
+        tc.tree_search_batch(B, 0, Black)
         tc.flush_batch()
         # Second call should hit cache
-        tc.treesearch_batch(B, 0, Black)
+        tc.tree_search_batch(B, 0, Black)
         self.assertGreater(tc._cache_hits, 0)
 
     def test_cache_size_limited(self):

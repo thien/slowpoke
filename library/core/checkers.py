@@ -1,20 +1,21 @@
 """
-    This module defines the CheckerBoard class.
-    Built on top of Andrew Edwards's Checkers board. -- (almostimplemented.com)
+This module defines the CheckerBoard class.
+Built on top of Andrew Edwards's Checkers board. -- (almostimplemented.com)
 
-    Andrew's code is licensed under the Apache License, 
-    Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+Andrew's code is licensed under the Apache License,
+Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -26,6 +27,7 @@ from termcolor import colored
 
 try:
     from checkers_core import CheckerBoard as _RustCB
+
     _HAS_RUST_CORE = True
 except ImportError:
     _RustCB = None
@@ -38,15 +40,15 @@ Black, White = 0, 1
 empty = -1
 blackKing = 2
 whiteKing = 3
-boringNoEatLimit = 50
+boring_no_eat_limit = 50
 # handles n/2 repeated move limits
-repetitionLimits = 12
+repetition_limits = 12
 # The IBM704 had 36-bit words. Arthur Samuel used the extra bits to
 # ensure that every normal move could be performed by flipping the
 # original bit and the bit either 4 or 5 bits away, in the cases of
 # moving right and left respectively.
 
-unusedBits = 0b100000000100000000100000000100000000
+unused_bits = 0b100000000100000000100000000100000000
 
 
 def _reconstruct_board(state: Dict[str, Any]) -> "CheckerBoard":
@@ -75,13 +77,34 @@ class CheckerBoard:
     """
     Initiates board via new_game().
     """
+
     __slots__ = (
-        'forward', 'backward', 'pieces', 'active', 'passive',
-        'empty', 'jump', 'mandatoryJumps', 'turnCount', 'multipleJumpStack',
-        'state', 'winner', 'noEatCount', 'altMoveStack', 'moves', 'pdn',
-        'blackPieces', 'whitePieces', '_history', 'AIBoardPos', '_AIBoardArray', '_core', '_has_core', 'is_over_called'
+        "forward",
+        "backward",
+        "pieces",
+        "active",
+        "passive",
+        "empty",
+        "jump",
+        "mandatory_jumps",
+        "turn_count",
+        "multiple_jump_stack",
+        "state",
+        "winner",
+        "no_eat_count",
+        "alt_move_stack",
+        "moves",
+        "pdn",
+        "black_pieces",
+        "white_pieces",
+        "_history",
+        "ai_board_pos",
+        "_ai_board_array",
+        "_core",
+        "_has_core",
+        "is_over_called",
     )
-    
+
     def __init__(self, _skip_core: bool = False) -> None:
         if _skip_core:
             self._core: Any = None
@@ -111,11 +134,11 @@ class CheckerBoard:
         """Return the PGN dictionary."""
         return self.pdn
 
-    def setID(self, game_id: str) -> None:
+    def set_id(self, game_id: str) -> None:
         """Set the game ID in PGN metadata."""
         self.pdn["_id"] = game_id
 
-    def setColours(self, blackID: str, whiteID: str) -> None:
+    def set_colours(self, blackID: str, whiteID: str) -> None:
         """Set player names in PGN metadata."""
         self.pdn["Black"] = blackID
         self.pdn["White"] = whiteID
@@ -123,25 +146,25 @@ class CheckerBoard:
     def new_game(self) -> None:
         if self._has_core:
             self._core.new_game()
-        self.forward = [0x1eff, 0]
-        self.backward = [0, 0x7fbc00000]
+        self.forward = [0x1EFF, 0]
+        self.backward = [0, 0x7FBC00000]
         self.pieces = [self.forward[0], self.backward[1]]
-        self.empty = unusedBits ^ (2**36 - 1) ^ (self.pieces[0] | self.pieces[1])
+        self.empty = unused_bits ^ (2**36 - 1) ^ (self.pieces[0] | self.pieces[1])
 
         self.active = Black
         self.passive = White
         self.jump = 0
-        self.mandatoryJumps = []
+        self.mandatory_jumps = []
         self.pdn = self.init_pgn()
-        self.turnCount = 0
-        self.multipleJumpStack = []
+        self.turn_count = 0
+        self.multiple_jump_stack = []
         self.state = []
         self.winner = None
-        self.noEatCount = 0
-        self.altMoveStack = []
+        self.no_eat_count = 0
+        self.alt_move_stack = []
         self.moves = []
         self._history = []
-        self._AIBoardArray = np.empty(0, dtype=np.int8)
+        self._ai_board_array = np.empty(0, dtype=np.int8)
 
     """
     Updates the game state to reflect the effects of the input
@@ -150,6 +173,7 @@ class CheckerBoard:
     A legal move is represented by an integer with exactly two
     bits turned on: the old position and the new position.
     """
+
     def make_move(self, move: int, full_update: bool = True) -> "CheckerBoard":
         move_abs = abs(move)
         bits = _set_bits(move_abs)
@@ -188,42 +212,44 @@ class CheckerBoard:
                 self.backward[active] ^= move
 
             destination = move & self.pieces[active]
-            self.empty = unusedBits ^ (2**36 - 1) ^ (self.pieces[Black] | self.pieces[White])
+            self.empty = (
+                unused_bits ^ (2**36 - 1) ^ (self.pieces[Black] | self.pieces[White])
+            )
 
         # ── PDN logic (shared by both paths) ──
-        self.altMoveStack.append((active, moveString))
+        self.alt_move_stack.append((active, moveString))
         self.moves.append((active, moveString))
 
         if move < 0:
-            self.noEatCount = 0
+            self.no_eat_count = 0
             if self._has_core:
-                self.mandatoryJumps = list(self._core.jumps_from(destination))
+                self.mandatory_jumps = list(self._core.jumps_from(destination))
             else:
-                self.mandatoryJumps = self.jumps_from(destination)
+                self.mandatory_jumps = self.jumps_from(destination)
             positions = moveString.split("x")
             if len(positions) >= 2:
-                self.multipleJumpStack.append(positions[0])
-                self.multipleJumpStack.append(positions[1])
-            if self.mandatoryJumps:
+                self.multiple_jump_stack.append(positions[0])
+                self.multiple_jump_stack.append(positions[1])
+            if self.mandatory_jumps:
                 if not full_update and not self._has_core:
                     self._update_rank()
                 return self
         else:
-            self.noEatCount += 1
+            self.no_eat_count += 1
 
         if not self._has_core:
             if active == Black and (destination & 0x780000000) != 0:
                 self.backward[Black] |= destination
-            elif active == White and (destination & 0xf) != 0:
+            elif active == White and (destination & 0xF) != 0:
                 self.forward[White] |= destination
 
-        if len(self.multipleJumpStack) > 0:
-            if len(self.multipleJumpStack) > 2:
-                jumpStacks = [x[0] for x in groupby(self.multipleJumpStack)]
+        if len(self.multiple_jump_stack) > 0:
+            if len(self.multiple_jump_stack) > 2:
+                jumpStacks = [x[0] for x in groupby(self.multiple_jump_stack)]
                 self.pdn["Moves"].append("x".join(jumpStacks))
             else:
-                self.pdn["Moves"].append("x".join(self.multipleJumpStack))
-            self.multipleJumpStack = []
+                self.pdn["Moves"].append("x".join(self.multiple_jump_stack))
+            self.multiple_jump_stack = []
         else:
             self.pdn["Moves"].append(moveString)
 
@@ -265,11 +291,11 @@ class CheckerBoard:
     #         B.backward[active] ^= move
 
     #     destination = move & B.pieces[active]
-    #     B.empty = unusedBits ^ (2**36 - 1) ^ (B.pieces[Black] | B.pieces[White])
+    #     B.empty = unused_bits ^ (2**36 - 1) ^ (B.pieces[Black] | B.pieces[White])
 
     #     if B.jump:
-    #         B.mandatoryJumps = B.jumps_from(destination)
-    #         if B.mandatoryJumps:
+    #         B.mandatory_jumps = B.jumps_from(destination)
+    #         if B.mandatory_jumps:
     #             return B
 
     #     if active == Black and (destination & 0x780000000) != 0:
@@ -286,6 +312,7 @@ class CheckerBoard:
     These methods return an integer whose active bits are those squares
     that can make the move indicated by the method name.
     """
+
     def right_forward(self) -> int:
         return (self.empty >> 4) & self.forward[self.active]
 
@@ -299,20 +326,36 @@ class CheckerBoard:
         return (self.empty << 5) & self.backward[self.active]
 
     def right_forward_jumps(self) -> int:
-        return (self.empty >> 8) & (self.pieces[self.passive] >> 4) & self.forward[self.active]
+        return (
+            (self.empty >> 8)
+            & (self.pieces[self.passive] >> 4)
+            & self.forward[self.active]
+        )
 
     def left_forward_jumps(self) -> int:
-        return (self.empty >> 10) & (self.pieces[self.passive] >> 5) & self.forward[self.active]
+        return (
+            (self.empty >> 10)
+            & (self.pieces[self.passive] >> 5)
+            & self.forward[self.active]
+        )
 
     def right_backward_jumps(self) -> int:
-        return (self.empty << 8) & (self.pieces[self.passive] << 4) & self.backward[self.active]
+        return (
+            (self.empty << 8)
+            & (self.pieces[self.passive] << 4)
+            & self.backward[self.active]
+        )
 
     def left_backward_jumps(self) -> int:
-        return (self.empty << 10) & (self.pieces[self.passive] << 5) & self.backward[self.active]
+        return (
+            (self.empty << 10)
+            & (self.pieces[self.passive] << 5)
+            & self.backward[self.active]
+        )
 
     def get_moves(self) -> List[int]:
         if self.jump:
-            return self.mandatoryJumps
+            return self.mandatory_jumps
         if self._has_core:
             jumps = self._core.get_jumps()
             if jumps:
@@ -395,42 +438,50 @@ class CheckerBoard:
     # Returns true of the passed piece can be taken by the active player.
     def takeable(self, piece: int) -> bool:
         active = self.active
-        if (self.forward[active] & (piece >> 4)) != 0 and (self.empty & (piece << 4)) != 0:
+        if (self.forward[active] & (piece >> 4)) != 0 and (
+            self.empty & (piece << 4)
+        ) != 0:
             return True
-        if (self.forward[active] & (piece >> 5)) != 0 and (self.empty & (piece << 5)) != 0:
+        if (self.forward[active] & (piece >> 5)) != 0 and (
+            self.empty & (piece << 5)
+        ) != 0:
             return True
-        if (self.backward[active] & (piece << 4)) != 0 and (self.empty & (piece >> 4)) != 0:
+        if (self.backward[active] & (piece << 4)) != 0 and (
+            self.empty & (piece >> 4)
+        ) != 0:
             return True
-        if (self.backward[active] & (piece << 5)) != 0 and (self.empty & (piece >> 5)) != 0:
+        if (self.backward[active] & (piece << 5)) != 0 and (
+            self.empty & (piece >> 5)
+        ) != 0:
             return True
         return False
 
     def is_over(self, check_repetition: bool = True) -> bool:
-        if self.noEatCount == boringNoEatLimit:
-            self.checkWinner()
+        if self.no_eat_count == boring_no_eat_limit:
+            self.check_winner()
             return True
         if self._has_core:
             if not self._core.has_any_moves():
-                self.checkWinner()
+                self.check_winner()
                 return True
         elif len(self.get_moves()) == 0:
-            self.checkWinner()
+            self.check_winner()
             return True
-        if check_repetition and len(self.altMoveStack) >= repetitionLimits:
+        if check_repetition and len(self.alt_move_stack) >= repetition_limits:
             p1 = set()
             p2 = set()
-            for i, m in enumerate(self.altMoveStack[-repetitionLimits:]):
+            for i, m in enumerate(self.alt_move_stack[-repetition_limits:]):
                 if i % 2 == 0:
                     p1.add(m)
                 else:
                     p2.add(m)
             if len(p1) < 4 and len(p2) < 4:
-                self.checkWinner()
+                self.check_winner()
                 return True
         return False
 
-    def checkWinner(self) -> None:
-        if self.noEatCount == boringNoEatLimit:
+    def check_winner(self) -> None:
+        if self.no_eat_count == boring_no_eat_limit:
             self.winner = empty
             self.pdn["Winner"] = empty
             self.pdn["Result"] = "1/2-1/2"
@@ -456,31 +507,34 @@ class CheckerBoard:
                     self.winner = White
                     self.pdn["Winner"] = White
                     self.pdn["Result"] = "0-1"
-        self.pdn['replay'] = self.moves
+        self.pdn["replay"] = self.moves
 
     # Prints winner message (when needed)
-    def getWinnerMessage(self) -> None:
+    def get_winner_message(self) -> None:
         if self.winner == Black:
-            print ("Congrats Black, you win!")
+            print("Congrats Black, you win!")
         elif self.winner == empty:
-            print ("It's a draw!")
+            print("It's a draw!")
         else:
-            print ("Congrats White, you win!")
+            print("Congrats White, you win!")
 
     # Returns the current player
     def current_player(self, board: Optional["CheckerBoard"] = None) -> int:
         if board:
             return board.current_player()
         else:
-            if self.turnCount % 2 == 0:
+            if self.turn_count % 2 == 0:
                 return Black
             else:
                 return White
 
     def __reduce__(self) -> Tuple[Any, Tuple[Dict[str, Any]]]:
         """Pickle without the Rust core — workers create their own."""
-        state = {s: getattr(self, s, None) for s in self.__slots__
-                 if s not in ('_core', '_has_core')}
+        state = {
+            s: getattr(self, s, None)
+            for s in self.__slots__
+            if s not in ("_core", "_has_core")
+        }
         return (_reconstruct_board, (state,))
 
     def copy(self) -> "CheckerBoard":
@@ -492,12 +546,12 @@ class CheckerBoard:
         B.empty = self.empty
         B.forward = [x for x in self.forward]
         B.jump = self.jump
-        B.mandatoryJumps = [x for x in self.mandatoryJumps]
+        B.mandatory_jumps = [x for x in self.mandatory_jumps]
         B.passive = self.passive
         B.pieces = [x for x in self.pieces]
-        B.noEatCount = self.noEatCount
-        B.altMoveStack = self.altMoveStack[-repetitionLimits+2:]
-        B._AIBoardArray = self._AIBoardArray.copy()
+        B.no_eat_count = self.no_eat_count
+        B.alt_move_stack = self.alt_move_stack[-repetition_limits + 2 :]
+        B._ai_board_array = self._ai_board_array.copy()
         return B
 
     def push_move(self, move: int) -> Optional["CheckerBoard"]:
@@ -507,36 +561,44 @@ class CheckerBoard:
             src = 1 + bits[0] - bits[0] // 9
             dst = 1 + bits[1] - bits[1] // 9
             mv_str = f"{src}x{dst}" if move < 0 else f"{src}-{dst}"
-            self._history.append((
-                tuple(self.mandatoryJumps),
-                tuple(self.multipleJumpStack),
-                len(self.moves),
-                len(self.altMoveStack),
-                self.active,
-                self.passive,
-            ))
+            self._history.append(
+                (
+                    tuple(self.mandatory_jumps),
+                    tuple(self.multiple_jump_stack),
+                    len(self.moves),
+                    len(self.alt_move_stack),
+                    self.active,
+                    self.passive,
+                )
+            )
             self._core.push_move(move)
             self._core.swap_active()
             self.active = self._core.get_active()
             self.passive = self._core.get_passive()
-            self.altMoveStack.append((self._history[-1][4], mv_str))
+            self.alt_move_stack.append((self._history[-1][4], mv_str))
             self.moves.append((self._history[-1][4], mv_str))
         else:
-            self._history.append((
-                self.active, self.passive,
-                self.forward[0], self.forward[1],
-                self.backward[0], self.backward[1],
-                self.pieces[0], self.pieces[1],
-                self.empty,
-                self.jump,
-                tuple(self.mandatoryJumps),
-                self.noEatCount,
-                tuple(self.multipleJumpStack),
-                self.turnCount,
-                len(self.moves),
-                len(self.altMoveStack),
-                self._AIBoardArray.tobytes(),
-            ))
+            self._history.append(
+                (
+                    self.active,
+                    self.passive,
+                    self.forward[0],
+                    self.forward[1],
+                    self.backward[0],
+                    self.backward[1],
+                    self.pieces[0],
+                    self.pieces[1],
+                    self.empty,
+                    self.jump,
+                    tuple(self.mandatory_jumps),
+                    self.no_eat_count,
+                    tuple(self.multiple_jump_stack),
+                    self.turn_count,
+                    len(self.moves),
+                    len(self.alt_move_stack),
+                    self._ai_board_array.tobytes(),
+                )
+            )
             return self.make_move(move, full_update=False)
 
     def pop_move(self) -> Optional["CheckerBoard"]:
@@ -545,10 +607,10 @@ class CheckerBoard:
         entry = self._history.pop()
         if self._has_core:
             self._core.pop_move()
-            self.mandatoryJumps = list(entry[0])
-            self.multipleJumpStack = list(entry[1])
-            del self.moves[entry[2]:]
-            del self.altMoveStack[entry[3]:]
+            self.mandatory_jumps = list(entry[0])
+            self.multiple_jump_stack = list(entry[1])
+            del self.moves[entry[2] :]
+            del self.alt_move_stack[entry[3] :]
             self.active = entry[4]
             self.passive = entry[5]
         else:
@@ -562,33 +624,41 @@ class CheckerBoard:
             self.pieces[1] = entry[7]
             self.empty = entry[8]
             self.jump = entry[9]
-            self.mandatoryJumps = list(entry[10])
-            self.noEatCount = entry[11]
-            self.multipleJumpStack = list(entry[12])
-            self.turnCount = entry[13]
-            del self.moves[entry[14]:]
-            del self.altMoveStack[entry[15]:]
-            self._AIBoardArray = np.frombuffer(entry[16], dtype=np.int8).copy()
+            self.mandatory_jumps = list(entry[10])
+            self.no_eat_count = entry[11]
+            self.multiple_jump_stack = list(entry[12])
+            self.turn_count = entry[13]
+            del self.moves[entry[14] :]
+            del self.alt_move_stack[entry[15] :]
+            self._ai_board_array = np.frombuffer(entry[16], dtype=np.int8).copy()
 
     """
     Returns a list of possible moves that the player can choose to make.
     """
+
     def get_move_strings(self) -> List[str]:
         # First check if we are in a jump sequence
-        if self.jump and self.mandatoryJumps:
-            # Convert mandatoryJumps to strings for display purposes
+        if self.jump and self.mandatory_jumps:
+            # Convert mandatory_jumps to strings for display purposes
             jump_strings = []
-            for move in self.mandatoryJumps:
+            for move in self.mandatory_jumps:
                 move_abs = abs(move)
                 # Extract source and destination from the move bit
-                bits = [(i, b) for (i, b) in enumerate(bin(move_abs)[::-1]) if b == '1']
+                bits = [(i, b) for (i, b) in enumerate(bin(move_abs)[::-1]) if b == "1"]
                 if len(bits) >= 2:
-                    src_bit, dst_bit = bits[0][0], bits[1][0] if len(bits) > 1 else bits[0][0] + 4 if move_abs & 0x11 else bits[0][0] + 5
-                    src = 1 + src_bit - src_bit//9
-                    dst = 1 + dst_bit - dst_bit//9
+                    src_bit, dst_bit = (
+                        bits[0][0],
+                        bits[1][0]
+                        if len(bits) > 1
+                        else bits[0][0] + 4
+                        if move_abs & 0x11
+                        else bits[0][0] + 5,
+                    )
+                    src = 1 + src_bit - src_bit // 9
+                    dst = 1 + dst_bit - dst_bit // 9
                     jump_strings.append(f"{src}x{dst}")
             return jump_strings
-        
+
         moves = []
         rfj = self.right_forward_jumps()
         lfj = self.left_forward_jumps()
@@ -596,14 +666,26 @@ class CheckerBoard:
         lbj = self.left_backward_jumps()
 
         if (rfj | lfj | rbj | lbj) != 0:
-            rfj = [(1 + i - i//9, 1 + (i + 8) - (i + 8)//9)
-                        for (i, bit) in enumerate(bin(rfj)[::-1]) if bit == '1']
-            lfj = [(1 + i - i//9, 1 + (i + 10) - (i + 8)//9)
-                        for (i, bit) in enumerate(bin(lfj)[::-1]) if bit == '1']
-            rbj = [(1 + i - i//9, 1 + (i - 8) - (i - 8)//9)
-                        for (i, bit) in enumerate(bin(rbj)[::-1]) if bit ==  '1']
-            lbj = [(1 + i - i//9, 1 + (i - 10) - (i - 10)//9)
-                        for (i, bit) in enumerate(bin(lbj)[::-1]) if bit == '1']
+            rfj = [
+                (1 + i - i // 9, 1 + (i + 8) - (i + 8) // 9)
+                for (i, bit) in enumerate(bin(rfj)[::-1])
+                if bit == "1"
+            ]
+            lfj = [
+                (1 + i - i // 9, 1 + (i + 10) - (i + 8) // 9)
+                for (i, bit) in enumerate(bin(lfj)[::-1])
+                if bit == "1"
+            ]
+            rbj = [
+                (1 + i - i // 9, 1 + (i - 8) - (i - 8) // 9)
+                for (i, bit) in enumerate(bin(rbj)[::-1])
+                if bit == "1"
+            ]
+            lbj = [
+                (1 + i - i // 9, 1 + (i - 10) - (i - 10) // 9)
+                for (i, bit) in enumerate(bin(lbj)[::-1])
+                if bit == "1"
+            ]
 
             if self.active == Black:
                 regular_moves = ["%ix%i" % (orig, dest) for (orig, dest) in rfj + lfj]
@@ -620,14 +702,26 @@ class CheckerBoard:
             rb = self.right_backward()
             lb = self.left_backward()
 
-            rf = [(1 + i - i//9, 1 + (i + 4) - (i + 4)//9)
-                        for (i, bit) in enumerate(bin(rf)[::-1]) if bit == '1']
-            lf = [(1 + i - i//9, 1 + (i + 5) - (i + 5)//9)
-                        for (i, bit) in enumerate(bin(lf)[::-1]) if bit == '1']
-            rb = [(1 + i - i//9, 1 + (i - 4) - (i - 4)//9)
-                        for (i, bit) in enumerate(bin(rb)[::-1]) if bit ==  '1']
-            lb = [(1 + i - i//9, 1 + (i - 5) - (i - 5)//9)
-                        for (i, bit) in enumerate(bin(lb)[::-1]) if bit == '1']
+            rf = [
+                (1 + i - i // 9, 1 + (i + 4) - (i + 4) // 9)
+                for (i, bit) in enumerate(bin(rf)[::-1])
+                if bit == "1"
+            ]
+            lf = [
+                (1 + i - i // 9, 1 + (i + 5) - (i + 5) // 9)
+                for (i, bit) in enumerate(bin(lf)[::-1])
+                if bit == "1"
+            ]
+            rb = [
+                (1 + i - i // 9, 1 + (i - 4) - (i - 4) // 9)
+                for (i, bit) in enumerate(bin(rb)[::-1])
+                if bit == "1"
+            ]
+            lb = [
+                (1 + i - i // 9, 1 + (i - 5) - (i - 5) // 9)
+                for (i, bit) in enumerate(bin(lb)[::-1])
+                if bit == "1"
+            ]
 
             if self.active == Black:
                 regular_moves = ["%i-%i" % (orig, dest) for (orig, dest) in rf + lf]
@@ -638,7 +732,6 @@ class CheckerBoard:
                 reverse_moves = ["%i-%i" % (orig, dest) for (orig, dest) in rf + lf]
                 moves = reverse_moves + regular_moves
         return moves
-
 
     def _update_rank(self) -> None:
         bk = self.backward[Black]
@@ -659,65 +752,66 @@ class CheckerBoard:
                     rank[idx] = blackKing
                 elif cell & wk:
                     rank[idx] = whiteKing
-        self._AIBoardArray = np.array(rank, dtype=np.int8)
-        self.turnCount += 1
+        self._ai_board_array = np.array(rank, dtype=np.int8)
+        self.turn_count += 1
 
     """
     Returns a record of the positions of the pieces on the board.
     This also updates the FEN.
     """
+
     def updateState(self) -> None:
         if self._has_core:
             raw_arr = self._core.get_rank()
-            self.AIBoardPos = [int(x) for x in raw_arr]
-            self._AIBoardArray = raw_arr
-            self.turnCount += 1
+            self.ai_board_pos = [int(x) for x in raw_arr]
+            self._ai_board_array = raw_arr
+            self.turn_count += 1
             # Build display state + PDN strings from rank
             state = [[None for _ in range(8)] for _ in range(4)]
-            blackPieces = []
-            whitePieces = []
+            black_pieces = []
+            white_pieces = []
             for i in range(4):
                 for j in range(8):
                     v = raw_arr[8 * i + j]
                     sq = str(1 + j + 8 * i)
                     if v == Black:
                         state[i][j] = Black
-                        blackPieces.append(sq)
+                        black_pieces.append(sq)
                     elif v == White:
                         state[i][j] = White
-                        whitePieces.append(sq)
+                        white_pieces.append(sq)
                     elif v == blackKing:
                         state[i][j] = blackKing
-                        blackPieces.append("K" + sq)
+                        black_pieces.append("K" + sq)
                     elif v == whiteKing:
                         state[i][j] = whiteKing
-                        whitePieces.append("K" + sq)
+                        white_pieces.append("K" + sq)
                     else:
                         state[i][j] = empty
             self.state = state
-            self.blackPieces = blackPieces
-            self.whitePieces = whitePieces
+            self.black_pieces = black_pieces
+            self.white_pieces = white_pieces
             c = "B" if self.active == Black else "W"
-            self.pdn["FEN"] = f"{c}:W{','.join(whitePieces)}:B{','.join(blackPieces)}"
+            self.pdn["FEN"] = f"{c}:W{','.join(white_pieces)}:B{','.join(black_pieces)}"
             return
 
         # genPDN helper
-        def genPDN(blackPieces, whitePieces):
-            Black_list = ','.join(blackPieces)
-            White_list = ','.join(whitePieces)
-            self.blackPieces = blackPieces
-            self.whitePieces = whitePieces
+        def genPDN(black_pieces, white_pieces):
+            Black_list = ",".join(black_pieces)
+            White_list = ",".join(white_pieces)
+            self.black_pieces = black_pieces
+            self.white_pieces = white_pieces
             current = "B"
             if self.active == White:
                 current = "W"
             li = current + ":W" + White_list + ":" + "B" + Black_list
             self.pdn["FEN"] = li
 
-        def cellPos(i,j):
-            return 1 + j + 8*i
+        def cellPos(i, j):
+            return 1 + j + 8 * i
 
-        blackPieces = []
-        whitePieces = []
+        black_pieces = []
+        white_pieces = []
 
         if self.active == Black:
             blackKings = self.backward[self.active]
@@ -735,66 +829,78 @@ class CheckerBoard:
         rank = []
         for i in range(4):
             for j in range(8):
-                cell = 1 << (9*i + j)
+                cell = 1 << (9 * i + j)
                 if cell & blackMen:
                     state[i][j] = Black
-                    blackPieces.append(str(cellPos(i,j)))
+                    black_pieces.append(str(cellPos(i, j)))
                     rank.append(Black)
                 elif cell & whiteMen:
                     state[i][j] = White
-                    whitePieces.append(str(cellPos(i,j)))
+                    white_pieces.append(str(cellPos(i, j)))
                     rank.append(White)
                 elif cell & blackKings:
                     state[i][j] = blackKing
-                    blackPieces.append(("K" + str(cellPos(i,j))))
+                    black_pieces.append(("K" + str(cellPos(i, j))))
                     rank.append(blackKing)
                 elif cell & whiteKings:
                     state[i][j] = whiteKing
-                    whitePieces.append(("K" + str(cellPos(i,j))))
+                    white_pieces.append(("K" + str(cellPos(i, j))))
                     rank.append(whiteKing)
                 else:
                     state[i][j] = empty
                     rank.append(empty)
-        self.AIBoardPos = rank
-        self._AIBoardArray = np.array(rank, dtype=np.int8)
+        self.ai_board_pos = rank
+        self._ai_board_array = np.array(rank, dtype=np.int8)
         self.state = state
-        self.turnCount += 1
-        genPDN(blackPieces, whitePieces)
+        self.turn_count += 1
+        genPDN(black_pieces, white_pieces)
 
     """
     Returns the positions of the pieces for the AI.
     """
-    def getBoardPos(self, colour: int) -> List[int]:
+
+    def get_board_pos(self, colour: int) -> List[int]:
         if colour == Black:
-            return self.AIBoardPos
+            return self.ai_board_pos
         else:
             # perform ugly position swap
-            self.AIBoardPos.reverse()
-            results = self.AIBoardPos
-            self.AIBoardPos.reverse()
+            self.ai_board_pos.reverse()
+            results = self.ai_board_pos
+            self.ai_board_pos.reverse()
             return results
 
     """
     Same as above, but option to convert weights.
     """
-    def getBoardPosWeighted(self, colour: int, weights: Dict[str, float]) -> np.ndarray:
+
+    def get_board_pos_weighted(
+        self, colour: int, weights: Dict[str, float]
+    ) -> np.ndarray:
         w = weights
         if self._has_core:
             return self._core.get_board_pos_weighted(
-                colour, w['empty'], w['Black'], w['White'],
-                w['blackKing'], w['whiteKing'])
-        arr = self._AIBoardArray
+                colour,
+                w["empty"],
+                w["Black"],
+                w["White"],
+                w["blackKing"],
+                w["whiteKing"],
+            )
+        arr = self._ai_board_array
         if colour == Black:
-            lookup = np.array([w['empty'], w['Black'], w['White'],
-                               w['blackKing'], w['whiteKing']], dtype=np.float32)
+            lookup = np.array(
+                [w["empty"], w["Black"], w["White"], w["blackKing"], w["whiteKing"]],
+                dtype=np.float32,
+            )
             return lookup[arr + 1]
         else:
-            lookup = np.array([w['empty'], w['White'], w['Black'],
-                               w['whiteKing'], w['blackKing']], dtype=np.float32)
+            lookup = np.array(
+                [w["empty"], w["White"], w["Black"], w["whiteKing"], w["blackKing"]],
+                dtype=np.float32,
+            )
             return lookup[np.flip(arr) + 1]
 
-    
-    def generateASCIIBoard(self, blackPOV: bool = True) -> List[Any]:
+    def generate_ascii_board(self, blackPOV: bool = True) -> List[Any]:
         """
         Param:
             blackPOV: True
@@ -805,15 +911,16 @@ class CheckerBoard:
         # generate ASCII board frame
         board = [None] * 17
         for i in range(9):
-            board[2*i] = ["+", " - "] + ["-", " - "]*7 + ["+", "\n"]
+            board[2 * i] = ["+", " - "] + ["-", " - "] * 7 + ["+", "\n"]
             if i < 8:
-              board[2*i + 1] = ["|", "   "] \
-                             + [a for subl in [["|", "   "] for _ in range(7)] for a in subl] \
-                             + ["|", "\n"]
+                board[2 * i + 1] = (
+                    ["|", "   "]
+                    + [a for subl in [["|", "   "] for _ in range(7)] for a in subl]
+                    + ["|", "\n"]
+                )
 
-        
-        def paddingCheck(i,j):
-            return ' ' if j + 8*i < 9 else ''
+        def paddingCheck(i, j):
+            return " " if j + 8 * i < 9 else ""
 
         # render the ASCII board content
         for i, chunk in enumerate(self.state):
@@ -823,37 +930,37 @@ class CheckerBoard:
                 y = -1
                 # calculate the positions for the indexes.
                 if j < 4:
-                    x = 2*(7 - 2*i) + 1
-                    y = 2*(6 - 2*j) + 1
+                    x = 2 * (7 - 2 * i) + 1
+                    y = 2 * (6 - 2 * j) + 1
                 else:
-                    x = 2*(6 - 2*i) + 1
-                    y = 2*(7 - 2*j) - 1
-                
+                    x = 2 * (6 - 2 * i) + 1
+                    y = 2 * (7 - 2 * j) - 1
+
                 piece = " "
-          
+
                 if cell == Black:
-                    piece = colored("b", 'red', attrs=['reverse'])
+                    piece = colored("b", "red", attrs=["reverse"])
                 elif cell == White:
-                    piece = colored("w", 'cyan', attrs=['reverse'])
+                    piece = colored("w", "cyan", attrs=["reverse"])
                 elif cell == blackKing:
-                    piece = colored("B", 'red', attrs=['reverse'])
+                    piece = colored("B", "red", attrs=["reverse"])
                 elif cell == whiteKing:
-                    piece = colored("W", 'cyan', attrs=['reverse'])
+                    piece = colored("W", "cyan", attrs=["reverse"])
 
                 # initiate the board with values.
-                board[x][y] = piece + str(1 + j + 8*i) + (paddingCheck(i,j))
+                board[x][y] = piece + str(1 + j + 8 * i) + (paddingCheck(i, j))
 
         # return "".join(map(lambda x: "".join(x), board))
         if blackPOV != True:
             # its white, reverse.
             board = board[::-1]
         return board
-    
-    def printBoard(self, blackPOV: bool = True) -> str:
-        return "".join(map(lambda x: "".join(x), self.generateASCIIBoard(blackPOV)))
-    
+
+    def print_board(self, blackPOV: bool = True) -> str:
+        return "".join(map(lambda x: "".join(x), self.generate_ascii_board(blackPOV)))
+
     # Prints out the checkerboard. Mapped to default __str__ value; use if needed.
     def __str__(self) -> str:
         # print('\033c', end=None)
-        return  "".join(map(lambda x: "".join(x), self.generateASCIIBoard()))
-        # return self.generateASCIIBoard()
+        return "".join(map(lambda x: "".join(x), self.generate_ascii_board()))
+        # return self.generate_ascii_board()

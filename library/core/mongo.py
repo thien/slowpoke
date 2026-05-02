@@ -21,6 +21,7 @@ class Mongo:
         """
         try:
             from pymongo import MongoClient
+
             mongo = MongoClient(filepath)
             self.db = mongo.zephyr
             self.connected = True
@@ -54,9 +55,11 @@ class Mongo:
             entry: Fields to update.
         """
         if self.connected:
-            self.db[collection].update_one({'_id': mongo_id}, {"$set": entry}, upsert=False)
+            self.db[collection].update_one(
+                {"_id": mongo_id}, {"$set": entry}, upsert=False
+            )
 
-    def checkPlayerExists(self, player_id: str) -> bool:
+    def check_player_exists(self, player_id: str) -> bool:
         """Check if a player exists in the database.
 
         Args:
@@ -66,5 +69,5 @@ class Mongo:
             True if the player exists.
         """
         if self.connected and self.db is not None:
-            return self.db['players'].find({'_id': player_id}).count() > 0
+            return self.db["players"].find({"_id": player_id}).count() > 0
         return False

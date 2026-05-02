@@ -10,9 +10,11 @@ Measures:
 
 Opening position has 7 legal moves — enough to trigger K=5 narrowing.
 """
+
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import time as time_module
 import numpy as np
@@ -25,6 +27,7 @@ Black = 0
 
 class MockNeuralNetwork:
     """Mock NN with batch evaluation — returns plausible checkers scores."""
+
     def __init__(self):
         self._use_mlx = True
         self.layer_size = [91, 40, 10, 1]
@@ -68,6 +71,7 @@ class MockNeuralNetwork:
 
 class MockEval:
     """Evaluator with a mock neural network for MLX-path testing."""
+
     def __init__(self):
         self.nn = MockNeuralNetwork()
 
@@ -76,18 +80,18 @@ class MockEval:
 
 
 def compute_hhi(stats):
-    total = sum(s['plays'] for s in stats.values())
+    total = sum(s["plays"] for s in stats.values())
     if total == 0:
         return 0.0
-    return sum((s['plays'] / total) ** 2 for s in stats.values())
+    return sum((s["plays"] / total) ** 2 for s in stats.values())
 
 
 def compute_entropy(stats):
     """Shannon entropy of visit distribution — higher = more exploration."""
-    total = sum(s['plays'] for s in stats.values())
+    total = sum(s["plays"] for s in stats.values())
     if total == 0:
         return 0.0
-    probs = [s['plays'] / total for s in stats.values()]
+    probs = [s["plays"] / total for s in stats.values()]
     return -sum(p * math.log2(p) for p in probs if p > 0)
 
 
@@ -96,7 +100,7 @@ def run_once(k_value=None, temperature=None, base_round=300, ply=4, narrowing=Tr
     board = CheckerBoard()
     ev = MockEval()
     tc = TMCTS(ply=ply, evaluator=ev, debug=False)
-    tc.baseRound = base_round
+    tc.base_round = base_round
     tc.progressive_narrowing = narrowing
     if k_value is not None:
         tc.progressive_narrowing_k = k_value
@@ -104,7 +108,7 @@ def run_once(k_value=None, temperature=None, base_round=300, ply=4, narrowing=Tr
         tc.gumbel_temperature = temperature
 
     start = time_module.time()
-    move = tc.Decide(board, Black)
+    move = tc.decide(board, Black)
     elapsed = time_module.time() - start
     return move, elapsed, dict(tc.movesets), tc
 
@@ -132,7 +136,7 @@ moves = board2.get_moves()
 start = time_module.time()
 scored = tc._evaluate_moves_batch(board2, moves, Black)
 batch_time = time_module.time() - start
-print(f"  Root moves: {len(moves)}, NN batch eval: {batch_time*1000:.2f}ms")
+print(f"  Root moves: {len(moves)}, NN batch eval: {batch_time * 1000:.2f}ms")
 if scored:
     scores = [s for _, s in scored]
     print(f"  Score range: [{min(scores):+.3f}, {max(scores):+.3f}]")
@@ -140,10 +144,12 @@ if scored:
     print(f"  {order}")
 
 
-# --- B. Speed comparison at baseRound=300 ---
+# --- B. Speed comparison at base_round=300 ---
 print("\nB. WALL CLOCK SPEED — Narrowing vs Baseline (5 trials each)")
 print("-" * 50)
-print(f"  {'Config':>23}  {'Time':>8s}  {'HHI':>8s}  {'Entropy':>8s}  {'Moves in tree':>14s}")
+print(
+    f"  {'Config':>23}  {'Time':>8s}  {'HHI':>8s}  {'Entropy':>8s}  {'Moves in tree':>14s}"
+)
 
 base_t = 0
 results_b = []
@@ -159,8 +165,9 @@ for k_val, nflag, label in [
     ents = []
     n_moves = 0
     for _ in range(5):
-        _, t, stats, _ = run_once(k_value=k_val, narrowing=nflag,
-                                 temperature=0.5, base_round=300)
+        _, t, stats, _ = run_once(
+            k_value=k_val, narrowing=nflag, temperature=0.5, base_round=300
+        )
         times.append(t)
         hhis.append(compute_hhi(stats))
         ents.append(compute_entropy(stats))
@@ -170,7 +177,9 @@ for k_val, nflag, label in [
         base_t = avg_t
     speedup = base_t / avg_t
     results_b.append((label, avg_t, np.mean(hhis), np.mean(ents), n_moves, speedup))
-    print(f"  {label:>23}  {avg_t:>7.3f}s  {np.mean(hhis):.4f}  {np.mean(ents):>7.3f}  {n_moves:>10d}")
+    print(
+        f"  {label:>23}  {avg_t:>7.3f}s  {np.mean(hhis):.4f}  {np.mean(ents):>7.3f}  {n_moves:>10d}"
+    )
 
 print()
 for label, avg_t, hhi, ent, n_moves, sp in results_b:
@@ -180,24 +189,29 @@ for label, avg_t, hhi, ent, n_moves, sp in results_b:
 # --- C. Temperature sweep ---
 print("\n\nC. TEMPERATURE SWEEP — Effect on Exploration (K=5, 5 trials each)")
 print("-" * 50)
-print(f"  {'Temp':>6s}  {'HHI':>8s}  {'Entropy':>8s}  {'Time':>8s}  {'Best visit %':>12s}")
+print(
+    f"  {'Temp':>6s}  {'HHI':>8s}  {'Entropy':>8s}  {'Time':>8s}  {'Best visit %':>12s}"
+)
 for temp in [0.0, 0.1, 0.5, 1.0, 2.0, 5.0]:
     hhis = []
     ents = []
     times = []
     best_pcts = []
     for _ in range(5):
-        _, t, stats, tc = run_once(k_value=5, temperature=temp,
-                                  narrowing=True, base_round=300)
+        _, t, stats, tc = run_once(
+            k_value=5, temperature=temp, narrowing=True, base_round=300
+        )
         times.append(t)
         hhis.append(compute_hhi(stats))
         ents.append(compute_entropy(stats))
-        total = sum(s['plays'] for s in stats.values())
-        best = max(s['plays'] for s in stats.values()) / total * 100
+        total = sum(s["plays"] for s in stats.values())
+        best = max(s["plays"] for s in stats.values()) / total * 100
         best_pcts.append(best)
 
-    print(f"  {temp:>5.1f}  {np.mean(hhis):>7.4f}  {np.mean(ents):>7.3f}"
-          f"  {np.mean(times):>7.3f}s  {np.mean(best_pcts):>10.1f}%")
+    print(
+        f"  {temp:>5.1f}  {np.mean(hhis):>7.4f}  {np.mean(ents):>7.3f}"
+        f"  {np.mean(times):>7.3f}s  {np.mean(best_pcts):>10.1f}%"
+    )
 
 
 # --- D. Move diversity across runs ---
@@ -206,8 +220,9 @@ print("-" * 50)
 for temp in [0.0, 0.5, 2.0]:
     chosen = []
     for _ in range(10):
-        move, _, _, _ = run_once(k_value=5, temperature=temp,
-                                narrowing=True, base_round=300)
+        move, _, _, _ = run_once(
+            k_value=5, temperature=temp, narrowing=True, base_round=300
+        )
         chosen.append(str(move))
     unique = len(set(chosen))
     print(f"  T={temp:>4.1f}: {unique}/10 distinct best-move selections")
@@ -216,22 +231,30 @@ for temp in [0.0, 0.5, 2.0]:
 # --- E. Scaling across simulation budgets ---
 print("\n\nE. SCALING — Simulation budget (5 trials per config)")
 print("-" * 70)
-print(f"  {'Rounds':>8s}  {'Baseline':>10s}  {'Top-5':>10s}  {'Top-3':>10s}"
-      f"  {'Speedup(5)':>10s}  {'Speedup(3)':>10s}")
+print(
+    f"  {'Rounds':>8s}  {'Baseline':>10s}  {'Top-5':>10s}  {'Top-3':>10s}"
+    f"  {'Speedup(5)':>10s}  {'Speedup(3)':>10s}"
+)
 budgets = [50, 100, 300, 600, 1000]
 for br in budgets:
     _, t_b, _, _ = run_once(k_value=None, narrowing=False, base_round=br)
 
-    t5s = [run_once(k_value=5, narrowing=True, temperature=0.5, base_round=br)[1]
-           for _ in range(3)]
+    t5s = [
+        run_once(k_value=5, narrowing=True, temperature=0.5, base_round=br)[1]
+        for _ in range(3)
+    ]
     t5 = np.mean(t5s)
 
-    t3s = [run_once(k_value=3, narrowing=True, temperature=0.5, base_round=br)[1]
-           for _ in range(3)]
+    t3s = [
+        run_once(k_value=3, narrowing=True, temperature=0.5, base_round=br)[1]
+        for _ in range(3)
+    ]
     t3 = np.mean(t3s)
 
-    print(f"  {br:>6d}  {t_b:>8.3f}s  {t5:>8.3f}s  {t3:>8.3f}s"
-          f"  {t_b/t5:>8.2f}x  {t_b/t3:>8.2f}x")
+    print(
+        f"  {br:>6d}  {t_b:>8.3f}s  {t5:>8.3f}s  {t3:>8.3f}s"
+        f"  {t_b / t5:>8.2f}x  {t_b / t3:>8.2f}x"
+    )
 
 
 print("\n\n" + "=" * 70)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 from core import checkers
 from agents.agent import Agent
@@ -15,39 +15,41 @@ def printStatus(B: checkers.CheckerBoard) -> None:
     print("--------")
     print(B)
     print(B.pdn)
-    print(B.AIBoardPos)
+    print(B.ai_board_pos)
     print("--------")
 
 
 baseOptions: Dict[str, Any] = {
-    'show_dialog': True,
-    'show_board': True,
-    'human_white': False,
-    'human_black': False,
-    'clear_screen_on_end': True,
-    'preload_moves': [],
+    "show_dialog": True,
+    "show_board": True,
+    "human_white": False,
+    "human_black": False,
+    "clear_screen_on_end": True,
+    "preload_moves": [],
 }
 
 
-def printPerspectiveBoard(B: checkers.CheckerBoard, options: Dict[str, Any]) -> None:
+def print_perspective_board(B: checkers.CheckerBoard, options: Dict[str, Any]) -> None:
     """Print the board from the current player's perspective."""
-    if options['clear_screen_on_end']:
-        print('\033c', end=None)
+    if options["clear_screen_on_end"]:
+        print("\033c", end=None)
 
     blackPOV = None
-    if options['human_black'] or options['human_white']:
-        if options['human_black'] and options['human_white']:
-            blackPOV = True if (B.turnCount % 2 != 0 and options['human_black']) else (
-                False if options['human_white'] else None
+    if options["human_black"] or options["human_white"]:
+        if options["human_black"] and options["human_white"]:
+            blackPOV = (
+                True
+                if (B.turn_count % 2 != 0 and options["human_black"])
+                else (False if options["human_white"] else None)
             )
         else:
-            blackPOV = bool(options['human_black'])
+            blackPOV = bool(options["human_black"])
     else:
         blackPOV = True
-    print(B.printBoard(blackPOV))
+    print(B.print_board(blackPOV))
 
 
-def playGame(
+def play_game(
     black_player: Agent,
     white_player: Agent,
     options: Optional[Dict[str, Any]] = None,
@@ -67,54 +69,61 @@ def playGame(
     B = checkers.CheckerBoard()
     current_player = B.active
 
-    if len(options['preload_moves']) > 0:
-        for i in options['preload_moves']:
+    if len(options["preload_moves"]) > 0:
+        for i in options["preload_moves"]:
             moveIndex = B.get_move_strings().index(i[1])
             move = B.get_moves()[moveIndex]
             B.make_move(move)
 
     while not B.is_over():
-        if options['show_board']:
-            printPerspectiveBoard(B, options)
-        if B.turnCount % 2 != 0:
-            if options['show_dialog']:
+        if options["show_board"]:
+            print_perspective_board(B, options)
+        if B.turn_count % 2 != 0:
+            if options["show_dialog"]:
                 print("blacks turn")
             B.make_move(black_player.make_move(B, Black))
         else:
-            if options['show_dialog']:
+            if options["show_dialog"]:
                 print("whites turn")
             B.make_move(white_player.make_move(B, White))
         if B.active == current_player:
-            if options['show_dialog']:
+            if options["show_dialog"]:
                 print("Jumps must be taken.")
             continue
         else:
             current_player = B.active
 
-    if options['show_board']:
+    if options["show_board"]:
         print(B)
-        B.getWinnerMessage()
+        B.get_winner_message()
     return B
 
 
-def debugPrint(check: bool, msg: str) -> None:
+def debug_print(check: bool, msg: str) -> None:
     """Print debug message if check is True."""
     if check:
         print(msg)
 
 
-def generateDebugMsg(debug: Dict[str, Any], moveCount: int, B: checkers.CheckerBoard) -> str:
+def generate_debug_msg(
+    debug: Dict[str, Any], moveCount: int, B: checkers.CheckerBoard
+) -> str:
     """Generate a formatted debug status message."""
-    gameCountMsg = "Game: " + str(debug['gameCount']).zfill(2) + "/" + str(debug['totalGames']).zfill(2)
+    gameCountMsg = (
+        "Game: "
+        + str(debug["gameCount"]).zfill(2)
+        + "/"
+        + str(debug["totalGames"]).zfill(2)
+    )
     moveMsg = "Move: " + str(moveCount).zfill(3)
-    GenerationMsg = "Gen: " + str(debug['genCount']).zfill(3)
-    PlayersMsg = "B: " + str(B.pdn['Black']) + " | W: " + str(B.pdn['White'])
-    msg = ' | '.join([GenerationMsg, gameCountMsg, moveMsg, PlayersMsg])
-    debugPrint(debug['printDebug'], msg)
+    GenerationMsg = "Gen: " + str(debug["genCount"]).zfill(3)
+    PlayersMsg = "B: " + str(B.pdn["Black"]) + " | W: " + str(B.pdn["White"])
+    msg = " | ".join([GenerationMsg, gameCountMsg, moveMsg, PlayersMsg])
+    debug_print(debug["printDebug"], msg)
     return msg
 
 
-def tournamentMatch(
+def tournament_match(
     blackCPU: Agent,
     whiteCPU: Agent,
     gameID: Union[str, int] = "NULL",
@@ -138,25 +147,26 @@ def tournamentMatch(
     db = None
     if dbURI:
         import core.mongo as mongo
+
         db = mongo.Mongo()
         db.initiate(dbURI)
 
-    blackCPU.assignColour(Black)
-    whiteCPU.assignColour(White)
+    blackCPU.assign_colour(Black)
+    whiteCPU.assign_colour(White)
 
     B = checkers.CheckerBoard()
-    B.setID(gameID)
-    B.setColours(blackCPU.id, whiteCPU.id)
+    B.set_id(gameID)
+    B.set_colours(blackCPU.id, whiteCPU.id)
 
     if dbURI:
-        db.write('games', B.pdn)
+        db.write("games", B.pdn)
 
     current_player = B.active
     while not B.is_over():
         if debug:
-            generateDebugMsg(debug, B.turnCount, B)
+            generate_debug_msg(debug, B.turn_count, B)
 
-        if B.turnCount % 2 != 0:
+        if B.turn_count % 2 != 0:
             B.make_move(blackCPU.make_move(B, Black))
         else:
             B.make_move(whiteCPU.make_move(B, White))
@@ -165,7 +175,7 @@ def tournamentMatch(
         else:
             current_player = B.active
 
-        if debug and debug.get('printBoard'):
-            debugPrint(True, B)
+        if debug and debug.get("print_board"):
+            debug_print(True, B)
 
     return B.pdn

@@ -3,6 +3,7 @@
 import unittest
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.agent import Agent
@@ -56,6 +57,7 @@ class TestAgentInit(unittest.TestCase):
         self.assertIsNotNone(agent.move_function)
         # Both produce valid moves (can't compare result equality since they're random)
         from core import checkers
+
         B = checkers.CheckerBoard()
         moves = B.get_moves()
         self.assertIn(agent.move_function(B, 0), moves)
@@ -90,14 +92,14 @@ class TestAgentOrigin(unittest.TestCase):
     """Test origin tracking."""
 
     def test_generate_origin_creates_genesis_block(self):
-        """generateOrigin should create genesis origin."""
+        """generate_origin should create genesis origin."""
         bot = Magikarp()
         agent = Agent(bot)
         self.assertEqual(len(agent.origin), 1)
         self.assertEqual(agent.origin[0], [0, 0, 0])
 
     def test_generate_origin_adds_to_existing(self):
-        """Calling generateOrigin again should append."""
+        """Calling generate_origin again should append."""
         bot = Magikarp()
         agent = Agent(bot)
         agent.origin.append([1, 2, 3])
@@ -108,23 +110,23 @@ class TestAgentID(unittest.TestCase):
     """Test ID generation and setting."""
 
     def test_set_id(self):
-        """setID should update id."""
+        """set_id should update id."""
         bot = Magikarp()
         agent = Agent(bot)
-        agent.setID("new-id")
+        agent.set_id("new-id")
         self.assertEqual(agent.id, "new-id")
 
     def test_gen_id_creates_hash(self):
-        """genID should create a hex hash string."""
+        """gen_id should create a hex hash string."""
         bot = Magikarp()
         agent = Agent(bot)
-        agent.genID()
+        agent.gen_id()
         self.assertIsInstance(agent.id, str)
         # MD5 hash is 32 hex characters
         self.assertEqual(len(agent.id), 32)
 
     def test_gen_id_is_consistent(self):
-        """genID should produce the same ID for same bot state."""
+        """gen_id should produce the same ID for same bot state."""
         bot1 = Magikarp()
         agent1 = Agent(bot1)
         id1 = agent1.id
@@ -143,27 +145,27 @@ class TestAgentGetDict(unittest.TestCase):
     """Test dictionary serialization."""
 
     def test_get_dict_contains_id(self):
-        """getDict should include agent ID."""
+        """get_dict should include agent ID."""
         bot = Magikarp()
         agent = Agent(bot)
-        d = agent.getDict()
+        d = agent.get_dict()
         self.assertIn("_id", d)
         self.assertEqual(d["_id"], agent.id)
 
     def test_get_dict_contains_elo(self):
-        """getDict should include Elo."""
+        """get_dict should include Elo."""
         bot = Magikarp()
         agent = Agent(bot, initial_elo=1350)
-        d = agent.getDict()
+        d = agent.get_dict()
         self.assertIn("elo", d)
         self.assertEqual(d["elo"], 1350)
 
     def test_get_dict_contains_points(self):
-        """getDict should include points."""
+        """get_dict should include points."""
         bot = Magikarp()
         agent = Agent(bot)
         agent.points = 42
-        d = agent.getDict()
+        d = agent.get_dict()
         self.assertIn("points", d)
         self.assertEqual(d["points"], 42)
 
@@ -171,7 +173,7 @@ class TestAgentGetDict(unittest.TestCase):
         """Magikarp has no NN weights, should be None."""
         bot = Magikarp()
         agent = Agent(bot)
-        d = agent.getDict()
+        d = agent.get_dict()
         self.assertIsNone(d["weights"])
 
 
@@ -182,14 +184,14 @@ class TestAgentColour(unittest.TestCase):
         """Assigning colour 0 should set agent.colour = 0."""
         bot = Magikarp()
         agent = Agent(bot)
-        agent.assignColour(Black)
+        agent.assign_colour(Black)
         self.assertEqual(agent.colour, Black)
 
     def test_assign_colour_white(self):
         """Assigning colour 1 should set agent.colour = 1."""
         bot = Magikarp()
         agent = Agent(bot)
-        agent.assignColour(White)
+        agent.assign_colour(White)
         self.assertEqual(agent.colour, White)
 
 
@@ -206,9 +208,11 @@ class TestAgentMakeMove(unittest.TestCase):
 
     def test_make_move_uses_bot_return(self):
         """The move returned should be from the bot's logic."""
+
         class FixedBot:
             def move_function(self, board, colour):
                 return 42
+
         bot = FixedBot()
         agent = Agent(bot)
         result = agent.make_move(None, Black)

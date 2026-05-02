@@ -1,17 +1,27 @@
 """Subsquare feature extraction for checkers board positions."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 
-BOARD = np.array([
-    [-1,  0, -1,  1, -1,  2, -1,  3],
-    [ 4, -1,  5, -1,  6, -1,  7, -1],
-    [-1,  8, -1,  9, -1, 10, -1, 11],
-    [12, -1, 13, -1, 14, -1, 15, -1],
-    [-1, 16, -1, 17, -1, 18, -1, 19],
-    [20, -1, 21, -1, 22, -1, 23, -1],
-    [-1, 24, -1, 25, -1, 26, -1, 27],
-    [28, -1, 29, -1, 30, -1, 31, -1],
-], dtype=np.int32)
+if TYPE_CHECKING:
+    from agents.evaluator.neural import NeuralNetwork
+
+BOARD = np.array(
+    [
+        [-1, 0, -1, 1, -1, 2, -1, 3],
+        [4, -1, 5, -1, 6, -1, 7, -1],
+        [-1, 8, -1, 9, -1, 10, -1, 11],
+        [12, -1, 13, -1, 14, -1, 15, -1],
+        [-1, 16, -1, 17, -1, 18, -1, 19],
+        [20, -1, 21, -1, 22, -1, 23, -1],
+        [-1, 24, -1, 25, -1, 26, -1, 27],
+        [28, -1, 29, -1, 30, -1, 31, -1],
+    ],
+    dtype=np.int32,
+)
 
 
 def _build_subsquare_matrix() -> np.ndarray:
@@ -80,7 +90,7 @@ def make_fused_nn(nn_91: "NeuralNetwork") -> "NeuralNetwork":
         nn_32.biases[i] = nn_91.biases[i].copy()
 
     total = sum(w.size for w in nn_32.weights) + sum(b.size for b in nn_32.biases)
-    nn_32.lenCoefficents = total
+    nn_32.len_coefficients = total
 
     if nn_32._use_mlx:
         nn_32._init_mlx_weights()

@@ -3,6 +3,7 @@
 import unittest
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.slowbro import Slowbro
@@ -24,7 +25,7 @@ class TestSlowbroInit(unittest.TestCase):
 
     def test_custom_ply(self):
         """Custom ply should be respected."""
-        bot = Slowbro(plyDepth=6, use_mlx=False)
+        bot = Slowbro(ply_depth=6, use_mlx=False)
         self.assertEqual(bot.ply, 6)
 
     def test_default_layers(self):
@@ -50,12 +51,12 @@ class TestSlowbroInit(unittest.TestCase):
     def test_nn_has_4_layers(self):
         """NN should have 4 layers by default."""
         bot = Slowbro(use_mlx=False)
-        self.assertEqual(bot.nn.NumberOfLayers, 4)
+        self.assertEqual(bot.nn.num_layers, 4)
 
     def test_cache_enabled_by_default(self):
         """Cache should be enabled by default."""
         bot = Slowbro(use_mlx=False)
-        self.assertTrue(bot.enableCache)
+        self.assertTrue(bot.enable_cache)
 
     def test_cache_is_dict(self):
         """Cache should start as empty dict."""
@@ -65,19 +66,21 @@ class TestSlowbroInit(unittest.TestCase):
     def test_default_decision_function_is_tmcts(self):
         """Default decision function should be serial TMCTS."""
         from decision.tmcts import TMCTS
+
         bot = Slowbro(use_mlx=False)
-        self.assertIsInstance(bot.decisionFunction, TMCTS)
+        self.assertIsInstance(bot.decision_function, TMCTS)
 
     def test_parallel_decision_function(self):
         """When use_parallel=True, decision function should be ParallelTMCTS."""
         from decision.parallel_tmcts import ParallelTMCTS
+
         bot = Slowbro(use_mlx=False, use_parallel=True, num_parallel=2)
-        self.assertIsInstance(bot.decisionFunction, ParallelTMCTS)
+        self.assertIsInstance(bot.decision_function, ParallelTMCTS)
 
     def test_parallel_thread_count(self):
         """Parallel TMCTS should use specified thread count."""
         bot = Slowbro(use_mlx=False, use_parallel=True, num_parallel=3)
-        self.assertEqual(bot.decisionFunction.num_parallel, 3)
+        self.assertEqual(bot.decision_function.num_parallel, 3)
 
     def test_debug_mode(self):
         """Debug mode should be stored."""
@@ -141,7 +144,8 @@ class TestSlowbroEvaluateBoard(unittest.TestCase):
     def test_evaluate_win_returns_one(self):
         """Winning position should return 1.0."""
         from unittest import mock
-        with mock.patch.object(checkers.CheckerBoard, 'is_over', return_value=True):
+
+        with mock.patch.object(checkers.CheckerBoard, "is_over", return_value=True):
             B = checkers.CheckerBoard()
             B.winner = Black
             result = self.bot.evaluate_board(B, Black)
@@ -150,7 +154,8 @@ class TestSlowbroEvaluateBoard(unittest.TestCase):
     def test_evaluate_loss_returns_minus_one(self):
         """Losing position should return -1.0."""
         from unittest import mock
-        with mock.patch.object(checkers.CheckerBoard, 'is_over', return_value=True):
+
+        with mock.patch.object(checkers.CheckerBoard, "is_over", return_value=True):
             B = checkers.CheckerBoard()
             B.winner = White
             result = self.bot.evaluate_board(B, Black)
@@ -159,7 +164,8 @@ class TestSlowbroEvaluateBoard(unittest.TestCase):
     def test_evaluate_draw_returns_zero(self):
         """Draw position should return 0.0."""
         from unittest import mock
-        with mock.patch.object(checkers.CheckerBoard, 'is_over', return_value=True):
+
+        with mock.patch.object(checkers.CheckerBoard, "is_over", return_value=True):
             B = checkers.CheckerBoard()
             B.winner = -1
             result = self.bot.evaluate_board(B, Black)
@@ -172,15 +178,15 @@ class TestSlowbroLoadWeights(unittest.TestCase):
     def test_load_weights_32_input(self):
         """Loading 32-input weights should work directly."""
         bot = Slowbro(use_mlx=False)
-        coeffs = bot.nn.getAllCoefficents().copy()
-        bot.loadWeights(coeffs)
-        np.testing.assert_allclose(bot.nn.getAllCoefficents(), coeffs, rtol=1e-5)
+        coeffs = bot.nn.get_all_coefficients().copy()
+        bot.load_weights(coeffs)
+        np.testing.assert_allclose(bot.nn.get_all_coefficients(), coeffs, rtol=1e-5)
 
     def test_load_weights_preserves_architecture(self):
         """Loading new weights should not change architecture."""
         bot = Slowbro(use_mlx=False)
-        coeffs = np.ones(bot.nn.lenCoefficents, dtype=np.float32)
-        bot.loadWeights(coeffs)
+        coeffs = np.ones(bot.nn.len_coefficients, dtype=np.float32)
+        bot.load_weights(coeffs)
         self.assertEqual(bot.nn.layer_size, [32, 40, 10, 1])
 
     def test_load_legacy_91_weights(self):
@@ -188,7 +194,7 @@ class TestSlowbroLoadWeights(unittest.TestCase):
         legacy_count = 91 * 40 + 40 + 40 * 10 + 10 + 10 * 1 + 1
         legacy_nn_weights = np.random.random(legacy_count).astype(np.float32)
         bot = Slowbro(use_mlx=False, layers=[32, 40, 10, 1])
-        bot.loadWeights(legacy_nn_weights)
+        bot.load_weights(legacy_nn_weights)
         # After fusion, NN should have 32 inputs
         self.assertEqual(bot.nn.layer_size[0], 32)
         # Evaluation should work
@@ -202,7 +208,7 @@ class TestSlowbroMoveFunction(unittest.TestCase):
 
     def test_make_valid_move(self):
         """Slowbro should make a valid move."""
-        bot = Slowbro(use_mlx=False, plyDepth=1)
+        bot = Slowbro(use_mlx=False, ply_depth=1)
         agent = Agent(bot)
         B = checkers.CheckerBoard()
         move = agent.make_move(B, Black)
@@ -210,7 +216,7 @@ class TestSlowbroMoveFunction(unittest.TestCase):
 
     def test_move_function_returns_int(self):
         """Move should be an integer."""
-        bot = Slowbro(use_mlx=False, plyDepth=1)
+        bot = Slowbro(use_mlx=False, ply_depth=1)
         agent = Agent(bot)
         B = checkers.CheckerBoard()
         move = agent.make_move(B, Black)

@@ -18,500 +18,548 @@ import logging
 
 # ignore runtime warnings
 import warnings
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings("ignore")
 
 import statistics
 
 # Piece values on board
 Black, White, empty = 0, 1, -1
 # Blondie was 1,0,-2
-WinPt, DrawPt, LosePt = 2, 0, -1
-ChampWinPt, ChampDrawPt, ChampLosePt = 1,0,-1
+WIN_PT, DRAW_PT, LOSE_PT = 2, 0, -1
+ChampWIN_PT, ChampDRAW_PT, ChampLOSE_PT = 1, 0, -1
 
-def optionDefaults(options):
-  # adds default options if they are absent from options.
-  defaultOptions = {
-    'debugMode' : False,
-    'mongoConfigPath' : 'config.json',
-    'plyDepth' : 4,
-    'NumberOfGenerations' : 200,
-    'Population' : 15,
-    'printStatus' : True,
-    'connectMongo' : False,
-    'NumberOfGamesPerPlayer' : 5,
-    'resultsLocation' : os.path.join("..", "results"),
-    'useParallelMCTS' : None,  # None = auto (True when plyDepth > 1)
-    'numParallel' : 4  # Number of parallel threads for MCTS
-  }
-  for i in defaultOptions.keys():
-    if i not in options:
-      options[i] = defaultOptions[i]
-  return options
+
+def option_defaults(options):
+    # adds default options if they are absent from options.
+    defaultOptions = {
+        "debugMode": False,
+        "mongoConfigPath": "config.json",
+        "ply_depth": 4,
+        "NumberOfGenerations": 200,
+        "Population": 15,
+        "printStatus": True,
+        "connectMongo": False,
+        "NumberOfGamesPerPlayer": 5,
+        "resultsLocation": os.path.join("..", "results"),
+        "use_parallel_mcts": None,  # None = auto (True when ply_depth > 1)
+        "num_parallel": 4,  # Number of parallel threads for MCTS
+    }
+    for i in defaultOptions.keys():
+        if i not in options:
+            options[i] = defaultOptions[i]
+    return options
+
 
 class Generator:
-  def __init__(self, options):
-    # initialise default variables when needed.
-    options = optionDefaults(options)
-    self.isDebugMode = options['debugMode']
-    # Declare base information
-    self.plyDepth = options['plyDepth']
-    self.generations = options['NumberOfGenerations']
-    self.populationSize = options['Population'] #number of players
-    # generate the initial population.
-    self.population = pop.Population(self.populationSize, self.plyDepth, self.isDebugMode, options['useParallelMCTS'], options['numParallel'], includeOnix=True)
-    # time handlers
-    self.StartTime = datetime.datetime.now().timestamp()
-    self.AverageGameTime = 0
-    self.AverageGenrationLength = 0
-    self.RemainingTime = 0
-    self.EstDateFinished = 0
-    self.GenerationTimeLengths = np.array([])
-    self.currentGenStartTime = datetime.datetime.now().timestamp()
-    # current generation game counts
-    self.GamesFinished = 0
-    self.GamesQueued = 0
-    self.CurrentGeneration = 0
-    # champions
-    self.AreChampionsPlaying = False
-    self.LastChampionScore = 0
-    self.cummulativeScore = 0
-    self.AverageChampionGrowth = 0
-    self.RecentChampionScores = 0
-    self.playPreviousChampCount = 5
-    self.champGamesRoundsCount = 6 # should always be even and at least 2.
-    self.NumberOfGamesPerPlayer = options['NumberOfGamesPerPlayer']
-    self.progress = []
+    def __init__(self, options):
+        # initialise default variables when needed.
+        options = option_defaults(options)
+        self.is_debugMode = options["debugMode"]
+        # Declare base information
+        self.ply_depth = options["ply_depth"]
+        self.generations = options["NumberOfGenerations"]
+        self.populationSize = options["Population"]  # number of players
+        # generate the initial population.
+        self.population = pop.Population(
+            self.populationSize,
+            self.ply_depth,
+            self.is_debugMode,
+            options["use_parallel_mcts"],
+            options["num_parallel"],
+            include_onix=True,
+        )
+        # time handlers
+        self.StartTime = datetime.datetime.now().timestamp()
+        self.AverageGameTime = 0
+        self.AverageGenrationLength = 0
+        self.RemainingTime = 0
+        self.EstDateFinished = 0
+        self.GenerationTimeLengths = np.array([])
+        self.currentGenStartTime = datetime.datetime.now().timestamp()
+        # current generation game counts
+        self.GamesFinished = 0
+        self.GamesQueued = 0
+        self.CurrentGeneration = 0
+        # champions
+        self.AreChampionsPlaying = False
+        self.LastChampionScore = 0
+        self.cummulativeScore = 0
+        self.AverageChampionGrowth = 0
+        self.RecentChampionScores = 0
+        self.playPreviousChampCount = 5
+        self.champGamesRoundsCount = 6  # should always be even and at least 2.
+        self.NumberOfGamesPerPlayer = options["NumberOfGamesPerPlayer"]
+        self.progress = []
 
-    self.previousGenerationRankings = None
-    self.previousChampPointList = None
-    # Initiate other information
-    self.processors = multiprocessing.cpu_count()-1
-    self.config = self.loadJSONConfig(options['mongoConfigPath'])
-    self.mongoConnected = options['connectMongo']
-    self.totalGamesPerGen = ((options['Population'] ^ 2) - options['Population'])
+        self.previousGenerationRankings = None
+        self.previousChampPointList = None
+        # Initiate other information
+        self.processors = multiprocessing.cpu_count() - 1
+        self.config = self.load_json_config(options["mongoConfigPath"])
+        self.mongoConnected = options["connectMongo"]
+        self.totalGamesPerGen = (options["Population"] ^ 2) - options["Population"]
 
-    # placeholder values
-    self.gameIDCounter = 0
-    # once we have the config file we can proceed and initiate our MongoDB connection.
-    self.initiateMongoConnection()
-    # we also want to save the stats offline
-    self.generationStats = []
-    self.folderName = str(self.cleanDate(self.StartTime, True)) + " " + str(self.plyDepth) + "ply"
-    self.saveLocation = os.path.join(options['resultsLocation'],self.folderName)
-    self.options = options  # Store for reference
-    # Set up logging
-    self.log_file = os.path.join(self.saveLocation, 'training.log')
-    self._setup_logging()
-    # self.saveLocation = os.path.join(options['resultsLocation'],self.cleanDate(self.StartTime, True))
-    # generate charts as we go?
-    self.generateChartsEveryRound = True
+        # placeholder values
+        self.gameIDCounter = 0
+        # once we have the config file we can proceed and initiate our MongoDB connection.
+        self.init_mongo_connection()
+        # we also want to save the stats offline
+        self.generationStats = []
+        self.folderName = (
+            str(self.clean_date(self.StartTime, True))
+            + " "
+            + str(self.ply_depth)
+            + "ply"
+        )
+        self.saveLocation = os.path.join(options["resultsLocation"], self.folderName)
+        self.options = options  # Store for reference
+        # Set up logging
+        self.log_file = os.path.join(self.saveLocation, "training.log")
+        self._setup_logging()
+        # self.saveLocation = os.path.join(options['resultsLocation'],self.clean_date(self.StartTime, True))
+        # generate charts as we go?
+        self.generateChartsEveryRound = True
 
-  def loadJSONConfig(self, filepath: str) -> dict:
-    """
-    Loads config.json
-    """
-    try:
-      with open(filepath) as json_file:
-        data = json.load(json_file)
-      return data
-    except:
-      data = {'MongoURI' : ""}
-      return data
+    def load_json_config(self, filepath: str) -> dict:
+        """
+        Loads config.json
+        """
+        try:
+            with open(filepath) as json_file:
+                data = json.load(json_file)
+            return data
+        except:
+            data = {"MongoURI": ""}
+            return data
 
-  def initiateMongoConnection(self) -> None:
-    self.db = mongo.Mongo()
-    try:
-      if self.mongoConnected:
-        self.db.initiate(self.config['MongoURI'])
-    except:
-      pass
-  
-  def _setup_logging(self) -> None:
-    """Set up logging to both file and console."""
-    # Ensure save directory exists
-    if not os.path.isdir(self.saveLocation):
-      os.makedirs(self.saveLocation)
-    
-    # Configure logging to file
-    logging.basicConfig(
-      filename=self.log_file,
-      level=logging.INFO,
-      format='%(asctime)s - %(message)s',
-      datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    self.logger = logging.getLogger(__name__)
-    self.log("Training started")
-    self.log(f"Population: {self.populationSize}, Ply Depth: {self.plyDepth}, Generations: {self.generations}")
-  
-  def log(self, message: str) -> None:
-    """Write a message to the log file."""
-    if hasattr(self, 'logger'):
-      self.logger.info(message)
-  
-  def logStatusInfo(self) -> None:
-    """Write current status info to log file."""
-    for i in self.statusInfo():
-      self.log(f"{i[0]}: {i[1]}")
+    def init_mongo_connection(self) -> None:
+        self.db = mongo.Mongo()
+        try:
+            if self.mongoConnected:
+                self.db.initiate(self.config["MongoURI"])
+        except:
+            pass
 
-  def Tournament(self) -> None:
-    """
-    Tournament; this determines the best players out of them all.
-    returns the players in order of how good they are.
-    """
-    self.log("=" * 60)
-    self.log("STARTING TOURNAMENT")
-    self.log(f"Generation: {self.currentGeneration}")
-    self.log(f"Population size: {len(self.population.currentPopulation)} players")
-    self.log(f"Games per player: {self.NumberOfGamesPerPlayer}")
-    gamePool = []
-    # initiate game results round robin style (where each player plays as b and w)
-    self.log("Scheduling games...")
-    for player_id in self.population.currentPopulation:
-      for x in range(self.NumberOfGamesPerPlayer):
-        oppoment_id = player_id
-        while oppoment_id == player_id:
-          oppoment_id = random.choice(self.population.currentPopulation)
-        # make sure they're not playing themselves
-        if player_id != oppoment_id:
-          # generate ID for the game
-          game_id = self.gameIDCounter
-          self.gameIDCounter += 1
-          # increment game count.
-          self.GamesQueued += 1
-          # create game variables
-          game = {
-            'game_id' : game_id,
-            'black' : self.population.players[player_id],   
-            'white' : self.population.players[oppoment_id],
-            'dbURI' : False,
-            'debugInfo' : False,
-          }
-          # add it to the list of games that need to be played.
-          gamePool.append(game)
-    self.log(f"Total games scheduled: {len(gamePool)}")
-    
-    # run game simulations.
-    results = []
-    # close number of processes when map is done.
-    threadCount = self.processors
-    if self.processors > len(gamePool):
-      threadCount = len(gamePool)
-    self.log(f"Running games with {threadCount} parallel processes...")
-    with multiprocessing.Pool(processes=threadCount) as pool:
-      chunksize = max(1, len(gamePool) // threadCount)
-      results = pool.map(self.gameWorker, gamePool, chunksize=chunksize)
-      pool.close()
-      pool.join()
-    self.log("All games completed")
+    def _setup_logging(self) -> None:
+        """Set up logging to both file and console."""
+        # Ensure save directory exists
+        if not os.path.isdir(self.saveLocation):
+            os.makedirs(self.saveLocation)
 
-    # when the pool is done with processing, process the results.
-    self.log("Processing game results...")
-    for i in range(len(results)):
-      self.population.allocatePoints(results[i]['game'], results[i]['black'], results[i]['white'])
-      # merge winning players move caches
-      if results[i]['game']['Winner'] == Black:
-        bCache = self.population.players[results[i]['black']].bot.cache
-        self.population.players[results[i]['black']].bot.cache = self.merge_dicts(bCache, results[i]['black_cache'])
-      elif results[i]['game']['Winner'] == White:
-        wCache = self.population.players[results[i]['white']].bot.cache
-        self.population.players[results[i]['white']].bot.cache = self.merge_dicts(wCache, results[i]['white_cache'])
-      # nullify the cache since its not needed anymore
-      results[i]['black_cache'] = None
-      results[i]['white_cache'] = None
-    self.log("Results processed. Updating player rankings...")
+        # Configure logging to file
+        logging.basicConfig(
+            filename=self.log_file,
+            level=logging.INFO,
+            format="%(asctime)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+        self.logger = logging.getLogger(__name__)
+        self.log("Training started")
+        self.log(
+            f"Population: {self.populationSize}, Ply Depth: {self.ply_depth}, Generations: {self.generations}"
+        )
 
-    self.population.sortCurrentPopulationByPoints()
-    self.population.addChampion()
-    self.log("Tournament complete. Population sorted by Elo.")
-    return (self.population, results)
+    def log(self, message: str) -> None:
+        """Write a message to the log file."""
+        if hasattr(self, "logger"):
+            self.logger.info(message)
 
+    def log_status_info(self) -> None:
+        """Write current status info to log file."""
+        for i in self.status_info():
+            self.log(f"{i[0]}: {i[1]}")
 
-  """ 
+    def Tournament(self) -> None:
+        """
+        Tournament; this determines the best players out of them all.
+        returns the players in order of how good they are.
+        """
+        self.log("=" * 60)
+        self.log("STARTING TOURNAMENT")
+        self.log(f"Generation: {self.currentGeneration}")
+        self.log(f"Population size: {len(self.population.current_population)} players")
+        self.log(f"Games per player: {self.NumberOfGamesPerPlayer}")
+        gamePool = []
+        # initiate game results round robin style (where each player plays as b and w)
+        self.log("Scheduling games...")
+        for player_id in self.population.current_population:
+            for x in range(self.NumberOfGamesPerPlayer):
+                oppoment_id = player_id
+                while oppoment_id == player_id:
+                    oppoment_id = random.choice(self.population.current_population)
+                # make sure they're not playing themselves
+                if player_id != oppoment_id:
+                    # generate ID for the game
+                    game_id = self.gameIDCounter
+                    self.gameIDCounter += 1
+                    # increment game count.
+                    self.GamesQueued += 1
+                    # create game variables
+                    game = {
+                        "game_id": game_id,
+                        "black": self.population.players[player_id],
+                        "white": self.population.players[oppoment_id],
+                        "dbURI": False,
+                        "debugInfo": False,
+                    }
+                    # add it to the list of games that need to be played.
+                    gamePool.append(game)
+        self.log(f"Total games scheduled: {len(gamePool)}")
+
+        # run game simulations.
+        results = []
+        # close number of processes when map is done.
+        threadCount = self.processors
+        if self.processors > len(gamePool):
+            threadCount = len(gamePool)
+        self.log(f"Running games with {threadCount} parallel processes...")
+        with multiprocessing.Pool(processes=threadCount) as pool:
+            chunksize = max(1, len(gamePool) // threadCount)
+            results = pool.map(self.game_worker, gamePool, chunksize=chunksize)
+            pool.close()
+            pool.join()
+        self.log("All games completed")
+
+        # when the pool is done with processing, process the results.
+        self.log("Processing game results...")
+        for i in range(len(results)):
+            self.population.allocate_points(
+                results[i]["game"], results[i]["black"], results[i]["white"]
+            )
+            # merge winning players move caches
+            if results[i]["game"]["Winner"] == Black:
+                bCache = self.population.players[results[i]["black"]].bot.cache
+                self.population.players[
+                    results[i]["black"]
+                ].bot.cache = self.merge_dicts(bCache, results[i]["black_cache"])
+            elif results[i]["game"]["Winner"] == White:
+                wCache = self.population.players[results[i]["white"]].bot.cache
+                self.population.players[
+                    results[i]["white"]
+                ].bot.cache = self.merge_dicts(wCache, results[i]["white_cache"])
+            # nullify the cache since its not needed anymore
+            results[i]["black_cache"] = None
+            results[i]["white_cache"] = None
+        self.log("Results processed. Updating player rankings...")
+
+        self.population.sort_population_by_points()
+        self.population.add_champion()
+        self.log("Tournament complete. Population sorted by Elo.")
+        return (self.population, results)
+
+    """ 
   This function is called for every generation.
   """
-  def runGenerations(self) -> None:
-    # loop through the generations.
-    for i in range(self.generations):
-      print("Initiating generation",i)
-      self.log(f"=" * 60)
-      self.log(f"Starting generation {i}")
-      # increment generation count
-      self.currentGeneration = i
-      self.currentGenStartTime = datetime.datetime.now().timestamp()
-      # reset game count statistics prior to running
-      self.GamesFinished = 0
-      self.GamesQueued = 0
-      # initiate timestamp
-      startTime = datetime.datetime.now()
-      # make bots play each other.
-      self.population, generationResults = self.Tournament()
-      self.previousGenerationRankings = self.population.printCurrentPopulationByPoints()
-      
-      # compute champion games (runs independently of others)
-      self.log("Running champion games...")
-      self.runChampions()
-      # save champions to file
-      self.log("Saving champions to file...")
-      self.population.saveChampionsToFile(self.saveLocation)
-      # save genomic details
-      self.log("Saving population genomes...")
-      self.population.savePopulationGenomes(self.saveLocation)
-      # get the best players and generate a new population from them.
-      self.log("Generating next population...")
-      self.population.generateNextPopulation()
-      self.populationSize = self.population.count
-      # initiate end timestamp and add time difference length to list.
-      timeDifference = (datetime.datetime.now() - startTime).total_seconds()
-      self.GenerationTimeLengths = np.hstack((self.GenerationTimeLengths, timeDifference))
-      self.log(f"Generation complete ({timeDifference:.1f}s)")
-      # need to store the results of this into a json file!
-      self.generationStats.append({
-        'stats' : [(str(i[0]), str(i[1])) for i in self.statusInfo()],
-        'games' : generationResults,
-        'durationInSeconds' : str(timeDifference)
-      })
-      self.saveTrainingStatsToJSON(self.saveLocation, self.generationStats)
-      if self.generateChartsEveryRound:
-        self.generateStats()
-      # Display status at generation boundary
-      self.displayStatusInfo(force_display=True)
 
-  def nukeCache(self) -> None:
-    for i in self.population:
-      self.population[i].bot.cache = {}    
-    
-  def generateStats(self) -> None:
-    # create statistics
-    stats = statistics.Statistics(self.folderName)
-    stats.loadStatisticsFile()
-    stats.saveCharts()
-    print("I made some charts!")
+    def run_generations(self) -> None:
+        # loop through the generations.
+        for i in range(self.generations):
+            print("Initiating generation", i)
+            self.log(f"=" * 60)
+            self.log(f"Starting generation {i}")
+            # increment generation count
+            self.currentGeneration = i
+            self.currentGenStartTime = datetime.datetime.now().timestamp()
+            # reset game count statistics prior to running
+            self.GamesFinished = 0
+            self.GamesQueued = 0
+            # initiate timestamp
+            startTime = datetime.datetime.now()
+            # make bots play each other.
+            self.population, generationResults = self.Tournament()
+            self.previousGenerationRankings = (
+                self.population.print_population_by_points()
+            )
 
-  def saveTrainingStatsToJSON(self, saveLocation: str, stats) -> None:
-    # check save directory exists prior to saving
-    if not os.path.isdir(saveLocation):
-      os.makedirs(saveLocation)
+            # compute champion games (runs independently of others)
+            self.log("Running champion games...")
+            self.run_champions()
+            # save champions to file
+            self.log("Saving champions to file...")
+            self.population.save_champions_to_file(self.saveLocation)
+            # save genomic details
+            self.log("Saving population genomes...")
+            self.population.save_population_genomes(self.saveLocation)
+            # get the best players and generate a new population from them.
+            self.log("Generating next population...")
+            self.population.generate_next_population()
+            self.populationSize = self.population.count
+            # initiate end timestamp and add time difference length to list.
+            timeDifference = (datetime.datetime.now() - startTime).total_seconds()
+            self.GenerationTimeLengths = np.hstack(
+                (self.GenerationTimeLengths, timeDifference)
+            )
+            self.log(f"Generation complete ({timeDifference:.1f}s)")
+            # need to store the results of this into a json file!
+            self.generationStats.append(
+                {
+                    "stats": [(str(i[0]), str(i[1])) for i in self.status_info()],
+                    "games": generationResults,
+                    "durationInSeconds": str(timeDifference),
+                }
+            )
+            self.save_training_stats_to_json(self.saveLocation, self.generationStats)
+            if self.generateChartsEveryRound:
+                self.generate_stats()
+            # Display status at generation boundary
+            self.display_status_info(force_display=True)
 
-    filename = 'statistics.json'
-    with open(os.path.join(saveLocation, filename), 'w') as outfile:
-      json.dump(stats, outfile)
+    def nuke_cache(self) -> None:
+        for i in self.population:
+            self.population[i].bot.cache = {}
 
-  def poolChampGame(self, info) -> None:
-    blackPlayer = self.population.players[info['Players'][0]]
-    whitePlayer = self.population.players[info['Players'][1]]
-    results = game.tournamentMatch(blackPlayer,whitePlayer)
-    if results['Winner'] == info['champColour']:
-      # champion won.
-      return ChampWinPt
-    elif results['Winner'] == empty:
-      return ChampDrawPt
-    else:
-      return ChampLosePt
+    def generate_stats(self) -> None:
+        # create statistics
+        stats = statistics.Statistics(self.folderName)
+        stats.loadStatisticsFile()
+        stats.saveCharts()
+        print("I made some charts!")
 
-  def createChampGames(self) -> None:
-    currentChampID = self.population.champions[-1]
-    champGames = []
-    gameRound = int(self.champGamesRoundsCount/2)
-    # playback counter
-    playcounter = np.size(self.progress)
-    if playcounter > self.playPreviousChampCount:
-      playcounter = self.playPreviousChampCount
+    def save_training_stats_to_json(self, saveLocation: str, stats) -> None:
+        # check save directory exists prior to saving
+        if not os.path.isdir(saveLocation):
+            os.makedirs(saveLocation)
 
-    for i in range(playcounter):
-      previousChampID = self.population.champions[-i+1]
-      # set player colours
-      info = {
-        'Players' : (currentChampID,previousChampID),
-        'champColour' : Black
-      }
-      
-      for j in range(gameRound):
-        champGames.append(info)
-      # reverse players
-      info = {
-        'Players' : (previousChampID,currentChampID),
-        'champColour' : White
-      }
-      for j in range(gameRound):
-        champGames.append(info)
-    return champGames
+        filename = "statistics.json"
+        with open(os.path.join(saveLocation, filename), "w") as outfile:
+            json.dump(stats, outfile)
 
-  def runChampions(self) -> None:
-    """
-    These champion games are called at the end of every generation
-    and are used to determine the progress of the bots.
-    """
-    self.AreChampionsPlaying = True
-    self.displayStatusInfo()
+    def pool_champ_game(self, info) -> None:
+        blackPlayer = self.population.players[info["Players"][0]]
+        whitePlayer = self.population.players[info["Players"][1]]
+        results = game.tournament_match(blackPlayer, whitePlayer)
+        if results["Winner"] == info["champColour"]:
+            # champion won.
+            return ChampWIN_PT
+        elif results["Winner"] == empty:
+            return ChampDRAW_PT
+        else:
+            return ChampLOSE_PT
 
-    # check if theres more than 5 champions.
-    if len(self.population.champions) > 2:
-      # create list of games to play
-      champGames = self.createChampGames()
-      # close number of processes when map is done.
-      results = []
+    def create_champ_games(self) -> None:
+        currentChampID = self.population.champions[-1]
+        champGames = []
+        gameRound = int(self.champGamesRoundsCount / 2)
+        # playback counter
+        playcounter = np.size(self.progress)
+        if playcounter > self.playPreviousChampCount:
+            playcounter = self.playPreviousChampCount
 
-      numberOfChampgames = len(champGames)
-      threadCount = self.processors
-      if self.processors > numberOfChampgames:
-        threadCount = numberOfChampgames
-    
-      with multiprocessing.Pool(processes=threadCount) as pool:
-        chunksize = max(1, numberOfChampgames // threadCount)
-        results = pool.map(self.poolChampGame, champGames, chunksize=chunksize)
-        pool.close()
-        pool.join()
+        for i in range(playcounter):
+            previousChampID = self.population.champions[-i + 1]
+            # set player colours
+            info = {"Players": (currentChampID, previousChampID), "champColour": Black}
 
-      # split results into equal segments
-      l = results
-      n = self.playPreviousChampCount
-      results = [l[i:i + n] for i in range(0, len(l), n)]
-      # calculate the gradient of the scores.
-    
-      medians = []
-      for i in results:
-        medians.append(np.mean(i))
+            for j in range(gameRound):
+                champGames.append(info)
+            # reverse players
+            info = {"Players": (previousChampID, currentChampID), "champColour": White}
+            for j in range(gameRound):
+                champGames.append(info)
+        return champGames
 
-      self.previousChampPointList = medians
+    def run_champions(self) -> None:
+        """
+        These champion games are called at the end of every generation
+        and are used to determine the progress of the bots.
+        """
+        self.AreChampionsPlaying = True
+        self.display_status_info()
 
-      # compute new champ points compared to previous champ
-      newChampPoints = np.mean(medians)
-      self.cummulativeScore += newChampPoints
-      # store points.
-      self.progress.append(newChampPoints)
-      self.population.players[self.population.champions[-1]].champScore = newChampPoints
-      self.population.players[self.population.champions[-1]].champRange = results
-    else:
-      # theres only one champion, don't play.
-      self.progress.append(0)
-    self.AreChampionsPlaying = False
-    self.displayStatusInfo(force_display=True)
+        # check if theres more than 5 champions.
+        if len(self.population.champions) > 2:
+            # create list of games to play
+            champGames = self.create_champ_games()
+            # close number of processes when map is done.
+            results = []
 
-  def gameWorker(self, i: int) -> dict:
-    timeStart = datetime.datetime.now().timestamp()
-    results = game.tournamentMatch(i['black'], i['white'], i['game_id'], i['dbURI'], i['debugInfo'])
-    bSubset = {}
-    wSubset = {} 
-    # get a subset of the caches
-    if i['black'].bot.enableCache:
-      bCache = i['black'].bot.cache
-      wCache = i['white'].bot.cache
-      # Sample from caches if they have entries
-      for _ in range(100):
-        if bCache:
-          randb = random.choice(list(bCache.keys()))
-          bSubset[randb] = bCache[randb]
-        if wCache:
-          randw = random.choice(list(wCache.keys()))
-          wSubset[randw] = wCache[randw]
-      # nuke cache
-      i['black'].bot.cache = {}
-      i['white'].bot.cache = {}
-    data = {
-      'game' : results,
-      'black' : i['black'].id,
-      'white':  i['white'].id,
-      'black_cache' : bSubset,
-      'white_cache' : wSubset,
-      'duration' : str(self.cleanDate(datetime.datetime.now().timestamp() - timeStart))
-    }
-    return data
+            numberOfChampgames = len(champGames)
+            threadCount = self.processors
+            if self.processors > numberOfChampgames:
+                threadCount = numberOfChampgames
 
-  def statusInfo(self) -> dict:
-    currentTime = datetime.datetime.now().timestamp()
-    recent_scores = self.progress[-7:]
-    
-    averageGenTimeLength = np.mean(self.GenerationTimeLengths)
+            with multiprocessing.Pool(processes=threadCount) as pool:
+                chunksize = max(1, numberOfChampgames // threadCount)
+                results = pool.map(
+                    self.pool_champ_game, champGames, chunksize=chunksize
+                )
+                pool.close()
+                pool.join()
 
-    PercentageEst = 0
-    if np.isnan(averageGenTimeLength) == False:
-      PercentageEst = (currentTime - self.currentGenStartTime) / averageGenTimeLength
+            # split results into equal segments
+            l = results
+            n = self.playPreviousChampCount
+            results = [l[i : i + n] for i in range(0, len(l), n)]
+            # calculate the gradient of the scores.
 
-    numGens = np.size(self.progress)
-    remainingGenTime = averageGenTimeLength - (currentTime - self.currentGenStartTime)
-    RemainingGenCount = self.generations-numGens
+            medians = []
+            for i in results:
+                medians.append(np.mean(i))
 
-    # calculate current run time
-    currentRunTime = datetime.datetime.now() - datetime.datetime.fromtimestamp(self.StartTime)
-    # calculate remaining time
-    EstRemainingTime = (RemainingGenCount * averageGenTimeLength) + np.sum(self.GenerationTimeLengths) - currentRunTime.total_seconds()
+            self.previousChampPointList = medians
 
-    EstEndDate = EstRemainingTime + self.StartTime + currentRunTime.total_seconds()
+            # compute new champ points compared to previous champ
+            newChampPoints = np.mean(medians)
+            self.cummulativeScore += newChampPoints
+            # store points.
+            self.progress.append(newChampPoints)
+            self.population.players[
+                self.population.champions[-1]
+            ].champ_score = newChampPoints
+            self.population.players[self.population.champions[-1]].champ_range = results
+        else:
+            # theres only one champion, don't play.
+            self.progress.append(0)
+        self.AreChampionsPlaying = False
+        self.display_status_info(force_display=True)
 
-    messsages = []
+    def game_worker(self, i: int) -> dict:
+        timeStart = datetime.datetime.now().timestamp()
+        results = game.tournament_match(
+            i["black"], i["white"], i["game_id"], i["dbURI"], i["debugInfo"]
+        )
+        bSubset = {}
+        wSubset = {}
+        # get a subset of the caches
+        if i["black"].bot.enable_cache:
+            bCache = i["black"].bot.cache
+            wCache = i["white"].bot.cache
+            # Sample from caches if they have entries
+            for _ in range(100):
+                if bCache:
+                    randb = random.choice(list(bCache.keys()))
+                    bSubset[randb] = bCache[randb]
+                if wCache:
+                    randw = random.choice(list(wCache.keys()))
+                    wSubset[randw] = wCache[randw]
+            # nuke cache
+            i["black"].bot.cache = {}
+            i["white"].bot.cache = {}
+        data = {
+            "game": results,
+            "black": i["black"].id,
+            "white": i["white"].id,
+            "black_cache": bSubset,
+            "white_cache": wSubset,
+            "duration": str(
+                self.clean_date(datetime.datetime.now().timestamp() - timeStart)
+            ),
+        }
+        return data
 
-    messsages.append(["Generation", str(numGens)+"/"+str(self.generations)])
-    messsages.append(["Population", self.populationSize])
-    messsages.append(["Ply Depth", self.plyDepth])
-    messsages.append(["Connected To Mongo", self.mongoConnected])
-    messsages.append(["Cores Utilised", self.processors])
-    # start and end dates
-    messsages.append([" ", " "])
-    messsages.append(["Test Start Date", self.cleanDate(self.StartTime, True)])
-    messsages.append(["Current Runtime", currentRunTime])
-    messsages.append(["Test End Date*", self.cleanDate(EstEndDate,True)])
-    messsages.append(["Remaining Test Time*", self.cleanDate(EstRemainingTime)])
-    # Time info
-    messsages.append([" ", " "])
-    messsages.append(["Mean Game Time", self.cleanDate(averageGenTimeLength)])
-    messsages.append(["Gen. Progress*", str(round(PercentageEst*100,2))+"%"])
-    messsages.append(["Remaining Gen. Time*", self.cleanDate(remainingGenTime)])
-    # champion info
-    messsages.append([" ", " "])
-    messsages.append(["Champions Currently Playing?", self.AreChampionsPlaying])
-    messsages.append(["Previous Score", self.LastChampionScore])
-    messsages.append(["Cummulative Score", self.cummulativeScore])
+    def status_info(self) -> dict:
+        currentTime = datetime.datetime.now().timestamp()
+        recent_scores = self.progress[-7:]
 
-    avgRecentScores = 0
-    if len(recent_scores) > 0:
-      avgRecentScores = np.mean(recent_scores)
-    messsages.append(["Average Growth", avgRecentScores])
-    try:
-      messsages.append(["Recent Scores", [ "{:0.2f}".format(x) for x in recent_scores ]])
-      messsages.append(["Prev. Champ Point Range",[ "{:0.2f}".format(x) for x in self.previousChampPointList ]])
-    except:
-      pass
-    messsages.append([" ", " "])
-    messsages.append(["Previous Scoreboard", " "])
-    messsages.append([self.previousGenerationRankings, ""])
-    messsages.append(["",""])
-    messsages.append(["Debug Mode:", self.isDebugMode])
-    
-    return messsages
+        averageGenTimeLength = np.mean(self.GenerationTimeLengths)
 
-  def displayStatusInfo(self, force_display: bool = False) -> None:
-    """Log status info to file. Always display to console."""
-    self.logStatusInfo()
-    # Always print to console
-    print("SLOWPOKE - Generation", self.currentGeneration)
-    for i in self.statusInfo():
-      if i[0] not in [" ", "Previous Scoreboard", "Debug Mode:"]:
-        print("{0:30} {1}".format(str(i[0]), str(i[1])))
-    print("----------------------")
+        PercentageEst = 0
+        if np.isnan(averageGenTimeLength) == False:
+            PercentageEst = (
+                currentTime - self.currentGenStartTime
+            ) / averageGenTimeLength
 
-  @staticmethod
-  def cleanDate(timestamp, unixDefault=False):
-    try:
-      if unixDefault == True:
-        k = datetime.datetime.fromtimestamp(timestamp)
-        return k.strftime('%Y-%m-%d %H:%M:%S')
-      else:   
-        start = datetime.datetime.fromtimestamp(0)
-        k = datetime.datetime.fromtimestamp(timestamp)
-        magic = k - start
-        return magic
-    except:
-      return 0
-  
-  @staticmethod
-  def generateGameID(generationID, i,j, cpu1, cpu2):
-    # choose a random number between 1 and the number of players.
-    IDPadding = generationID +"_"+ str(i) +"_"+ str(j)
-    game_id = IDPadding + cpu1.id + cpu2.id
-    return game_id
+        numGens = np.size(self.progress)
+        remainingGenTime = averageGenTimeLength - (
+            currentTime - self.currentGenStartTime
+        )
+        RemainingGenCount = self.generations - numGens
 
-  @staticmethod
-  def merge_dicts(x, y):
-    z = x.copy()   # start with x's keys and values
-    z.update(y)    # modifies z with y's keys and values & returns None
-    return z
+        # calculate current run time
+        currentRunTime = datetime.datetime.now() - datetime.datetime.fromtimestamp(
+            self.StartTime
+        )
+        # calculate remaining time
+        EstRemainingTime = (
+            (RemainingGenCount * averageGenTimeLength)
+            + np.sum(self.GenerationTimeLengths)
+            - currentRunTime.total_seconds()
+        )
+
+        EstEndDate = EstRemainingTime + self.StartTime + currentRunTime.total_seconds()
+
+        messsages = []
+
+        messsages.append(["Generation", str(numGens) + "/" + str(self.generations)])
+        messsages.append(["Population", self.populationSize])
+        messsages.append(["Ply Depth", self.ply_depth])
+        messsages.append(["Connected To Mongo", self.mongoConnected])
+        messsages.append(["Cores Utilised", self.processors])
+        # start and end dates
+        messsages.append([" ", " "])
+        messsages.append(["Test Start Date", self.clean_date(self.StartTime, True)])
+        messsages.append(["Current Runtime", currentRunTime])
+        messsages.append(["Test End Date*", self.clean_date(EstEndDate, True)])
+        messsages.append(["Remaining Test Time*", self.clean_date(EstRemainingTime)])
+        # Time info
+        messsages.append([" ", " "])
+        messsages.append(["Mean Game Time", self.clean_date(averageGenTimeLength)])
+        messsages.append(["Gen. Progress*", str(round(PercentageEst * 100, 2)) + "%"])
+        messsages.append(["Remaining Gen. Time*", self.clean_date(remainingGenTime)])
+        # champion info
+        messsages.append([" ", " "])
+        messsages.append(["Champions Currently Playing?", self.AreChampionsPlaying])
+        messsages.append(["Previous Score", self.LastChampionScore])
+        messsages.append(["Cummulative Score", self.cummulativeScore])
+
+        avgRecentScores = 0
+        if len(recent_scores) > 0:
+            avgRecentScores = np.mean(recent_scores)
+        messsages.append(["Average Growth", avgRecentScores])
+        try:
+            messsages.append(
+                ["Recent Scores", ["{:0.2f}".format(x) for x in recent_scores]]
+            )
+            messsages.append(
+                [
+                    "Prev. Champ Point Range",
+                    ["{:0.2f}".format(x) for x in self.previousChampPointList],
+                ]
+            )
+        except:
+            pass
+        messsages.append([" ", " "])
+        messsages.append(["Previous Scoreboard", " "])
+        messsages.append([self.previousGenerationRankings, ""])
+        messsages.append(["", ""])
+        messsages.append(["Debug Mode:", self.is_debugMode])
+
+        return messsages
+
+    def display_status_info(self, force_display: bool = False) -> None:
+        """Log status info to file. Always display to console."""
+        self.log_status_info()
+        # Always print to console
+        print("SLOWPOKE - Generation", self.currentGeneration)
+        for i in self.status_info():
+            if i[0] not in [" ", "Previous Scoreboard", "Debug Mode:"]:
+                print("{0:30} {1}".format(str(i[0]), str(i[1])))
+        print("----------------------")
+
+    @staticmethod
+    def clean_date(timestamp, unixDefault=False):
+        try:
+            if unixDefault == True:
+                k = datetime.datetime.fromtimestamp(timestamp)
+                return k.strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                start = datetime.datetime.fromtimestamp(0)
+                k = datetime.datetime.fromtimestamp(timestamp)
+                magic = k - start
+                return magic
+        except:
+            return 0
+
+    @staticmethod
+    def generate_game_id(generationID, i, j, cpu1, cpu2):
+        # choose a random number between 1 and the number of players.
+        IDPadding = generationID + "_" + str(i) + "_" + str(j)
+        game_id = IDPadding + cpu1.id + cpu2.id
+        return game_id
+
+    @staticmethod
+    def merge_dicts(x, y):
+        z = x.copy()  # start with x's keys and values
+        z.update(y)  # modifies z with y's keys and values & returns None
+        return z

@@ -21,7 +21,7 @@ class RandomTS:
         self.ply = ply
         self.evaluator = evaluator
 
-    def Decide(self, B: Any, colour: int) -> int:
+    def decide(self, B: Any, colour: int) -> int:
         """Return the best move found by random tree search."""
         return self._random_ts(B, self.ply, colour)
 
@@ -38,7 +38,7 @@ class RandomTS:
         """
         moves = B.get_moves()
         best_move = moves[0]
-        best_score = float('-inf')
+        best_score = float("-inf")
 
         if len(moves) == 1:
             return moves[0]
@@ -50,7 +50,7 @@ class RandomTS:
         for _ in range(random_rounds):
             random_move = random.choice(moves)
             B.push_move(random_move)
-            score = self._treesearch(B, ply - 1, colour)
+            score = self._tree_search(B, ply - 1, colour)
             B.pop_move()
             if score > best_score:
                 best_score = score
@@ -58,7 +58,7 @@ class RandomTS:
                     best_move = random_move
         return best_move
 
-    def _treesearch(self, B: Any, ply: int, colour: int) -> float:
+    def _tree_search(self, B: Any, ply: int, colour: int) -> float:
         """Single random playout from the current position.
 
         Args:
@@ -80,6 +80,6 @@ class RandomTS:
         if ply < 1:
             score = self.evaluator.evaluate_board(B, colour)
         else:
-            score = self._treesearch(B, ply - 1, colour)
+            score = self._tree_search(B, ply - 1, colour)
         B.pop_move()
         return score

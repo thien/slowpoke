@@ -3,11 +3,11 @@
 import unittest
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from decision import mcts
 from core import checkers
-import numpy as np
 
 
 Black, White = 0, 1
@@ -23,7 +23,10 @@ class TestMCTSInit(unittest.TestCase):
 
     def test_evaluator_stored(self):
         """Evaluator should be stored."""
-        fn = lambda b, c: 0.5
+
+        def fn(b, c):
+            return 0.5
+
         mc = mcts.MCTS(ply=1, evaluator=fn)
         self.assertIs(mc.evaluator, fn)
 
@@ -38,21 +41,21 @@ class TestMCTSInit(unittest.TestCase):
         self.assertFalse(mc.use_mlx)
 
 
-class TestMCTSDecide(unittest.TestCase):
+class TestMCTSdecide(unittest.TestCase):
     """Test MCTS decision making."""
 
     def test_returns_valid_move(self):
-        """Decide should return a valid move."""
+        """decide should return a valid move."""
         mc = mcts.MCTS(ply=1, evaluator=lambda b, c: 0.0)
         B = checkers.CheckerBoard()
-        move = mc.Decide(B, Black)
+        move = mc.decide(B, Black)
         self.assertIn(move, B.get_moves())
 
     def test_returns_integer(self):
         """Returned move should be an integer."""
         mc = mcts.MCTS(ply=1, evaluator=lambda b, c: 0.0)
         B = checkers.CheckerBoard()
-        move = mc.Decide(B, Black)
+        move = mc.decide(B, Black)
         self.assertIsInstance(move, int)
 
     def test_single_move_returns_immediately(self):
@@ -65,7 +68,7 @@ class TestMCTSDecide(unittest.TestCase):
                 break
             B.make_move(moves[0])
         if len(B.get_moves()) == 1:
-            move = mc.Decide(B, B.active)
+            move = mc.decide(B, B.active)
             self.assertEqual(move, B.get_moves()[0])
 
     def test_no_moves_returns_none(self):
@@ -79,7 +82,7 @@ class TestMCTSDecide(unittest.TestCase):
             B.make_move(moves[0])
         if not B.get_moves():
             mc = mcts.MCTS(ply=1, evaluator=lambda b, c: 0.0)
-            result = mc.Decide(B, Black)
+            result = mc.decide(B, Black)
             self.assertIsNone(result)
         else:
             self.skipTest("Could not reach a no-move state")
@@ -92,35 +95,35 @@ class TestMCTSStatistics(unittest.TestCase):
         """mcts_plays should be created and be a dict."""
         mc = mcts.MCTS(ply=1, evaluator=lambda b, c: 0.0)
         B = checkers.CheckerBoard()
-        mc.Decide(B, Black)
+        mc.decide(B, Black)
         self.assertIsInstance(mc.mcts_plays, dict)
 
     def test_chances_dict_created(self):
         """mcts_chances should be created and be a dict."""
         mc = mcts.MCTS(ply=1, evaluator=lambda b, c: 0.0)
         B = checkers.CheckerBoard()
-        mc.Decide(B, Black)
+        mc.decide(B, Black)
         self.assertIsInstance(mc.mcts_chances, dict)
 
     def test_plays_has_entries(self):
-        """After Decide, plays dict should not be empty."""
+        """After decide, plays dict should not be empty."""
         mc = mcts.MCTS(ply=1, evaluator=lambda b, c: 0.0)
         B = checkers.CheckerBoard()
-        mc.Decide(B, Black)
+        mc.decide(B, Black)
         self.assertTrue(len(mc.mcts_plays) > 0)
 
     def test_chances_has_entries(self):
-        """After Decide, chances dict should not be empty."""
+        """After decide, chances dict should not be empty."""
         mc = mcts.MCTS(ply=1, evaluator=lambda b, c: 0.0)
         B = checkers.CheckerBoard()
-        mc.Decide(B, Black)
+        mc.decide(B, Black)
         self.assertTrue(len(mc.mcts_chances) > 0)
 
     def test_plays_values_are_positive(self):
         """Play counts should be positive integers."""
         mc = mcts.MCTS(ply=1, evaluator=lambda b, c: 0.0)
         B = checkers.CheckerBoard()
-        mc.Decide(B, Black)
+        mc.decide(B, Black)
         for v in mc.mcts_plays.values():
             self.assertGreaterEqual(v, 0)
 
@@ -128,7 +131,7 @@ class TestMCTSStatistics(unittest.TestCase):
         """Chance values should be numeric."""
         mc = mcts.MCTS(ply=1, evaluator=lambda b, c: 0.0)
         B = checkers.CheckerBoard()
-        mc.Decide(B, Black)
+        mc.decide(B, Black)
         for v in mc.mcts_chances.values():
             self.assertIsInstance(v, (int, float))
 

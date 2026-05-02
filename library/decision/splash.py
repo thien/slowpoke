@@ -12,10 +12,10 @@ class Splash:
     def __init__(self) -> None:
         pass
 
-    def Decide(self, B: Any) -> int:
+    def decide(self, B: Any) -> int:
         """Return a random legal move.
 
-        Note: the second overload (Decide(self, B, colour)) is intentionally
+        Note: the second overload (decide(self, B, colour)) is intentionally
         removed — the single-argument variant is the canonical interface.
         """
         return random.choice(B.get_moves())

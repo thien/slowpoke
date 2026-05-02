@@ -25,11 +25,11 @@ class MiniMax:
         self.counter: int = 0
         self.movesConsidered: List[int] = []
 
-    def Decide(self, B: Any, colour: int) -> int:
+    def decide(self, B: Any, colour: int) -> int:
         """Return the best move found by minimax search."""
         return self.minimax(B, colour)
 
-    def alphabeta(
+    def alpha_beta(
         self,
         B: Any,
         ply: int,
@@ -64,7 +64,7 @@ class MiniMax:
             if ply == 0:
                 score = self.evaluator(B, colour)
             else:
-                score = self.alphabeta(
+                score = self.alpha_beta(
                     B, ply - 1, alpha, beta, B.current_player(), not maximizing
                 )
             B.pop_move()
@@ -96,10 +96,10 @@ class MiniMax:
 
         moves = B.get_moves()
         best_move = moves[0]
-        best_score = float('-inf')
+        best_score = float("-inf")
 
-        alpha = float('-inf')
-        beta = float('inf')
+        alpha = float("-inf")
+        beta = float("inf")
 
         if len(moves) == 1:
             return moves[0]
@@ -109,7 +109,7 @@ class MiniMax:
             if self.ply == 0:
                 score = self.evaluator(B, colour)
             else:
-                score = self.alphabeta(
+                score = self.alpha_beta(
                     B, self.ply - 1, alpha, beta, B.current_player(), False
                 )
             B.pop_move()

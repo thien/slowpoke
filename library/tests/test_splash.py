@@ -3,6 +3,7 @@
 import unittest
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from decision.splash import Splash
@@ -21,11 +22,11 @@ class TestSplashInit(unittest.TestCase):
         self.assertIsNotNone(s)
 
 
-class TestSplashDecide(unittest.TestCase):
+class TestSplashdecide(unittest.TestCase):
     """Test Splash decision making.
 
-    Note: Splash defines Decide(self, B) which overrides Decide(self, B, colour).
-    The only working signature is Decide(board) without colour.
+    Note: Splash defines decide(self, B) which overrides decide(self, B, colour).
+    The only working signature is decide(board) without colour.
     """
 
     def setUp(self):
@@ -33,24 +34,25 @@ class TestSplashDecide(unittest.TestCase):
         self.B = checkers.CheckerBoard()
 
     def test_decide_returns_valid_move(self):
-        """Decide(board) should return a valid move."""
-        move = self.splash.Decide(self.B)
+        """decide(board) should return a valid move."""
+        move = self.splash.decide(self.B)
         self.assertIn(move, self.B.get_moves())
 
     def test_decide_returns_integer(self):
         """Returned move should be an integer."""
-        move = self.splash.Decide(self.B)
+        move = self.splash.decide(self.B)
         self.assertIsInstance(move, int)
 
     def test_next_move_different(self):
         """Consecutive calls should sometimes return different moves."""
         moves = set()
         for _ in range(20):
-            move = self.splash.Decide(self.B)
+            move = self.splash.decide(self.B)
             moves.add(move)
         # With 7 legal moves, 20 random choices should produce at least 3 unique
-        self.assertGreaterEqual(len(moves), 3,
-                                "Splash should produce diverse random moves")
+        self.assertGreaterEqual(
+            len(moves), 3, "Splash should produce diverse random moves"
+        )
 
 
 if __name__ == "__main__":

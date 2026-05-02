@@ -14,11 +14,11 @@ class Human:
 
     def printStatus(self, B: Any) -> None:
         """Print the current board state and move information."""
-        print('\033c', end=None)
+        print("\033c", end=None)
         print("--------")
         print(B)
         print(B.pdn)
-        print(B.AIBoardPos)
+        print(B.ai_board_pos)
         print("--------")
 
     def move_function(self, B: Any, colour: Optional[int] = None) -> int:
@@ -28,9 +28,9 @@ class Human:
             print("Make jump.")
             print("")
         else:
-            print("Turn %i" % B.turnCount)
+            print("Turn %i" % B.turn_count)
             print("")
-        for (i, move) in enumerate(B.get_move_strings()):
+        for i, move in enumerate(B.get_move_strings()):
             print("Move " + str(i) + ": " + move)
         while True:
             move_idx = input("Enter your move number: ")

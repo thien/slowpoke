@@ -17,7 +17,7 @@ import os
 import time
 import random
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from library.core.checkers import CheckerBoard
 from library.decision.tmcts import TMCTS
 
@@ -32,6 +32,7 @@ class MockEvaluator:
 
         def compute_batch_mlx(self, positions):
             import numpy as np
+
             fake_scores = []
             for pos in positions:
                 h = hash(pos.tobytes()) % 1000
@@ -55,15 +56,17 @@ def simulate_game(num_moves=12, ply=4, base_round=30):
 
     evaluator = MockEvaluator()
     tmcts = TMCTS(ply, evaluator, debug=False, batch_size=256)
-    tmcts.baseRound = base_round
+    tmcts.base_round = base_round
     tmcts.progressive_narrowing = False
 
     rounds_per_turn = base_round * ply
 
-    print(f"\n{'='*75}")
-    print(f"Tree Reuse Benchmark: ply={ply}, baseRound={base_round}, "
-          f"rounds/turn={rounds_per_turn}")
-    print(f"{'='*75}")
+    print(f"\n{'=' * 75}")
+    print(
+        f"Tree Reuse Benchmark: ply={ply}, base_round={base_round}, "
+        f"rounds/turn={rounds_per_turn}"
+    )
+    print(f"{'=' * 75}")
 
     total_time = 0.0
     total_nodes = 0
@@ -74,12 +77,12 @@ def simulate_game(num_moves=12, ply=4, base_round=30):
         hits_before = tmcts._cache_hits
         cache_before = len(tmcts._node_cache)
 
-        move = tmcts.Decide(B, colour)
+        move = tmcts.decide(B, colour)
 
         elapsed = time.time() - start_time
         turn_hits = tmcts._cache_hits - hits_before
         cache_after = len(tmcts._node_cache)
-        cache_added = cache_after - cache_before
+        cache_after - cache_before
 
         # Estimate total nodes visited this turn:
         # Each round visits ~ply internal nodes + 1 leaf = ply+1 nodes
@@ -87,17 +90,19 @@ def simulate_game(num_moves=12, ply=4, base_round=30):
         # Lower bound: at least 1 node per round (the root was always evaluated)
         # Upper bound: (ply+1) nodes per round
         total_nodes_this_turn = rounds_per_turn
-        hit_rate = (turn_hits / total_nodes_this_turn * 100)
+        hit_rate = turn_hits / total_nodes_this_turn * 100
 
         total_hits += turn_hits
         total_nodes += total_nodes_this_turn
         total_time += elapsed
 
-        print(f"  Turn {turn+1:2d}: move={str(move):>10s}  "
-              f"cache={cache_before:>5d}->{cache_after:>5d}  "
-              f"hits={turn_hits:>5d}/{total_nodes_this_turn:<4d} "
-              f"({hit_rate:>5.1f}%)  "
-              f"time={elapsed:.4f}s")
+        print(
+            f"  Turn {turn + 1:2d}: move={str(move):>10s}  "
+            f"cache={cache_before:>5d}->{cache_after:>5d}  "
+            f"hits={turn_hits:>5d}/{total_nodes_this_turn:<4d} "
+            f"({hit_rate:>5.1f}%)  "
+            f"time={elapsed:.4f}s"
+        )
 
         # Apply agent move + random opponent response
         B.push_move(move)
@@ -107,27 +112,27 @@ def simulate_game(num_moves=12, ply=4, base_round=30):
             B.push_move(opp_move)
 
     overall_hit_rate = (total_hits / total_nodes * 100) if total_nodes > 0 else 0.0
-    print(f"\n{'─'*75}")
+    print(f"\n{'─' * 75}")
     print(f"Summary across {num_moves} turns:")
     print(f"  Total node visits: {total_nodes:,}")
     print(f"  Cache hits:        {total_hits:,}")
     print(f"  Overall hit rate:  {overall_hit_rate:.1f}%")
     print(f"  Final cache size:  {len(tmcts._node_cache):,} entries")
     print(f"  Total time:        {total_time:.4f}s")
-    print(f"  Avg time/turn:     {total_time/num_moves:.4f}s")
+    print(f"  Avg time/turn:     {total_time / num_moves:.4f}s")
     print(f"  Complexity saved:  {overall_hit_rate:.1f}% fewer ")
-    print(f"    moves seen / branches traversed (unbalanced)")
+    print("    moves seen / branches traversed (unbalanced)")
 
 
 def main():
     # Light simulation (fast)
-    print("=== LIGHT: ply=4, baseRound=30 ===")
+    print("=== LIGHT: ply=4, base_round=30 ===")
     simulate_game(num_moves=12, ply=4, base_round=30)
 
     # Tournament-style depth simulation
-    print("\n\n=== DEEP: ply=8, baseRound=60 ===")
+    print("\n\n=== DEEP: ply=8, base_round=60 ===")
     simulate_game(num_moves=8, ply=8, base_round=60)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

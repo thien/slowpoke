@@ -20,18 +20,19 @@ _CENTRE_MASK: int = (1 << 12) | (1 << 13) | (1 << 21) | (1 << 22)
 class Onix:
     """Heuristic-based checkers bot with TMCTS search."""
 
-    def __init__(self, plyDepth: int = 4, debug: bool = False) -> None:
-        self.ply = plyDepth
+    def __init__(self, ply_depth: int = 4, debug: bool = False) -> None:
+        self.ply = ply_depth
         self.debug = debug
-        self.enableCache = False
+        self.enable_cache = False
         self.cache: Dict[Any, float] = {}
 
         from decision.tmcts import TMCTS
-        self.decisionFunction = TMCTS(plyDepth, self, debug=debug)
+
+        self.decision_function = TMCTS(ply_depth, self, debug=debug)
 
     def move_function(self, board: Any, colour: int) -> int:
         """Entry point called by Agent.make_move()."""
-        return self.decisionFunction.Decide(board, colour)
+        return self.decision_function.decide(board, colour)
 
     def evaluate_board(self, board: Any, colour: int) -> float:
         """Heuristic evaluation from colour's perspective.

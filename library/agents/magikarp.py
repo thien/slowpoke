@@ -7,10 +7,9 @@ from typing import Any, Optional
 
 
 class Magikarp:
+    def __init__(self) -> None:
+        self.null: Optional[Any] = None
 
-  def __init__(self) -> None:
-    self.null: Optional[Any] = None
-
-  def move_function(self, B: Any, colour: Optional[int] = None) -> int:
-    """Return a random legal move."""
-    return random.choice(B.get_moves())
+    def move_function(self, B: Any, colour: Optional[int] = None) -> int:
+        """Return a random legal move."""
+        return random.choice(B.get_moves())
