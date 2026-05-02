@@ -105,13 +105,15 @@ class Population:
     if self.useParallelMCTS:
       from decision.parallel_tmcts import ParallelTMCTS
       # Create a neural network for the bot (same as Slowpoke)
-      nn = NeuralNetwork([91, 40, 10, 1], use_mlx=True)
+      # Using [32, 40, 10, 1] — subsquares matrix is now fused into first-layer weights,
+      # so the 32-element board input goes directly into the NN (no 91→subsquares→NN)
+      nn = NeuralNetwork([32, 40, 10, 1], use_mlx=True)
       bot = ParallelTMCTS(self.plyDepth, evaluator=None, num_parallel=self.parallelThreads, debug=self.isDebug)
       bot.nn = nn  # Attach the neural network
-      bot.layers = [91, 40, 10, 1]  # Set layers for compatibility
+      bot.layers = [32, 40, 10, 1]  # Set layers for compatibility
       bot.use_mlx = True  # Enable MLX for batch evaluation
     else:
-      bot = sp.Slowpoke(self.plyDepth, debug=self.isDebug, use_mlx=True)
+      bot = sp.Slowpoke(self.plyDepth, layers=[32, 40, 10, 1], debug=self.isDebug, use_mlx=True)
     human = agent.Agent(bot, initial_elo=self.baselineElo)
     # generate ID
     human.setID(self.playerCounter)
@@ -126,8 +128,8 @@ class Population:
     # Prevent creating multiple baseline entities
     if self.baselineEntity is not None:
       return self.baselineEntity
-    # Create a Slowpoke with random/uninitialized weights
-    bot = sp.Slowpoke(self.plyDepth, debug=self.isDebug, use_mlx=True)
+    # Create a Slowpoke with random/uninitialized weights (fused [32] architecture)
+    bot = sp.Slowpoke(self.plyDepth, layers=[32, 40, 10, 1], debug=self.isDebug, use_mlx=True)
     human = agent.Agent(bot, initial_elo=self.baselineElo)
     human.setID(-1)  # Special ID for baseline entity
     human.isBaseline = True  # Mark as baseline

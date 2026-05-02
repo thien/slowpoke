@@ -42,6 +42,17 @@ class TMCTS:
     self._position_to_result = {}  # Maps position index -> evaluation result
     # Counter for position indexing
     self._position_counter = 0
+    
+    # --- Tree reuse across turns: persistent node cache ---
+    # Maps board position hash (bytes) -> MCTS value (cached evaluation result).
+    # Survives across Decide() calls so evaluations from previous turns'
+    # internal nodes are reused when the same position is encountered again.
+    # Unlike a leaf-only NN cache, this stores the full MCTS playout average,
+    # which is more accurate and captures transpositions within a single turn too.
+    self._node_cache = {}
+    self._max_cache_size = 50000
+    self._cache_hits = 0  # Counts cache hits for benchmarking
+    
     if self.debug:
       self.baseRound = 10
 
@@ -322,27 +333,31 @@ class TMCTS:
   def treesearch_batch(self, B, ply, colour):
     """MLX-native tree search with batched position accumulation.
     
-    Accumulates positions during tree traversal and evaluates in batches
-    using MLX. Uses a deferred evaluation pattern where positions are
-    collected, then batch-evaluated after the tree search completes.
-    
-    Returns: 
-      - int (position index) for deferred neural network evaluations
-      - float for terminal states (win/lose/draw)
+    Uses a persistent node cache for tree reuse across turns:
+    - At every node (leaf or internal), checks cache first
+    - Cached MCTS values from previous turns / pruned subtrees
+      avoid redundant GPU evaluations and tree traversal
+    - Transpositions within the same turn also benefit
     """
     isOver = self.isOver(B, colour)
     if isOver[0]:
       return float(isOver[1])
     
+    # Extract position and check persistent node cache
+    pos = self._extract_position(B, colour)
+    pos_key = pos.tobytes()
+    if pos_key in self._node_cache:
+      self._cache_hits += 1
+      return float(self._node_cache[pos_key])
+    
     if ply < 1:
-      # Extract position and accumulate for batch evaluation
-      pos = self._extract_position(B, colour)
+      # Leaf: accumulate position for batch evaluation
       pos_idx = self._position_counter
       self._position_counter += 1
       self._batch_positions.append((pos_idx, pos))
-      # Return position index as deferred marker
       return pos_idx
     
+    # Internal node: opponent's random move, then player's random move
     moves = B.get_moves()
     move = random.choice(moves)
     B.push_move(move)
@@ -351,6 +366,10 @@ class TMCTS:
     if isOver[0]:
       result = float(isOver[1])
       B.pop_move()
+      # Cache terminal evaluation
+      if len(self._node_cache) >= self._max_cache_size:
+        self._node_cache.pop(next(iter(self._node_cache)))
+      self._node_cache[pos_key] = result
       return result
     
     moves = B.get_moves()
@@ -360,10 +379,15 @@ class TMCTS:
       result = self.treesearch_batch(B, ply-1, colour)
       B.pop_move()
       B.pop_move()  # Pop enemy move
-      return result
     else:
       B.pop_move()  # Pop enemy move
-      return 0.0
+      result = 0.0
+    
+    # Cache the MCTS value for this internal node
+    if len(self._node_cache) >= self._max_cache_size:
+      self._node_cache.pop(next(iter(self._node_cache)))
+    self._node_cache[pos_key] = result
+    return result
 
   def flush_batch(self):
     """Evaluate all accumulated positions in a single batch.
@@ -399,6 +423,16 @@ class TMCTS:
     # Store results in lookup table for resolution
     for idx, result in zip(indices, results):
       self._position_to_result[idx] = float(result)
+    
+    # Populate persistent node cache (tree reuse across turns)
+    for idx, pos_array in zip(indices, position_arrays):
+      pos_key = pos_array.tobytes()
+      if len(self._node_cache) >= self._max_cache_size:
+        # LRU-approximate eviction: remove one arbitrary entry
+        self._node_cache.pop(
+          next(iter(self._node_cache))
+        )
+      self._node_cache[pos_key] = self._position_to_result[idx]
     
     # Clear positions
     self._batch_positions = []

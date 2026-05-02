@@ -21,7 +21,10 @@ except ImportError:
     MLX_AVAILABLE = False
 
 class SharedBatchAccumulator:
-    """Thread-safe batch accumulator shared across multiple TMCTS instances."""
+    """Thread-safe batch accumulator shared across multiple TMCTS instances.
+    
+    Also maintains a persistent evaluation cache for tree reuse across turns.
+    """
     
     def __init__(self, batch_size: int = 512, auto_flush: bool = True):
         self._batch_positions: List[Tuple[int, np.ndarray]] = []
@@ -31,6 +34,14 @@ class SharedBatchAccumulator:
         self._auto_flush = auto_flush
         self._total_positions = 0
         self._lock = Lock()  # Created fresh each time, not pickled
+        
+        # --- Tree reuse across turns: persistent node cache ---
+        # Maps board position bytes -> MCTS value
+        # Survives across decide() calls so evaluations from one turn's
+        # internal nodes are reused when the same position is encountered
+        # again (tree reuse + transpositions).
+        self._node_cache: Dict[bytes, float] = {}
+        self._max_cache_size = 50000
     
     def __getstate__(self):
         """Make the lock transient - it gets recreated on unpickling."""
@@ -44,8 +55,21 @@ class SharedBatchAccumulator:
         self._lock = Lock()
     
     def add_position(self, pos: np.ndarray) -> int:
-        """Add a position to the batch, return its index."""
+        """Add a position to the batch, return its index.
+        
+        Returns an index which can be resolved via get_result().
+        Checks persistent cache first to avoid redundant evaluations.
+        """
+        pos_key = pos.tobytes()
         with self._lock:
+            # Check persistent node cache first (tree reuse across turns)
+            if pos_key in self._node_cache:
+                pos_idx = self._position_counter
+                self._position_counter += 1
+                # Store cached result directly so _run_instance can find it
+                self._position_to_result[pos_idx] = self._node_cache[pos_key]
+                return pos_idx
+            
             pos_idx = self._position_counter
             self._position_counter += 1
             self._batch_positions.append((pos_idx, pos))
@@ -70,6 +94,19 @@ class SharedBatchAccumulator:
         """Clear the accumulated batch."""
         with self._lock:
             self._batch_positions = []
+
+    def clear(self):
+        """Reset the accumulator for a new root evaluation cycle.
+
+        Clears batch positions, result lookup table, and position counter,
+        but preserves the persistent node cache for tree reuse across turns.
+        This is called after root-level batch evaluation so the main MCTS
+        tree search starts with a clean slate.
+        """
+        with self._lock:
+            self._batch_positions = []
+            self._position_to_result = {}
+            self._position_counter = 0
     
     def store_results(self, indices: List[int], results: np.ndarray):
         """Store evaluation results in the lookup table."""
@@ -82,11 +119,38 @@ class SharedBatchAccumulator:
         with self._lock:
             return self._position_to_result.get(pos_idx, 0.0)
     
+    def get_cached_value(self, pos_key: bytes) -> Optional[float]:
+        """Check if a position has a cached MCTS value (thread-safe).
+        
+        Returns cached value or None if not cached.
+        Used by _treesearch_batch for tree reuse across turns.
+        """
+        with self._lock:
+            return self._node_cache.get(pos_key)
+    
+    def store_cached_value(self, pos_key: bytes, value: float):
+        """Store an MCTS value in the persistent node cache (thread-safe).
+        
+        Used by _treesearch_batch to cache internal node results
+        for tree reuse across turns.
+        """
+        with self._lock:
+            if len(self._node_cache) >= self._max_cache_size:
+                self._node_cache.pop(next(iter(self._node_cache)))
+            self._node_cache[pos_key] = value
+    
     def flush_and_evaluate(self, nn) -> Optional[np.ndarray]:
-        """Flush batch and evaluate using neural network."""
+        """Flush batch and evaluate using neural network.
+        
+        Also populates the persistent evaluation cache so subsequent
+        turns can reuse leaf evaluations via transposition.
+        """
         indices, arrays = self.get_batch()
         if not arrays:
             return None
+        
+        # Compute cache keys before clearing
+        cache_keys = [arr.tobytes() for arr in arrays]
         
         self.clear_batch()
         
@@ -101,6 +165,14 @@ class SharedBatchAccumulator:
             results = np.array([0.0] * len(arrays), dtype=np.float32)
         
         self.store_results(indices, results)
+        
+        # Populate persistent node cache (tree reuse across turns)
+        with self._lock:
+            for key, result in zip(cache_keys, results):
+                if len(self._node_cache) >= self._max_cache_size:
+                    self._node_cache.pop(next(iter(self._node_cache)))
+                self._node_cache[key] = float(result)
+        
         return results
 
 class ParallelTMCTS:
@@ -302,18 +374,24 @@ class ParallelTMCTS:
     def _treesearch_batch(self, B, ply: int, colour: int, rng):
         """MLX-native tree search with shared batch accumulator.
         
-        This implements proper MCTS tree search:
-        - If game over: return terminal value
-        - If ply < 1: accumulate position for batch evaluation
-        - Otherwise: push random move, recurse, pop move
+        Uses persistent node cache for tree reuse across turns:
+        - Every node (leaf or internal) checks cache first
+        - Cached values from previous turns/pruned subtrees are reused
+        - Results cached for future turns within the same game
         """
         isOver = self._isOver(B, colour)
         if isOver[0]:
             return float(isOver[1])
         
+        # Extract position and check persistent node cache
+        pos = self._extract_position(B, colour)
+        pos_key = pos.tobytes()
+        cached = self.accumulator.get_cached_value(pos_key)
+        if cached is not None:
+            return float(cached)
+        
         if ply < 1:
-            # Extract position and accumulate for batch evaluation
-            pos = self._extract_position(B, colour)
+            # Leaf: accumulate position for batch evaluation
             return self.accumulator.add_position(pos)
         
         # Get moves and choose random enemy move
@@ -329,6 +407,8 @@ class ParallelTMCTS:
         if isOver[0]:
             result = float(isOver[1])
             B.pop_move()
+            # Cache terminal evaluation
+            self.accumulator.store_cached_value(pos_key, result)
             return result
         
         # Get moves for next level
@@ -342,6 +422,9 @@ class ParallelTMCTS:
             B.pop_move()
         
         B.pop_move()  # Pop enemy move
+        
+        # Cache the MCTS value for this internal node
+        self.accumulator.store_cached_value(pos_key, result)
         return result
     
     def _extract_position(self, B, colour: int) -> np.ndarray:
