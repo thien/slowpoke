@@ -539,28 +539,46 @@ class Generator:
         return messsages
 
     def display_status_info(self, force_display: bool = False) -> None:
-        """Log status info to file. Display rich panel to console."""
+        """Log status info to file. Display rich panels to console."""
         self.log_status_info()
 
         console = Console()
         layout = Layout()
         layout.split_column(
-            Layout(name="info", size=35),
+            Layout(name="info"),
             Layout(name="matrix"),
+            Layout(name="ranking"),
         )
 
-        # ── Info panel ──
+        # ── Info panel: single-line metrics ──
         info = Table.grid(padding=(1, 2))
         info.add_column("Metric", style="cyan", no_wrap=True)
         info.add_column("Value", style="white")
+        ranking_lines = None
         for metric, value in self.status_info():
             metric_s = str(metric) if metric else ""
             value_s = str(value) if value else ""
-            if metric_s and metric_s.strip():
-                info.add_row(metric_s, value_s)
+            # Skip spacers (single-space metric)
+            if metric_s.strip() == "" and value_s.strip() == "":
+                continue
+            # Capture ranking for its own panel
+            if metric_s.startswith("Player"):
+                ranking_lines = metric_s
+                continue
+            if metric_s == "Previous Scoreboard":
+                continue
+            info.add_row(metric_s, value_s)
         layout["info"].update(
             Panel(info, title=f"Generation {self.currentGeneration}")
         )
+
+        # ── Player rankings ──
+        if ranking_lines:
+            rank_grid = Table.grid(padding=(0, 1))
+            rank_grid.add_column()
+            for line in ranking_lines.strip().split("\n"):
+                rank_grid.add_row(line)
+            layout["ranking"].update(Panel(rank_grid, title="Player Rankings (Elo)"))
 
         # ── Head-to-head matrix ──
         matrix = self.population.build_head_to_head_table()
