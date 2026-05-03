@@ -12,6 +12,7 @@ This test suite verifies:
 8. Neural network evaluation
 """
 
+import pytest
 import unittest
 
 from core import checkers
@@ -181,6 +182,7 @@ class TestGameLogic(unittest.TestCase):
             self.assertEqual(B.active, 1 - initial_active)
 
 
+@pytest.mark.slow
 class TestMinimaxImplementation(unittest.TestCase):
     """Test minimax algorithm implementation."""
 
@@ -216,6 +218,7 @@ class TestMinimaxImplementation(unittest.TestCase):
         self.assertIn(move, self.B.get_moves())
 
 
+@pytest.mark.slow
 class TestMCTSImplementation(unittest.TestCase):
     """Test MCTS algorithm implementation."""
 

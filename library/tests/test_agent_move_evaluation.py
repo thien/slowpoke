@@ -5,7 +5,9 @@ This test file focuses on verifying that each agent implementation
 has the necessary functions to make valid moves on a checkers board.
 """
 
+import pytest
 import unittest
+import pytest
 import unittest.mock as mock
 
 from core import checkers
@@ -52,6 +54,7 @@ class TestAgentMoveEvaluation(unittest.TestCase):
                 f"{name} should have a move_function attribute",
             )
 
+    @pytest.mark.slow
     def test_all_agents_can_make_valid_move(self):
         """Verify each agent can make a valid move on a fresh board."""
         for name, bot in get_all_agents():
@@ -81,6 +84,7 @@ class TestAgentMoveEvaluation(unittest.TestCase):
             legal_moves = board.get_moves()
             self.assertIn(move, legal_moves)
 
+    @pytest.mark.slow
     def test_agents_return_different_moves(self):
         """Test that different agent types behave differently."""
         board = checkers.CheckerBoard()
@@ -123,6 +127,7 @@ class TestAgentMoveEvaluation(unittest.TestCase):
         move = bot.move_function(board, Black)
         self.assertIn(move, board.get_moves())
 
+    @pytest.mark.slow
     def test_geodude_move_function_signature(self):
         """Test Geodude's move_function accepts correct parameters."""
         bot = Geodude(ply_depth=2)

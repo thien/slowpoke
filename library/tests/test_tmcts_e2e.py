@@ -2,6 +2,8 @@
 End-to-end tests comparing Random vs Greedy vs MCTS AI strategies.
 """
 
+import pytest
+import pytest
 import unittest
 
 from core import checkers
@@ -86,6 +88,7 @@ class TestTMCTSBatchEvaluation(unittest.TestCase):
         self.assertIsInstance(agent.movesets, dict)
 
 
+@pytest.mark.slow
 class TestMCTSBasicFunctionality(unittest.TestCase):
     """Test MCTS basic functionality."""
 

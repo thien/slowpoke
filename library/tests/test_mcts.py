@@ -1,5 +1,6 @@
 """Comprehensive tests for the MCTS decision module."""
 
+import pytest
 import unittest
 
 from decision import mcts
@@ -8,6 +9,7 @@ from core import checkers
 Black, White = 0, 1
 
 
+@pytest.mark.slow
 class TestMCTSInit(unittest.TestCase):
     """Test MCTS initialisation."""
 
@@ -36,6 +38,7 @@ class TestMCTSInit(unittest.TestCase):
         self.assertFalse(mc.use_mlx)
 
 
+@pytest.mark.slow
 class TestMCTSdecide(unittest.TestCase):
     """Test MCTS decision making."""
 
@@ -83,6 +86,7 @@ class TestMCTSdecide(unittest.TestCase):
             self.skipTest("Could not reach a no-move state")
 
 
+@pytest.mark.slow
 class TestMCTSStatistics(unittest.TestCase):
     """Test MCTS statistics tracking."""
 
@@ -131,6 +135,7 @@ class TestMCTSStatistics(unittest.TestCase):
             self.assertIsInstance(v, (int, float))
 
 
+@pytest.mark.slow
 class TestMCTSSimulate(unittest.TestCase):
     """Test MCTS simulation function."""
 

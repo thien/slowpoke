@@ -2,6 +2,7 @@
 Test each agent implementation to verify they work correctly.
 """
 
+import pytest
 import unittest
 
 import pytest
@@ -47,6 +48,7 @@ class TestSlowpokeAgent(unittest.TestCase):
         self.assertIsInstance(value, (int, float))
 
 
+@pytest.mark.slow
 class TestAgentVsAgent(unittest.TestCase):
     """Test agent-to-agent gameplay."""
 
@@ -129,6 +131,7 @@ class TestGameOutcomes(unittest.TestCase):
         )
 
 
+@pytest.mark.slow
 class TestOnixAgent(unittest.TestCase):
     """Test Onix heuristic-based agent."""
 
