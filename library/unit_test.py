@@ -46,7 +46,7 @@ class PopulationTestCase(unittest.TestCase):
             j = random.choice(self.population.current_population)
             # some fake result
             res = {"Winner": k}
-            self.population.allocate_points(res, k, l)
+            self.population.allocate_points(res, k, j)
         after = self.population.print_population_by_points()
         self.assertNotEqual(before, after)
 
@@ -64,7 +64,7 @@ class PopulationTestCase(unittest.TestCase):
             j = random.choice(self.population.current_population)
             # some fake result
             res = {"Winner": k}
-            self.population.allocate_points(res, k, l)
+            self.population.allocate_points(res, k, j)
 
         self.population.sort_population_by_points()
         print(self.population.print_population_by_points())
@@ -89,7 +89,7 @@ def Testing():
         j = random.choice(p.current_population)
         # some fake result
         res = {"Winner": k}
-        p.allocate_points(res, k, l)
+        p.allocate_points(res, k, j)
     p.sort_population_by_points()
     print(p.print_population_by_points())
     p.add_champion()
@@ -114,7 +114,7 @@ def testCrossover():
         j = random.choice(p.current_population)
         # some fake result
         res = {"Winner": k}
-        p.allocate_points(res, k, l)
+        p.allocate_points(res, k, j)
     p.sort_population_by_points()
     # print(p.print_population_by_points())
     p.add_champion()

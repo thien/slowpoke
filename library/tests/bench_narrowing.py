@@ -11,11 +11,6 @@ Measures:
 Opening position has 7 legal moves — enough to trigger K=5 narrowing.
 """
 
-import sys
-import os
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import time as time_module
 import numpy as np
 import math

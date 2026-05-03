@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import sys
 from typing import Any
 
-sys.path.insert(0, "..")
 import decision.mcts as mcts
 from agents.bot import Bot
 

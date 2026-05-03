@@ -20,7 +20,8 @@ uv run ruff check .
 uv run ruff format .
 
 # Test / bench (after make install)
-make test
+make test       # fast tests only (excludes slow)
+make test-all   # all tests including slow
 make bench
 
 # Quick smoke test
@@ -29,7 +30,7 @@ make smoke
 
 ## Architecture
 
-All source lives in `library/`. Imports use the `library`-relative path (e.g., `from core.checkers import CheckerBoard`). Tests use `sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))` to find `core/`.
+All source lives in `library/`. Imports use the `library`-relative path (e.g., `from core.checkers import CheckerBoard`). The `library/` directory must be on `PYTHONPATH` (set automatically by `make test`, or when running scripts from inside `library/`).
 
 | Location | Purpose |
 |---|---|
@@ -62,7 +63,8 @@ The Rust extension requires Rust (install via `rustup`). Build once after clonin
 
 ```bash
 make install    # maturin build --release + pip install
-make test       # run all 125 tests
+make test       # run fast tests (~357 fast, 3 slow)
+make test-all   # run all tests including slow
 make bench      # benchmark hot functions
 ```
 
@@ -76,7 +78,8 @@ make bench      # benchmark hot functions
 
 ## Key conventions
 
-- **Tests use `unittest`**, not pytest-style functions. Run from repo root: `uv run pytest`.
+- **Tests use `unittest`**, not pytest-style functions. Run from repo root: `make test` or `make test-all`.
+- **Slow tests**: mark with `@pytest.mark.slow` — excluded by default; run with `make test-all`.
 - **Agents**: `Slowbro` for tournament use; `Slowpoke` for backward compat with legacy 91-input weights.
 - **Piece constants** defined in `agents/__init__.py`: `minimax_win=1`, `minimax_lose=-1`, `minimax_draw=0`, `minimax_empty=-1`.
 - **`_set_bits(n)`** — module-level helper in `checkers.py`, iterates LSB-to-MSB using `n & -n`.

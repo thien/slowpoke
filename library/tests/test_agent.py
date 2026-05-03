@@ -1,10 +1,6 @@
 """Tests for the Agent wrapper class."""
 
 import unittest
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.agent import Agent
 from agents.magikarp import Magikarp

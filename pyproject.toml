@@ -49,6 +49,12 @@ test = [
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+addopts = "-m 'not slow'"
+
 [tool.maturin]
 module-name = "checkers_core"
 features = ["pyo3/extension-module"]

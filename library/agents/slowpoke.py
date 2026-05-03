@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import sys
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-sys.path.insert(0, "..")
 import decision.minimax as minimax
 import decision.tmcts as tmcts
 from agents import minimax_draw, minimax_empty, minimax_lose, minimax_win

@@ -3,10 +3,6 @@ End-to-end tests comparing Random vs Greedy vs MCTS AI strategies.
 """
 
 import unittest
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core import checkers
 import decision.tmcts as tmcts

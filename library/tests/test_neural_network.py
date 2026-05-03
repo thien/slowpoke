@@ -1,10 +1,6 @@
 """Comprehensive tests for the NeuralNetwork evaluator."""
 
 import unittest
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.evaluator.neural import NeuralNetwork
 import numpy as np

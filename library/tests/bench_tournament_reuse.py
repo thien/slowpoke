@@ -11,17 +11,13 @@ Usage:
     .venv/bin/python -O library/tests/bench_tournament_reuse.py --deeper
 """
 
-import sys
-import os
 import time
 import argparse
 import statistics
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-from library.core.checkers import CheckerBoard, Black
-from library.decision.tmcts import TMCTS
-from library.agents.evaluator.neural import NeuralNetwork
+from core.checkers import CheckerBoard, Black
+from decision.tmcts import TMCTS
+from agents.evaluator.neural import NeuralNetwork
 
 
 def make_evaluator(use_mlx=True):

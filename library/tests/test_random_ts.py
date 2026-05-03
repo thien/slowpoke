@@ -1,10 +1,6 @@
 """Tests for the RandomTS decision module."""
 
 import unittest
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from decision import random_ts
 from core import checkers

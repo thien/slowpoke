@@ -1,10 +1,6 @@
 """Tests for the Splash (random move) decision module."""
 
 import unittest
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from decision.splash import Splash
 from core import checkers

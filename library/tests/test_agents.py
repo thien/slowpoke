@@ -3,10 +3,8 @@ Test each agent implementation to verify they work correctly.
 """
 
 import unittest
-import sys
-import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import pytest
 
 from core import checkers
 from agents.slowpoke import Slowpoke
@@ -76,6 +74,7 @@ class TestAgentVsAgent(unittest.TestCase):
 class TestGameOutcomes(unittest.TestCase):
     """Games between agents of different strengths must produce wins/losses."""
 
+    @pytest.mark.slow
     def test_asymmetric_agents_produce_wins_and_losses(self):
         """A higher-ply agent should win at least some games against a lower-ply one.
 
@@ -161,6 +160,7 @@ class TestOnixAgent(unittest.TestCase):
                 break
         # Game ran without crashing — passes regardless of outcome
 
+    @pytest.mark.slow
     def test_onix_outcomes(self):
         """Onix(6) should beat Onix(1) most games (same heuristics, deeper search)."""
         from agents.onix import Onix
@@ -191,6 +191,7 @@ class TestOnixAgent(unittest.TestCase):
         self.assertEqual(strong_wins + weak_wins + draws, n)
         self.assertGreater(strong_wins, 0)
 
+    @pytest.mark.slow
     def test_onix_vs_slowbro(self):
         """Onix should at least draw against a random-weight Slowbro."""
         from agents.onix import Onix

@@ -6,11 +6,6 @@ Measures two things:
 2. What's the computational overhead of UCB1 selection vs random.choice?
 """
 
-import sys
-import os
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import time as time_module
 import numpy as np
 from decision.tmcts import TMCTS

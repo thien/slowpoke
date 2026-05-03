@@ -3,13 +3,7 @@
 from __future__ import annotations
 
 import math
-import os
-import sys
 from typing import Any, Dict
-
-_lib_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _lib_dir not in sys.path:
-    sys.path.insert(0, _lib_dir)
 
 from agents import minimax_draw, minimax_empty, minimax_lose, minimax_win
 

@@ -5,11 +5,6 @@ Measures per-call timing for _set_bits, get_board_pos_weighted,
 push_move/pop_move, is_over, and combined search round simulation.
 """
 
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import time
 import random
 import numpy as np

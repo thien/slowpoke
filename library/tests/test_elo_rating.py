@@ -3,10 +3,6 @@ Tests for Elo rating calculations in the population system.
 """
 
 import unittest
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.population import EloRating
 

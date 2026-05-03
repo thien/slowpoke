@@ -7,11 +7,6 @@ has the necessary functions to make valid moves on a checkers board.
 
 import unittest
 import unittest.mock as mock
-import sys
-import os
-
-# Add project root to path (library/tests -> library -> project root)
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core import checkers
 from agents.agent import Agent

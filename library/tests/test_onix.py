@@ -1,10 +1,6 @@
 """Tests for the Onix heuristic-based agent."""
 
 import unittest
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.onix import Onix
 from agents.agent import Agent

@@ -13,9 +13,13 @@ build:
 install: build
 	$(PYTHON) -m pip install --no-deps $(WHEEL) --force-reinstall
 
-# Run all tests (must run install first)
+# Run fast tests (default, excludes slow)
 test:
 	PYTHONPATH=library $(PYTHON) -m pytest
+
+# Run all tests including slow
+test-all:
+	PYTHONPATH=library $(PYTHON) -m pytest -m "slow or not slow"
 
 # Run benchmarks
 bench:

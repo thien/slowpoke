@@ -1,10 +1,6 @@
 """Tests for the Slowbro agent."""
 
 import unittest
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.slowbro import Slowbro
 from agents.agent import Agent

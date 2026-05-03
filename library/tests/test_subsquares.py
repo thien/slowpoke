@@ -1,10 +1,6 @@
 """Tests for the subsquares feature extraction module."""
 
 import unittest
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.evaluator.subsquares import (
     _build_subsquare_matrix,

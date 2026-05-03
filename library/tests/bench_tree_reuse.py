@@ -12,14 +12,11 @@ Usage:
     .venv/bin/python library/tests/bench_tree_reuse.py
 """
 
-import sys
-import os
 import time
 import random
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from library.core.checkers import CheckerBoard
-from library.decision.tmcts import TMCTS
+from core.checkers import CheckerBoard
+from decision.tmcts import TMCTS
 
 
 class MockEvaluator:

@@ -1,10 +1,6 @@
 """Comprehensive tests for the MiniMax decision module."""
 
 import unittest
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from decision import minimax
 from core import checkers

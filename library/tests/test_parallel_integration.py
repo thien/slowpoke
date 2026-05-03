@@ -3,10 +3,6 @@ Tests for parallel MCTS integration with Population and Tournament.
 """
 
 import unittest
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.population import Population
 from decision.parallel_tmcts import ParallelTMCTS
