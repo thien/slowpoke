@@ -8,7 +8,6 @@ from core import checkers
 import search.tmcts as tmcts
 import numpy as np
 
-
 Black, White, empty = 0, 1, -1
 blackKing, whiteKing = 2, 3
 

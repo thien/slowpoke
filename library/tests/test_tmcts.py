@@ -7,7 +7,6 @@ from search.tmcts import TMCTS, TERMINAL_VALUE_MARKER
 from core import checkers
 import numpy as np
 
-
 Black, White = 0, 1
 
 

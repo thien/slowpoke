@@ -54,7 +54,7 @@ class PopulationTestCase(unittest.TestCase):
         self.population.debug = True
         self.population.safe_mutations = True
         # generate fake moves
-        (fakeMoves, coefs) = self.population.generate_fake_moves()
+        fakeMoves, coefs = self.population.generate_fake_moves()
         for player_id in self.population.current_population:
             # overload their neural net with fake coef and moves
             self.population.players[player_id].bot.nn.load_coefficients(coefs)
@@ -77,7 +77,7 @@ def Testing():
     p = population.Population(15, 1)
     p.safe_mutations = True
 
-    (fakeMoves, coefs) = p.generate_fake_moves()
+    fakeMoves, coefs = p.generate_fake_moves()
 
     for player_id in p.current_population:
         # overload their neural net with fake coef and moves
@@ -102,7 +102,7 @@ def testCrossover():
     p = population.Population(15, 1)
     p.safe_mutations = True
 
-    (fakeMoves, coefs) = p.generate_fake_moves()
+    fakeMoves, coefs = p.generate_fake_moves()
 
     for player_id in p.current_population:
         # overload their neural net with fake coef and moves

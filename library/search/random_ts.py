@@ -5,7 +5,12 @@ from __future__ import annotations
 import random
 from typing import Any
 
-from core.constants import MINIMAX_WIN as minimax_win, MINIMAX_LOSE as minimax_lose, MINIMAX_DRAW as minimax_draw, MINIMAX_EMPTY as minimax_empty
+from core.constants import (
+    MINIMAX_WIN as minimax_win,
+    MINIMAX_LOSE as minimax_lose,
+    MINIMAX_DRAW as minimax_draw,
+    MINIMAX_EMPTY as minimax_empty,
+)
 
 
 class RandomTS:

@@ -35,7 +35,16 @@ except ImportError:
 
 ### CONSTANTS
 
-from core.constants import BLACK, WHITE, EMPTY, BLACK_KING, WHITE_KING, BORING_NO_EAT_LIMIT, REPETITION_LIMITS, UNUSED_BITS
+from core.constants import (
+    BLACK,
+    WHITE,
+    EMPTY,
+    BLACK_KING,
+    WHITE_KING,
+    BORING_NO_EAT_LIMIT,
+    REPETITION_LIMITS,
+    UNUSED_BITS,
+)
 
 # Backward-compat aliases
 Black, White = BLACK, WHITE
@@ -644,11 +653,11 @@ class CheckerBoard:
                 if len(bits) >= 2:
                     src_bit, dst_bit = (
                         bits[0][0],
-                        bits[1][0]
-                        if len(bits) > 1
-                        else bits[0][0] + 4
-                        if move_abs & 0x11
-                        else bits[0][0] + 5,
+                        (
+                            bits[1][0]
+                            if len(bits) > 1
+                            else bits[0][0] + 4 if move_abs & 0x11 else bits[0][0] + 5
+                        ),
                     )
                     src = 1 + src_bit - src_bit // 9
                     dst = 1 + dst_bit - dst_bit // 9

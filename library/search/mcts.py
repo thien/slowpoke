@@ -79,12 +79,20 @@ class MCTS(MCTSBase):
 
         if colour == 0:
             _, best_move = max(
-                (self.mcts_chances.get((colour, s), 0) / max(self.mcts_plays.get((colour, s), 1), 1), m)
+                (
+                    self.mcts_chances.get((colour, s), 0)
+                    / max(self.mcts_plays.get((colour, s), 1), 1),
+                    m,
+                )
                 for m, s in move_states
             )
         else:
             _, best_move = min(
-                (self.mcts_chances.get((colour, s), 0) / max(self.mcts_plays.get((colour, s), 1), 1), m)
+                (
+                    self.mcts_chances.get((colour, s), 0)
+                    / max(self.mcts_plays.get((colour, s), 1), 1),
+                    m,
+                )
                 for m, s in move_states
             )
 
@@ -92,7 +100,9 @@ class MCTS(MCTSBase):
             goods = sorted(
                 (
                     (
-                        100 * self.mcts_chances.get((colour, s), 0) / max(self.mcts_plays.get((colour, s), 1), 1),
+                        100
+                        * self.mcts_chances.get((colour, s), 0)
+                        / max(self.mcts_plays.get((colour, s), 1), 1),
                         self.mcts_chances.get((colour, s), 0),
                         self.mcts_plays.get((colour, s), 0),
                         m,
@@ -171,9 +181,18 @@ class MCTS(MCTSBase):
                 if self.use_mlx and self.evaluator:
                     board_status = B.get_board_pos_weighted(
                         B.current_player(),
-                        {"Black": 1, "White": -1, "empty": 0, "blackKing": 1.5, "whiteKing": -1.5},
+                        {
+                            "Black": 1,
+                            "White": -1,
+                            "empty": 0,
+                            "blackKing": 1.5,
+                            "whiteKing": -1.5,
+                        },
                     )
-                    if hasattr(self.evaluator, "layers") and self.evaluator.layers[0] == 91:
+                    if (
+                        hasattr(self.evaluator, "layers")
+                        and self.evaluator.layers[0] == 91
+                    ):
                         board_status = self.evaluator.nn.subsquares(board_status)
                     position_batch.append(np.array(board_status, dtype=np.float32))
                     batch_refs.append((player, su))

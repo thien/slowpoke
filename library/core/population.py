@@ -19,6 +19,7 @@ import core.mongo as mongo
 import core.neuroevolution as evo
 import core.storage as storage
 from agents.evaluator.neural import NeuralNetwork
+
 BLACK, WHITE, EMPTY = 0, 1, -1
 Black, White, empty = BLACK, WHITE, EMPTY
 WIN_PT, DRAW_PT, LOSE_PT = 2, 0, -1
@@ -65,7 +66,6 @@ class EloRating:
         return player_rating + k * (actual_score - expected)
 
 
-
 class Population:
     def __init__(
         self,
@@ -98,9 +98,7 @@ class Population:
             self.use_parallel_mcts = use_parallel_mcts
         self.parallel_threads = num_parallel
         self.use_neat = use_neat
-        self.evolution = (
-            evo.NEATEvolution(self) if use_neat else evo.StandardGA(self)
-        )
+        self.evolution = evo.NEATEvolution(self) if use_neat else evo.StandardGA(self)
 
         self.current_population = self.generate_players(self.count)
 
@@ -384,9 +382,9 @@ class Population:
         # Reset games_played for all offspring (they start fresh)
         for offspring_id in offsprings:
             self.players[offspring_id].games_played = 0
-            self.players[
-                offspring_id
-            ].points = 0  # Also reset points for new generation
+            self.players[offspring_id].points = (
+                0  # Also reset points for new generation
+            )
 
         newPopulation = offsprings + elites
         # Preserve Onix across generations (keep its Elo, never reset)
@@ -712,9 +710,7 @@ class Population:
         if not pids:
             return None
 
-        has_data = any(
-            v != [0, 0, 0] for v in self.head_to_head.values()
-        )
+        has_data = any(v != [0, 0, 0] for v in self.head_to_head.values())
 
         t = Table(title="Head-to-Head W-D-L (row player perspective)")
         t.add_column("Player", style="cyan")

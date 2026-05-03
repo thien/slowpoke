@@ -1,4 +1,10 @@
-from core.constants import MINIMAX_WIN, MINIMAX_LOSE, MINIMAX_DRAW, MINIMAX_EMPTY, MINIMAX_EMPTY as minimax_empty
+from core.constants import (
+    MINIMAX_WIN,
+    MINIMAX_LOSE,
+    MINIMAX_DRAW,
+    MINIMAX_EMPTY,
+    MINIMAX_EMPTY as minimax_empty,
+)
 
 minimax_win = MINIMAX_WIN
 minimax_lose = MINIMAX_LOSE

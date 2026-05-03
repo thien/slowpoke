@@ -6,7 +6,6 @@ from agents.onix import Onix
 from agents.agent import Agent
 from core import checkers
 
-
 Black, White = 0, 1
 
 

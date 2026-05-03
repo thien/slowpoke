@@ -129,6 +129,7 @@ class NeuralNetwork:
             if self._genome is None:
                 return np.array([], dtype=np.float32)
             import json
+
             return np.frombuffer(
                 json.dumps(self._genome.to_dict()).encode("utf-8"),
                 dtype=np.uint8,
@@ -144,6 +145,7 @@ class NeuralNetwork:
     def load_coefficients(self, ravelled: np.ndarray) -> bool:
         if self._mode == "neat":
             import json
+
             raw = bytes(ravelled)
             try:
                 data = json.loads(raw.decode("utf-8"))

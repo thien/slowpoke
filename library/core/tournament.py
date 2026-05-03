@@ -190,22 +190,26 @@ class Generator:
             for j in range(i + 1, len(players)):
                 pid_i, pid_j = players[i], players[j]
                 # i as black, j as white
-                gamePool.append({
-                    "game_id": self.gameIDCounter,
-                    "black": self.population.players[pid_i],
-                    "white": self.population.players[pid_j],
-                    "dbURI": False,
-                    "debugInfo": False,
-                })
+                gamePool.append(
+                    {
+                        "game_id": self.gameIDCounter,
+                        "black": self.population.players[pid_i],
+                        "white": self.population.players[pid_j],
+                        "dbURI": False,
+                        "debugInfo": False,
+                    }
+                )
                 self.gameIDCounter += 1
                 # j as black, i as white
-                gamePool.append({
-                    "game_id": self.gameIDCounter,
-                    "black": self.population.players[pid_j],
-                    "white": self.population.players[pid_i],
-                    "dbURI": False,
-                    "debugInfo": False,
-                })
+                gamePool.append(
+                    {
+                        "game_id": self.gameIDCounter,
+                        "black": self.population.players[pid_j],
+                        "white": self.population.players[pid_i],
+                        "dbURI": False,
+                        "debugInfo": False,
+                    }
+                )
                 self.gameIDCounter += 1
         self.GamesQueued = len(gamePool)
         self.log(f"Total games scheduled: {len(gamePool)}")
@@ -233,14 +237,14 @@ class Generator:
             # merge winning players move caches
             if results[i]["game"]["Winner"] == Black:
                 bCache = self.population.players[results[i]["black"]].bot.cache
-                self.population.players[
-                    results[i]["black"]
-                ].bot.cache = self.merge_dicts(bCache, results[i]["black_cache"])
+                self.population.players[results[i]["black"]].bot.cache = (
+                    self.merge_dicts(bCache, results[i]["black_cache"])
+                )
             elif results[i]["game"]["Winner"] == White:
                 wCache = self.population.players[results[i]["white"]].bot.cache
-                self.population.players[
-                    results[i]["white"]
-                ].bot.cache = self.merge_dicts(wCache, results[i]["white_cache"])
+                self.population.players[results[i]["white"]].bot.cache = (
+                    self.merge_dicts(wCache, results[i]["white_cache"])
+                )
             # nullify the cache since its not needed anymore
             results[i]["black_cache"] = None
             results[i]["white_cache"] = None
@@ -413,9 +417,9 @@ class Generator:
             self.cummulativeScore += newChampPoints
             # store points.
             self.progress.append(newChampPoints)
-            self.population.players[
-                self.population.champions[-1]
-            ].champ_score = newChampPoints
+            self.population.players[self.population.champions[-1]].champ_score = (
+                newChampPoints
+            )
             self.population.players[self.population.champions[-1]].champ_range = results
         else:
             # theres only one champion, don't play.
@@ -571,9 +575,7 @@ class Generator:
             if metric_s == "Previous Scoreboard":
                 continue
             info.add_row(metric_s, value_s)
-        layout["info"].update(
-            Panel(info, title=f"Generation {self.currentGeneration}")
-        )
+        layout["info"].update(Panel(info, title=f"Generation {self.currentGeneration}"))
 
         # ── Player rankings ──
         if ranking_lines:

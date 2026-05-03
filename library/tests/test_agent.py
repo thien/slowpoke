@@ -6,7 +6,6 @@ from agents.agent import Agent
 from agents.magikarp import Magikarp
 from core import checkers
 
-
 Black = 0
 White = 1
 

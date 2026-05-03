@@ -296,7 +296,7 @@ class TestEloIntegration(unittest.TestCase):
             if pop.baseline_entity and pid == pop.baseline_entity.id:
                 continue
             # Skip Onix — preserved across gens
-            if hasattr(player, 'entity_name') and player.entity_name == 'Onix':
+            if hasattr(player, "entity_name") and player.entity_name == "Onix":
                 continue
             # New offspring have 0 games; elites preserve theirs
             self.assertGreaterEqual(player.games_played, 0)

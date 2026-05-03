@@ -79,21 +79,25 @@ class Statistics:
             gen_rows = by_gen[gen]
             games = []
             for r in gen_rows:
-                games.append({
-                    "game": {
-                        "Winner": r.get("winner", -1),
-                        "_id": r.get("game_id", ""),
-                        "Moves": json.loads(r.get("replay", "[]")),
-                    },
-                    "black": r.get("black_id", ""),
-                    "white": r.get("white_id", ""),
-                    "duration": r.get("duration", "00:00:00"),
-                })
-            stats.append({
-                "stats": [],
-                "games": games,
-                "durationInSeconds": "0",
-            })
+                games.append(
+                    {
+                        "game": {
+                            "Winner": r.get("winner", -1),
+                            "_id": r.get("game_id", ""),
+                            "Moves": json.loads(r.get("replay", "[]")),
+                        },
+                        "black": r.get("black_id", ""),
+                        "white": r.get("white_id", ""),
+                        "duration": r.get("duration", "00:00:00"),
+                    }
+                )
+            stats.append(
+                {
+                    "stats": [],
+                    "games": games,
+                    "durationInSeconds": "0",
+                }
+            )
         return stats
 
     def parseLeaderboards(self) -> list:

@@ -5,7 +5,6 @@ import unittest
 from search.splash import Splash
 from core import checkers
 
-
 Black, White = 0, 1
 
 

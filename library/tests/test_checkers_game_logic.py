@@ -19,7 +19,6 @@ from decision import minimax, mcts, tmcts
 from agents.evaluator.neural import NeuralNetwork
 import numpy as np
 
-
 # Constants from checkers module
 Black, White, empty = 0, 1, -1
 blackKing, whiteKing = 2, 3

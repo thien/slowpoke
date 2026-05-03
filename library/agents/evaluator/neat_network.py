@@ -27,9 +27,7 @@ class NEATNetwork:
         activations: Dict[int, float] = {}
 
         # Find input nodes (sorted by id for deterministic input mapping)
-        input_ids = sorted(
-            nid for nid, n in genome.nodes.items() if n.kind == "input"
-        )
+        input_ids = sorted(nid for nid, n in genome.nodes.items() if n.kind == "input")
         if not input_ids:
             return 0.0
 
@@ -51,9 +49,7 @@ class NEATNetwork:
         sorted_nodes = sorted(hidden_and_output)
 
         # Build adjacency for quick lookup
-        enabled_connections = [
-            c for c in genome.connections.values() if c.enabled
-        ]
+        enabled_connections = [c for c in genome.connections.values() if c.enabled]
         # Group by target node
         incoming: Dict[int, List] = {}
         for c in enabled_connections:

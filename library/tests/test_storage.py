@@ -75,6 +75,7 @@ class TestStatisticsParquet(unittest.TestCase):
 
     def tearDown(self):
         import shutil
+
         shutil.rmtree(self.tmpdir)
 
     def _make_gen_stats(self, num_gens=2, games_per_gen=3):
@@ -83,18 +84,20 @@ class TestStatisticsParquet(unittest.TestCase):
         for g in range(num_gens):
             games = []
             for i in range(games_per_gen):
-                games.append({
-                    "game": {
-                        "Winner": i % 3 - 1,
-                        "_id": f"g{g}_game{i}",
-                        "Moves": [f"m{j}" for j in range(i + 1)],
-                    },
-                    "black": f"black_{i}",
-                    "white": f"white_{i}",
-                    "duration": f"00:00:{i:02d}",
-                    "black_elo": 1200.0 + i,
-                    "white_elo": 1200.0 - i,
-                })
+                games.append(
+                    {
+                        "game": {
+                            "Winner": i % 3 - 1,
+                            "_id": f"g{g}_game{i}",
+                            "Moves": [f"m{j}" for j in range(i + 1)],
+                        },
+                        "black": f"black_{i}",
+                        "white": f"white_{i}",
+                        "duration": f"00:00:{i:02d}",
+                        "black_elo": 1200.0 + i,
+                        "white_elo": 1200.0 - i,
+                    }
+                )
             stats.append({"games": games, "durationInSeconds": str(g * 10)})
         return stats
 
@@ -148,6 +151,7 @@ class TestMigration(unittest.TestCase):
 
     def tearDown(self):
         import shutil
+
         shutil.rmtree(self.tmpdir)
 
     def test_migrate_statistics_json(self):
@@ -203,7 +207,9 @@ class TestMigration(unittest.TestCase):
         # Create both .json and .npz
         with open(os.path.join(champ_dir, "0.json"), "w") as f:
             json.dump({"0": {"coefficents": [1.0]}}, f)
-        np.savez_compressed(os.path.join(champ_dir, "0.npz"), coefficients=np.array([1.0]))
+        np.savez_compressed(
+            os.path.join(champ_dir, "0.npz"), coefficients=np.array([1.0])
+        )
 
         count = migrate_champions_json_to_npz(champ_dir)
         self.assertEqual(count, 0)  # nothing new migrated

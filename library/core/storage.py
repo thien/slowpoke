@@ -91,18 +91,20 @@ def _flatten_game(game: Dict[str, Any], gen: int) -> Dict[str, Any]:
 
 def _game_schema() -> pa.Schema:
     """Return the PyArrow schema for game statistics."""
-    return pa.schema([
-        pa.field("gen", pa.int32()),
-        pa.field("game_id", pa.string()),
-        pa.field("black_id", pa.string()),
-        pa.field("white_id", pa.string()),
-        pa.field("winner", pa.int32()),
-        pa.field("num_moves", pa.int32()),
-        pa.field("duration", pa.string()),
-        pa.field("replay", pa.string()),
-        pa.field("black_elo", pa.float32(), nullable=True),
-        pa.field("white_elo", pa.float32(), nullable=True),
-    ])
+    return pa.schema(
+        [
+            pa.field("gen", pa.int32()),
+            pa.field("game_id", pa.string()),
+            pa.field("black_id", pa.string()),
+            pa.field("white_id", pa.string()),
+            pa.field("winner", pa.int32()),
+            pa.field("num_moves", pa.int32()),
+            pa.field("duration", pa.string()),
+            pa.field("replay", pa.string()),
+            pa.field("black_elo", pa.float32(), nullable=True),
+            pa.field("white_elo", pa.float32(), nullable=True),
+        ]
+    )
 
 
 def save_statistics_parquet(

@@ -9,6 +9,7 @@ MLX_AVAILABLE: bool = False
 mx = None
 try:
     import mlx.core as mx  # noqa: F401
+
     MLX_AVAILABLE = True
 except ImportError:
     pass

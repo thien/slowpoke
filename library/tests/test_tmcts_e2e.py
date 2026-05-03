@@ -9,7 +9,6 @@ import search.tmcts as tmcts
 import search.mcts as mcts
 import numpy as np
 
-
 Black, White, empty = 0, 1, -1
 
 

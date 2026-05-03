@@ -19,7 +19,9 @@ def _reset_innovation_counter(start: int = 0) -> None:
     _next_innovation = start
 
 
-def _next_innovation_id(history: Dict[Tuple[int, int], int], from_id: int, to_id: int) -> int:
+def _next_innovation_id(
+    history: Dict[Tuple[int, int], int], from_id: int, to_id: int
+) -> int:
     """Return a global innovation ID for a connection (from→to).
 
     Uses a per-run history dict to deduplicate: if the same (from,to)
@@ -37,6 +39,7 @@ def _next_innovation_id(history: Dict[Tuple[int, int], int], from_id: int, to_id
 
 # ── Node gene ──────────────────────────────────────────────────────────────────
 
+
 class NodeGene:
     """A single node in the NEAT network."""
 
@@ -49,6 +52,7 @@ class NodeGene:
 
 
 # ── Connection gene ────────────────────────────────────────────────────────────
+
 
 class ConnectionGene:
     """A single connection between two nodes."""
@@ -81,6 +85,7 @@ class ConnectionGene:
 
 # ── Genome ─────────────────────────────────────────────────────────────────────
 
+
 class Genome:
     """A full NEAT genome: collection of node genes and connection genes."""
 
@@ -96,7 +101,9 @@ class Genome:
     # ── Factory methods ──
 
     @classmethod
-    def minimal(cls, num_inputs: int = 32, num_hidden: int = 4, num_outputs: int = 1) -> Genome:
+    def minimal(
+        cls, num_inputs: int = 32, num_hidden: int = 4, num_outputs: int = 1
+    ) -> Genome:
         """Create a minimal genome with inputs → hidden layer → output.
 
         All connections are fully connected between adjacent layers.
@@ -140,7 +147,9 @@ class Genome:
 
     # ── Mutation ──
 
-    def mutate_weights(self, tau: float, p_weight: float = 0.8, p_bias: float = 0.2) -> None:
+    def mutate_weights(
+        self, tau: float, p_weight: float = 0.8, p_bias: float = 0.2
+    ) -> None:
         """Perturb connection weights and node biases.
 
         Args:
@@ -208,7 +217,7 @@ class Genome:
 
         node_ids = sorted(self.nodes.keys())
         for i, a in enumerate(node_ids):
-            for b in node_ids[i + 1:]:
+            for b in node_ids[i + 1 :]:
                 kind_a = self.nodes[a].kind
                 kind_b = self.nodes[b].kind
                 # Only feed-forward: earlier → later node
@@ -292,7 +301,9 @@ class Genome:
 
     # ── Distance (for future speciation) ──
 
-    def distance(self, other: Genome, c1: float = 1.0, c2: float = 1.0, c3: float = 0.4) -> float:
+    def distance(
+        self, other: Genome, c1: float = 1.0, c2: float = 1.0, c3: float = 0.4
+    ) -> float:
         """Compute genomic distance between two genomes.
 
         Uses NEAT's standard formula:
@@ -305,7 +316,9 @@ class Genome:
         max_innov = max(max(self_innovs, default=0), max(other_innovs, default=0))
 
         matching = self_innovs & other_innovs
-        disjoint = (self_innovs ^ other_innovs) - {i for i in (self_innovs ^ other_innovs) if i > max_innov}
+        disjoint = (self_innovs ^ other_innovs) - {
+            i for i in (self_innovs ^ other_innovs) if i > max_innov
+        }
         excess = {i for i in (self_innovs ^ other_innovs) if i > max_innov}
 
         N = max(len(self.connections), len(other.connections), 1)

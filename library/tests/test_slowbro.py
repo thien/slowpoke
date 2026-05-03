@@ -7,7 +7,6 @@ from agents.agent import Agent
 from core import checkers
 import numpy as np
 
-
 Black, White = 0, 1
 
 
