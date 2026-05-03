@@ -693,7 +693,7 @@ class Population:
         """
         from rich.table import Table
 
-        pids = [pid for pid in self.current_population if pid not in (ONIX_ID, -1)]
+        pids = [pid for pid in self.current_population]
         if not pids:
             return None
 
@@ -703,15 +703,13 @@ class Population:
             for b in pids:
                 if a == b:
                     continue
-                # a as black vs b as white
                 rec = self.head_to_head.get((a, b), [0, 0, 0])
-                totals[a]["w"] += rec[0]  # a wins as black
-                totals[a]["l"] += rec[1]  # a loses as black
+                totals[a]["w"] += rec[0]
+                totals[a]["l"] += rec[1]
                 totals[a]["d"] += rec[2]
-                # a as white vs b as black
                 rec = self.head_to_head.get((b, a), [0, 0, 0])
-                totals[a]["w"] += rec[1]  # a wins as white
-                totals[a]["l"] += rec[0]  # a loses as white
+                totals[a]["w"] += rec[1]
+                totals[a]["l"] += rec[0]
                 totals[a]["d"] += rec[2]
 
         by_elo = sorted(pids, key=lambda pid: self.players[pid].elo, reverse=True)
@@ -747,23 +745,26 @@ class Population:
 
         return t
 
-    def build_matrix_table(self):
+    def build_matrix_table(self, max_rows: int = 8):
         """Build a compact per-player win matrix.
 
-        Cell shows the number of games the row player won against
-        the column player (out of 2 games: one each colour).
+        Only shows the top ``max_rows`` players by Elo to keep the
+        table readable. Cell shows row player's wins vs column player.
         """
         from rich.table import Table
 
-        pids = [pid for pid in self.current_population if pid not in (ONIX_ID, -1)]
+        pids = [pid for pid in self.current_population]
         if not pids:
             return None
+        # Sort by Elo descending, take top N
+        by_elo = sorted(pids, key=lambda pid: self.players[pid].elo, reverse=True)
+        pids = by_elo[:max_rows]
 
-        t = Table(title="Win Matrix (row vs col)")
+        t = Table(title="Win Matrix (top by Elo)")
         t.add_column("", style="cyan", no_wrap=True)
         for pid in pids:
             label = getattr(self.players[pid], "entity_name", None) or f"P{pid}"
-            t.add_column(label, justify="center", max_width=3, min_width=3)
+            t.add_column(label, justify="center", max_width=5)
 
         for a in pids:
             label = getattr(self.players[a], "entity_name", None) or f"P{a}"
