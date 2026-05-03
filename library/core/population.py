@@ -350,21 +350,9 @@ class Population:
         for mutation in mutations:
             self.evolution.load_mutation_result(*mutation)
 
-        for i in range(0, 2):
-            parent_a_ID, parent_b_ID = eligible[i], eligible[i + 1]
-            parent_a_elo = self.players[parent_a_ID].elo
-            parent_b_elo = self.players[parent_b_ID].elo
-            mean_elo = (parent_a_elo + parent_b_elo) / 2
-            # Children from crossover get mean of parents
-            self.players[offsprings[i * 4]].elo = mean_elo
-            self.players[offsprings[i * 4 + 1]].elo = mean_elo
-            # Children from copy get parent's Elo
-            self.players[offsprings[i * 4 + 2]].elo = parent_a_elo
-            self.players[offsprings[i * 4 + 3]].elo = parent_b_elo
-
-        # Set Elo for remainder offspring (copies of 4th and 5th place)
-        self.players[offsprings[-2]].elo = self.players[eligible[3]].elo
-        self.players[offsprings[-1]].elo = self.players[eligible[4]].elo
+        # All offspring start at initial Elo — they earn their rating through play
+        for oid in offsprings:
+            self.players[oid].elo = self.baseline_elo
 
         # Reset games_played for all offspring (they start fresh)
         for offspring_id in offsprings:

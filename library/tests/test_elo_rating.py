@@ -211,28 +211,26 @@ class TestEloIntegration(unittest.TestCase):
         human = agent.Agent(bot)
         self.assertEqual(human.games_played, 0)
 
-    def test_offspring_elo_inheritance(self):
-        """Offspring should inherit mean Elo from parents for crossover children."""
+    def test_offspring_start_at_baseline_elo(self):
+        """Offspring should start at baseline Elo (they earn it through play)."""
         from core.population import Population
 
-        pop = Population(num_players=10, ply_depth=1, use_neat=False)
+        pop = Population(num_players=5, ply_depth=1, use_neat=False)
+        player_count_before = pop.player_counter
 
-        # Set known Elo ratings for first two players
-        pop.players[pop.current_population[0]].elo = 1400
-        pop.players[pop.current_population[1]].elo = 1200
-
-        # Generate next population
         pop.generate_next_population()
 
-        # First 2 offspring (crossover) should have mean Elo of 1300
-        mean_elo = (1400 + 1200) / 2
-        for i in range(2):
-            offspring_id = pop.current_population[i]
-            self.assertAlmostEqual(pop.players[offspring_id].elo, mean_elo, places=2)
-
-        # Next 2 offspring (copies) should have parent's Elo
-        self.assertEqual(pop.players[pop.current_population[2]].elo, 1400)
-        self.assertEqual(pop.players[pop.current_population[3]].elo, 1200)
+        # New offspring have IDs >= player_counter before generation
+        baseline = 500.0
+        has_offspring = False
+        for pid in pop.current_population:
+            if pid >= player_count_before:
+                has_offspring = True
+                self.assertAlmostEqual(
+                    pop.players[pid].elo, baseline, places=1,
+                    msg=f"Offspring {pid} should start at baseline {baseline}, got {pop.players[pid].elo}"
+                )
+        self.assertTrue(has_offspring, "No offspring found in new population")
 
     def test_allocate_points_updates_elo(self):
         """allocate_points should update Elo ratings after games."""

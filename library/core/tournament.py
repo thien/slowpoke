@@ -577,15 +577,13 @@ class Generator:
             Layout(name="ranking"),
         )
 
-        info = Table.grid(padding=(1, 2))
-        info.add_column("Metric", style="cyan", no_wrap=True)
+        info = Table(show_header=False, box=None, padding=(0, 2))
+        info.add_column("Metric", style="cyan")
         info.add_column("Value", style="white")
         for metric, value in self.status_info():
             metric_s = str(metric) if metric is not None else ""
             value_s = str(value) if value is not None else ""
-            if metric_s.strip() == "" and value_s.strip() == "":
-                continue
-            if metric_s.startswith("Player") or metric_s == "Previous Scoreboard":
+            if not metric_s.strip() or not value_s.strip():
                 continue
             info.add_row(metric_s, value_s)
         layout["info"].update(Panel(info, title=f"Generation {self.currentGeneration}"))

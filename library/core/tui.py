@@ -72,13 +72,13 @@ class TournamentDisplay:
         )
 
         # ── Left: Info metrics ──
-        info = Table.grid(padding=(0, 1))
+        info = Table(show_header=False, box=None, padding=(0, 2))
         info.add_column("Metric", style="cyan")
         info.add_column("Value", style="white")
         for metric, value in self.generator.status_info():
             ms = str(metric) if metric is not None else ""
             vs = str(value) if value is not None else ""
-            if not ms.strip() and not vs.strip() and ms != vs:
+            if not ms.strip() or not vs.strip():
                 continue
             if ms.startswith("Player") or ms == "Previous Scoreboard":
                 continue
