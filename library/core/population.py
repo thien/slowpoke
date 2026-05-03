@@ -702,9 +702,15 @@ class Population:
             for b in pids:
                 if a == b:
                     continue
+                # a as black vs b as white
                 rec = self.head_to_head.get((a, b), [0, 0, 0])
-                totals[a]["w"] += rec[0]
-                totals[a]["l"] += rec[1]
+                totals[a]["w"] += rec[0]  # a wins as black
+                totals[a]["l"] += rec[1]  # a loses as black
+                totals[a]["d"] += rec[2]
+                # a as white vs b as black
+                rec = self.head_to_head.get((b, a), [0, 0, 0])
+                totals[a]["w"] += rec[1]  # a wins as white
+                totals[a]["l"] += rec[0]  # a loses as white
                 totals[a]["d"] += rec[2]
 
         by_elo = sorted(pids, key=lambda pid: self.players[pid].elo, reverse=True)
