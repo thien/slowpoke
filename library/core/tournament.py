@@ -532,7 +532,9 @@ class Generator:
             messsages.append(
                 [
                     "Recent Scores",
-                    ", ".join("{:0.2f}".format(x) for x in recent_scores),
+                    "[{}]".format(
+                        ", ".join("{:0.2f}".format(x) for x in recent_scores)
+                    ),
                 ]
             )
             messsages.append(
