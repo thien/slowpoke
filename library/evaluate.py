@@ -70,7 +70,7 @@ def game_worker(i: int) -> dict:
 def verifyClasses(games: list) -> None:
     try:
         for x in games:
-            k = {"black": players[x[0]], "white": players[x[1]], "gameOpt": gameOpt}
+            {"black": players[x[0]], "white": players[x[1]], "gameOpt": gameOpt}
         return True
     except KeyError as e:
         # print(KeyError)

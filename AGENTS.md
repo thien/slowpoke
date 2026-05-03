@@ -15,9 +15,16 @@ make install
 # Play against a champion
 (cd library && ../.venv/bin/python play.py)
 
-# Lint / format
-uv run ruff check .
-uv run ruff format .
+# Format with ruff (black-compatible), then lint
+ruff format .
+ruff check --fix --unsafe-fixes .
+# Run this before every commit
+
+# Pre-commit hook (auto-runs on commit)
+Pre-commit hook (auto-runs on commit):
+  `.git/hooks/pre-commit` — vanilla git hook (no dependencies)
+  `.pre-commit-config.yaml` — for pre-commit framework users
+  Both run: `ruff format` → `ruff check` → `pytest` (fast only)
 
 # Test / bench (after make install)
 make test       # fast tests only (excludes slow)
@@ -149,3 +156,4 @@ Code should follow the Zen of Python (`import this`):
 - Flat is better than nested.
 - Readability counts.
 - If the implementation is hard to explain, it's a bad idea.
+

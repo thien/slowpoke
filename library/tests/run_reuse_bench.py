@@ -3,7 +3,8 @@
 Quick wrapper that runs the benchmark and forces unbuffered stdout.
 """
 
-import sys, os
+import sys
+import os
 
 # Ensure we're in the project root
 os.chdir("/Users/t/projects/slowpoke")
@@ -13,7 +14,6 @@ sys.stderr.reconfigure(line_buffering=True)
 # Strip flags so -u propagates to child
 os.environ["PYTHONUNBUFFERED"] = "1"
 
-from library.tests.bench_tournament_reuse import run
 
 print("=" * 80)
 print("  TREE REUSE BENCHMARK — ply=12, baseRound=300, 3 games, MLX=ON")

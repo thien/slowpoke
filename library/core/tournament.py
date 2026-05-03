@@ -4,8 +4,6 @@ import core.population as pop
 import core.game as game
 import core.storage as storage
 
-import agents.slowpoke as sp
-import agents.agent as agent
 import core.mongo as mongo
 
 # import libraries
@@ -28,10 +26,11 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import statistics
-from core.constants import BLACK, WHITE, EMPTY, WIN_PT, DRAW_PT, LOSE_PT
 
-# Champ points
-CHAMP_WIN_PT, CHAMP_DRAW_PT, CHAMP_LOSE_PT = 1, 0, -1
+from core.constants import BLACK, WHITE, EMPTY
+
+Black, White, empty = BLACK, WHITE, EMPTY
+ChampWIN_PT, ChampDRAW_PT, ChampLOSE_PT = 1, 0, -1
 
 
 def option_defaults(options):
@@ -263,7 +262,7 @@ class Generator:
         # loop through the generations.
         for i in range(self.generations):
             print("Initiating generation", i)
-            self.log(f"=" * 60)
+            self.log("=" * 60)
             self.log(f"Starting generation {i}")
             # increment generation count
             self.currentGeneration = i
@@ -595,7 +594,7 @@ class Generator:
     @staticmethod
     def clean_date(timestamp, unixDefault=False):
         try:
-            if unixDefault == True:
+            if unixDefault:
                 k = datetime.datetime.fromtimestamp(timestamp)
                 return k.strftime("%Y-%m-%d %H:%M:%S")
             else:

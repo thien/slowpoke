@@ -4,7 +4,6 @@ from __future__ import annotations
 import core.tournament as tournament
 import sys
 import os
-import datetime
 import evaluator
 import statistics
 

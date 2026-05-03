@@ -13,7 +13,6 @@ from typing import List, Tuple, Optional, Dict, Any
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from core.constants import MLX_AVAILABLE, mx
 from core.constants import MINIMAX_WIN, MINIMAX_LOSE, MINIMAX_DRAW, MINIMAX_EMPTY
 
 

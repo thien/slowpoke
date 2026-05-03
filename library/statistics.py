@@ -6,7 +6,6 @@ import hashlib
 import json
 import multiprocessing
 import os
-import random
 import sys
 import time
 
@@ -17,7 +16,6 @@ import numpy as np
 if multiprocessing.cpu_count() > 10:
     matplotlib.use("Agg")
 
-from matplotlib import cm
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
@@ -168,9 +166,8 @@ class Statistics:
             sums = sum(scoreStats[playerType])
             size = len(scoreStats[playerType])
             # calculate the score mean
-            mean = 0
             if sums + size > 0:
-                mean = round(sums / size, 5)
+                round(sums / size, 5)
             # print(mean)
 
         syu = [scoreStats[s] for s in scoreStats]
@@ -213,8 +210,6 @@ class Statistics:
         # Guard against empty data (single generation case)
         if not sizes or sum(sizes) == 0:
             return
-
-        explode = (0, 0.1, 0, 0)  # only "explode" the 2nd slice (i.e. 'Hogs')
 
         cols = {
             "Persistent": "#FF4E50",
@@ -374,7 +369,6 @@ class Statistics:
             medians.append(max(set(moveCounts), key=moveCounts.count))
 
         mean_colour = "red"
-        median_colour = "yellow"
         # add legend
         mean_patch = mpatches.Patch(color=mean_colour, label="Mean")
         # median_patch = mpatches.Patch(color=median_colour, label='Median')
@@ -636,7 +630,7 @@ class Statistics:
 
         # print(overall_wins)
         r = r[0:-1]
-        su = plt.plot(
+        plt.plot(
             r,
             overall_wins[0:-1],
             "--",
@@ -644,7 +638,7 @@ class Statistics:
             label="Win Trend",
             color=self.hexMedian(colours["win_black"], colours["win_white"]),
         )
-        su = plt.plot(
+        plt.plot(
             r,
             overall_draws[0:-1],
             "-.",
@@ -652,7 +646,7 @@ class Statistics:
             label="Draw Trend",
             color=self.hexMedian(colours["draw_black"], colours["draw_white"]),
         )
-        su = plt.plot(
+        plt.plot(
             r,
             overall_losses[0:-1],
             ":",
@@ -705,7 +699,6 @@ def batch_run() -> None:
     path = os.path.join("..", "results")
     folders = os.listdir(path)
     stats = []
-    times = []
     # s = Statistics()
     for folder in folders:
         newPath = os.path.join(path, folder)
@@ -743,7 +736,6 @@ def measure_batch_timings(stats) -> None:
     plt.close()
 
     colours = []
-    labels = []
     # iterate through the items
     for i in sorted(list(timings)):
         print("NEW")
@@ -752,7 +744,7 @@ def measure_batch_timings(stats) -> None:
         count = 1
         for round in timings[i]["sx"]:
             cpuDuration = float(round["duration"])
-            games = round["gameDurations"]
+            round["gameDurations"]
             batchy.append(cpuDuration)
             batchx.append(count)
             count += 1
@@ -767,9 +759,7 @@ def measure_batch_timings(stats) -> None:
         print("runtime", str(datetime.timedelta(seconds=batchy[-1])))
         print("mean", str(datetime.timedelta(seconds=batchy[-1] / len(batchx))))
 
-        su = plt.plot(
-            batchx, batchy, "-", linewidth=2, color=hexColour, label=keyString
-        )
+        plt.plot(batchx, batchy, "-", linewidth=2, color=hexColour, label=keyString)
     # plt.legend(handles=su, labels = labels)
 
     # if s.enableTitles:

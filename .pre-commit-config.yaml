@@ -1,0 +1,23 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff format
+        entry: ruff format
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: ruff-check
+        name: ruff check
+        entry: ruff check --fix --unsafe-fixes --select=F821,F811 --ignore=F403
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: pytest-fast
+        name: pytest (fast)
+        entry: env PYTHONPATH=library .venv/bin/python -m pytest -m "not slow" -q
+        language: system
+        types: [python]
+        pass_filenames: false

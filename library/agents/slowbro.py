@@ -8,14 +8,14 @@ import numpy as np
 
 from core.constants import MINIMAX_WIN, MINIMAX_LOSE, MINIMAX_DRAW, MINIMAX_EMPTY
 
+from .evaluator.neural import NeuralNetwork
+
 minimax_win, minimax_lose, minimax_draw, minimax_empty = (
     MINIMAX_WIN,
     MINIMAX_LOSE,
     MINIMAX_DRAW,
     MINIMAX_EMPTY,
 )
-
-from .evaluator.neural import NeuralNetwork
 
 
 class Slowbro:

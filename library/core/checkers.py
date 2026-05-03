@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import datetime
 from itertools import groupby
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from termcolor import colored
@@ -958,7 +958,7 @@ class CheckerBoard:
                 board[x][y] = piece + str(1 + j + 8 * i) + (paddingCheck(i, j))
 
         # return "".join(map(lambda x: "".join(x), board))
-        if blackPOV != True:
+        if not blackPOV:
             # its white, reverse.
             board = board[::-1]
         return board

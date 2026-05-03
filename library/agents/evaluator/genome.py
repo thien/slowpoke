@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, Set, Tuple
 
 import numpy as np
 

@@ -9,13 +9,12 @@ import multiprocessing
 import operator
 import os
 import random
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
 import agents.agent as agent
 import agents.slowbro as sb
-import core.mongo as mongo
 import core.neuroevolution as evo
 import core.storage as storage
 from agents.evaluator.neural import NeuralNetwork
@@ -131,7 +130,7 @@ class Population:
   generate_players() function!
   """
 
-    def generate_player(self) -> Agent:
+    def generate_player(self) -> "agent.Agent":
         bot = self.evolution.generate_bot(self.ply_depth, self.is_debug)
         human = agent.Agent(bot, initial_elo=self.baseline_elo)
         # generate ID
@@ -199,23 +198,6 @@ class Population:
         )
         elo_ratings = sorted(elo_ratings, key=operator.itemgetter(1), reverse=True)
         output = ""
-        for i in elo_ratings:
-            label = getattr(self.players[i[0]], "entity_name", None)
-            player_label = f"Player {i[0]} ({label})" if label else f"Player {i[0]}"
-            output += f"{player_label}\tElo: {i[1]:.1f}\tPts: {i[2]}\n"
-        return output
-
-    def print_population_by_elo(self) -> str:
-        if self.debug:
-            print("Current Population:", self.current_population)
-        elo_ratings = list(
-            map(
-                lambda x: (x, self.players[x].elo, self.players[x].points),
-                self.current_population,
-            )
-        )
-        elo_ratings = sorted(elo_ratings, key=operator.itemgetter(1), reverse=True)
-        output = "Population by Elo Rating:\n"
         for i in elo_ratings:
             label = getattr(self.players[i[0]], "entity_name", None)
             player_label = f"Player {i[0]} ({label})" if label else f"Player {i[0]}"
@@ -633,7 +615,7 @@ class Population:
         keys = []
         if db.connected:
             for i in population:
-                if db.check_player_exists(i.id) == False:
+                if not db.check_player_exists(i.id):
                     entry = db.write("players", i.getDict())
                     keys.append(entry)
                 else:
@@ -698,7 +680,7 @@ class Population:
         else:
             self.head_to_head[key][2] += 1
 
-    def build_head_to_head_table(self) -> Table:
+    def build_head_to_head_table(self):
         """Build a rich Table showing W-D-L from the row player's perspective.
 
         Returns:
@@ -791,18 +773,6 @@ class Population:
 
     def inherit_cache(self, botID, parentID) -> None:
         self.players[botID].bot.cache = self.players[parentID].bot.cache
-
-    @staticmethod
-    def generate_random_weights(weights=None):
-        multipliers = np.random.random_sample([self.num_weights])
-        multipliers = self.tau * multipliers
-        multipliers = np.exp(multipliers)
-        if np.any(weights):
-            weights = weights * multipliers
-            weights = np.clip(weights, -1, 1)
-            return weights
-        else:
-            return np.clip(multipliers, -1, 1)
 
     @staticmethod
     def generate_fake_moves():

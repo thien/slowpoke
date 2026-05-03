@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional, Union
 
 import numpy as np
 
@@ -14,7 +14,6 @@ from core.constants import MLX_AVAILABLE, mx
 
 from agents.evaluator.genome import Genome
 from agents.evaluator.neat_network import NEATNetwork
-from core.constants import MLX_AVAILABLE, mx
 
 
 def showVector(v: np.ndarray, dec: int) -> None:

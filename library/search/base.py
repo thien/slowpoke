@@ -8,8 +8,6 @@ from typing import Any, Optional, Tuple
 import numpy as np
 
 from core.constants import (
-    MLX_AVAILABLE,
-    mx,
     MINIMAX_WIN,
     MINIMAX_LOSE,
     MINIMAX_DRAW,

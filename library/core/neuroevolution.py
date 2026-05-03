@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import json
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Tuple
 
 import numpy as np
 
@@ -18,7 +17,7 @@ class EvolutionMethod:
     and how their weights/genomes are serialised.
     """
 
-    def __init__(self, population: "Population") -> None:
+    def __init__(self, population) -> None:
         self.population = population
 
     def generate_bot(self, ply_depth: int, debug: bool) -> Any:

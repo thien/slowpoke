@@ -316,7 +316,6 @@ class TestEloIntegration(unittest.TestCase):
 
         # Elites should still have games_played > 0
         # Identify elites: they're surviving players from last gen
-        elo_threshold = 500  # any non-baseline player with Elo above baseline
         elite_found = False
         for pid in pop.current_population:
             if pop.baseline_entity and pid == pop.baseline_entity.id:

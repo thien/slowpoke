@@ -59,12 +59,12 @@ There is currently a variety of configured games that slowpoke will try to win. 
 ## Development
 
 ```bash
-# Format code
-uv run ruff format .
-
-# Lint code
-uv run ruff check .
+# Format with ruff (black-compatible), then lint
+ruff format .
+ruff check --fix --unsafe-fixes .
+# Run this before every commit
 
 # Run tests
-uv run pytest
+make test        # fast tests only
+make test-all    # all tests including slow
 ```

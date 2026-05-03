@@ -13,7 +13,6 @@ from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
-from core.constants import MLX_AVAILABLE, mx
 from search.base import MCTSBase
 
 
