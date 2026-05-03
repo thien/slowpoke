@@ -20,7 +20,7 @@ class Onix:
         self.enable_cache = False
         self.cache: Dict[Any, float] = {}
 
-        from decision.tmcts import TMCTS
+        from search.tmcts import TMCTS
 
         self.decision_function = TMCTS(ply_depth, self, debug=debug)
 

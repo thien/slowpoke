@@ -6,7 +6,7 @@ import numpy as np
 import time
 
 from core.checkers import CheckerBoard
-from decision.tmcts import TMCTS
+from search.tmcts import TMCTS
 from agents.evaluator.neural import NeuralNetwork
 
 

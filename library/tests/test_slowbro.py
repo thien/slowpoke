@@ -61,14 +61,14 @@ class TestSlowbroInit(unittest.TestCase):
 
     def test_default_decision_function_is_tmcts(self):
         """Default decision function should be serial TMCTS."""
-        from decision.tmcts import TMCTS
+        from search.tmcts import TMCTS
 
         bot = Slowbro(use_mlx=False)
         self.assertIsInstance(bot.decision_function, TMCTS)
 
     def test_parallel_decision_function(self):
         """When use_parallel=True, decision function should be ParallelTMCTS."""
-        from decision.parallel_tmcts import ParallelTMCTS
+        from search.parallel_tmcts import ParallelTMCTS
 
         bot = Slowbro(use_mlx=False, use_parallel=True, num_parallel=2)
         self.assertIsInstance(bot.decision_function, ParallelTMCTS)

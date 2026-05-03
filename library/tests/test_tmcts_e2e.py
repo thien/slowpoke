@@ -5,8 +5,8 @@ End-to-end tests comparing Random vs Greedy vs MCTS AI strategies.
 import unittest
 
 from core import checkers
-import decision.tmcts as tmcts
-import decision.mcts as mcts
+import search.tmcts as tmcts
+import search.mcts as mcts
 import numpy as np
 
 

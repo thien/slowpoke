@@ -91,7 +91,7 @@ class TestRandomTSTreeSearch(unittest.TestCase):
     def test_tree_search_win_at_terminal(self):
         """Terminal winning position should return minimax_win."""
         from unittest import mock
-        from decision.minimax import minimax_win
+        from search.minimax import minimax_win
 
         with mock.patch.object(checkers.CheckerBoard, "is_over", return_value=True):
             rts = random_ts.RandomTS(ply=0, evaluator=MockEvaluator())
@@ -103,7 +103,7 @@ class TestRandomTSTreeSearch(unittest.TestCase):
     def test_tree_search_loss_at_terminal(self):
         """Terminal losing position should return minimax_lose."""
         from unittest import mock
-        from decision.minimax import minimax_lose
+        from search.minimax import minimax_lose
 
         with mock.patch.object(checkers.CheckerBoard, "is_over", return_value=True):
             rts = random_ts.RandomTS(ply=0, evaluator=MockEvaluator())
@@ -115,7 +115,7 @@ class TestRandomTSTreeSearch(unittest.TestCase):
     def test_tree_search_draw_at_terminal(self):
         """Terminal draw should return minimax_draw."""
         from unittest import mock
-        from decision.minimax import minimax_draw
+        from search.minimax import minimax_draw
 
         with mock.patch.object(checkers.CheckerBoard, "is_over", return_value=True):
             rts = random_ts.RandomTS(ply=0, evaluator=MockEvaluator())

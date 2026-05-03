@@ -5,7 +5,7 @@ Tests for TMCTS batch evaluation and end-to-end AI comparisons.
 import unittest
 
 from core import checkers
-import decision.tmcts as tmcts
+import search.tmcts as tmcts
 import numpy as np
 
 

@@ -8,7 +8,7 @@ Measures two things:
 
 import time as time_module
 import numpy as np
-from decision.tmcts import TMCTS
+from search.tmcts import TMCTS
 from core.checkers import CheckerBoard
 
 Black = 0

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import decision.mcts as mcts
+import search.mcts as mcts
 from agents.bot import Bot
 
 

@@ -35,7 +35,7 @@ class TestOnixInit(unittest.TestCase):
 
     def test_decision_function_is_tmcts(self):
         """Decision function should be TMCTS."""
-        from decision.tmcts import TMCTS
+        from search.tmcts import TMCTS
 
         bot = Onix(ply_depth=2)
         self.assertIsInstance(bot.decision_function, TMCTS)

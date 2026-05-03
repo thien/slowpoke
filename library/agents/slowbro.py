@@ -65,13 +65,13 @@ class Slowbro:
 
         # Decision function — parallel or serial TMCTS
         if use_parallel:
-            from decision.parallel_tmcts import ParallelTMCTS
+            from search.parallel_tmcts import ParallelTMCTS
 
             self.decision_function = ParallelTMCTS(
                 ply_depth, self, num_parallel=num_parallel, debug=debug
             )
         else:
-            import decision.tmcts as tmcts
+            import search.tmcts as tmcts
 
             self.decision_function = tmcts.TMCTS(ply_depth, self, debug=debug)
 

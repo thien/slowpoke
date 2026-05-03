@@ -14,7 +14,7 @@ Opening position has 7 legal moves — enough to trigger K=5 narrowing.
 import time as time_module
 import numpy as np
 import math
-from decision.tmcts import TMCTS
+from search.tmcts import TMCTS
 from core.checkers import CheckerBoard
 
 Black = 0

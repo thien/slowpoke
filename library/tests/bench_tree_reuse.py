@@ -16,7 +16,7 @@ import time
 import random
 
 from core.checkers import CheckerBoard
-from decision.tmcts import TMCTS
+from search.tmcts import TMCTS
 
 
 class MockEvaluator:

@@ -2,7 +2,7 @@
 
 import unittest
 
-from decision.splash import Splash
+from search.splash import Splash
 from core import checkers
 
 

@@ -16,7 +16,7 @@ import argparse
 import statistics
 
 from core.checkers import CheckerBoard, Black
-from decision.tmcts import TMCTS
+from search.tmcts import TMCTS
 from agents.evaluator.neural import NeuralNetwork
 
 

@@ -6,8 +6,8 @@ import unittest
 import time
 
 from core import checkers
-from decision.parallel_tmcts import ParallelTMCTS, SharedBatchAccumulator
-from decision.tmcts import TMCTS
+from search.parallel_tmcts import ParallelTMCTS, SharedBatchAccumulator
+from search.tmcts import TMCTS
 import numpy as np
 
 Black, White, empty = 0, 1, -1

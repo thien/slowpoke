@@ -5,7 +5,7 @@ Tests for parallel MCTS integration with Population and Tournament.
 import unittest
 
 from core.population import Population
-from decision.parallel_tmcts import ParallelTMCTS
+from search.parallel_tmcts import ParallelTMCTS
 from agents.slowbro import Slowbro
 
 

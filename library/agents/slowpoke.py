@@ -6,8 +6,8 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-import decision.minimax as minimax
-import decision.tmcts as tmcts
+import search.minimax as minimax
+import search.tmcts as tmcts
 from core.constants import MINIMAX_WIN, MINIMAX_LOSE, MINIMAX_DRAW, MINIMAX_EMPTY
 
 minimax_win, minimax_lose, minimax_draw, minimax_empty = MINIMAX_WIN, MINIMAX_LOSE, MINIMAX_DRAW, MINIMAX_EMPTY
