@@ -191,6 +191,7 @@ class Generator:
                 # i as black, j as white
                 gamePool.append(
                     {
+                        "idx": self.gameIDCounter,
                         "game_id": self.gameIDCounter,
                         "black": self.population.players[pid_i],
                         "white": self.population.players[pid_j],
@@ -202,6 +203,7 @@ class Generator:
                 # j as black, i as white
                 gamePool.append(
                     {
+                        "idx": self.gameIDCounter,
                         "game_id": self.gameIDCounter,
                         "black": self.population.players[pid_j],
                         "white": self.population.players[pid_i],
@@ -214,26 +216,31 @@ class Generator:
         self.log(f"Total games scheduled: {len(gamePool)}")
 
         # run game simulations.
-        results = []
-        # close number of processes when map is done.
+        results = [None] * len(gamePool)
         threadCount = self.processors
         if self.processors > len(gamePool):
             threadCount = len(gamePool)
         self.log(f"Running games with {threadCount} parallel processes...")
+        completed = 0
         with multiprocessing.Pool(processes=threadCount) as pool:
-            chunksize = max(1, len(gamePool) // threadCount)
-            results = pool.map(self.game_worker, gamePool, chunksize=chunksize)
+            for result in pool.imap_unordered(self.game_worker, gamePool, chunksize=16):
+                results[result["idx"]] = result
+                completed += 1
+                self.log(
+                    f"Game {completed}/{len(gamePool)}: "
+                    f"P{result['black']} vs P{result['white']} → "
+                    f"{'Black' if result['game']['Winner'] == Black else 'White' if result['game']['Winner'] == White else 'Draw'}"
+                )
             pool.close()
             pool.join()
         self.log("All games completed")
 
-        # when the pool is done with processing, process the results.
+        # process results (cache merging)
         self.log("Processing game results...")
         for i in range(len(results)):
             self.population.allocate_points(
                 results[i]["game"], results[i]["black"], results[i]["white"]
             )
-            # merge winning players move caches
             if results[i]["game"]["Winner"] == Black:
                 bCache = self.population.players[results[i]["black"]].bot.cache
                 self.population.players[
@@ -244,7 +251,6 @@ class Generator:
                 self.population.players[
                     results[i]["white"]
                 ].bot.cache = self.merge_dicts(wCache, results[i]["white_cache"])
-            # nullify the cache since its not needed anymore
             results[i]["black_cache"] = None
             results[i]["white_cache"] = None
         self.log("Results processed. Updating player rankings...")
@@ -449,6 +455,7 @@ class Generator:
             i["black"].bot.cache = {}
             i["white"].bot.cache = {}
         data = {
+            "idx": i.get("idx", 0),
             "game": results,
             "black": i["black"].id,
             "white": i["white"].id,

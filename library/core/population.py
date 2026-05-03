@@ -115,7 +115,11 @@ class Population:
                 self.current_population.append(self.onixEntity.id)
 
         nn = self.players[0].bot.nn
-        self.num_weights = nn.len_coefficients if hasattr(nn, 'len_coefficients') and nn.len_coefficients > 0 else 100
+        self.num_weights = (
+            nn.len_coefficients
+            if hasattr(nn, "len_coefficients") and nn.len_coefficients > 0
+            else 100
+        )
         self.tau = 1 / math.sqrt(2 * math.sqrt(self.num_weights))
 
         # if safe mutations are enabled, we use it.
