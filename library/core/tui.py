@@ -76,9 +76,9 @@ class TournamentDisplay:
         info.add_column("Metric", style="cyan")
         info.add_column("Value", style="white")
         for metric, value in self.generator.status_info():
-            ms = str(metric) if metric else ""
-            vs = str(value) if value else ""
-            if not ms.strip() and not vs.strip():
+            ms = str(metric) if metric is not None else ""
+            vs = str(value) if value is not None else ""
+            if not ms.strip() and not vs.strip() and ms != vs:
                 continue
             if ms.startswith("Player") or ms == "Previous Scoreboard":
                 continue
