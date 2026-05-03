@@ -83,7 +83,7 @@ class Generator:
         # current generation game counts
         self.GamesFinished = 0
         self.GamesQueued = 0
-        self.CurrentGeneration = 0
+        self.currentGeneration = 0
         # champions
         self.AreChampionsPlaying = False
         self.LastChampionScore = 0
