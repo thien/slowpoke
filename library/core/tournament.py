@@ -554,10 +554,12 @@ class Generator:
         return messsages
 
     def display_status_info(self, force_display: bool = False) -> None:
-        """Log status info to file. Display rich panels to console."""
+        """Log status info to file. Display rich panels to console (overwrites previous)."""
         self.log_status_info()
 
         console = Console()
+        # Clear terminal before re-rendering so we don't flood stdout
+        console.clear()
         layout = Layout()
         layout.split_column(
             Layout(name="info"),
