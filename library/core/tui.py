@@ -63,8 +63,8 @@ class TournamentDisplay:
         """Build a 3-panel layout: stats left, matrix+standings right."""
         layout = Layout()
         layout.split_row(
-            Layout(name="left-stats", ratio=1),
-            Layout(name="right-panels", ratio=2),
+            Layout(name="left-stats", ratio=2),
+            Layout(name="right-panels", ratio=3),
         )
         layout["right-panels"].split_column(
             Layout(name="matrix"),
@@ -72,8 +72,8 @@ class TournamentDisplay:
         )
 
         # ── Left: Info metrics ──
-        info = Table.grid(padding=(0, 2))
-        info.add_column("Metric", style="cyan", no_wrap=True)
+        info = Table.grid(padding=(0, 1))
+        info.add_column("Metric", style="cyan")
         info.add_column("Value", style="white")
         for metric, value in self.generator.status_info():
             ms = str(metric) if metric else ""
