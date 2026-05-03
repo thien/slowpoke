@@ -27,7 +27,7 @@ Normally, the classes have tests within their files.
 
 class PopulationTestCase(unittest.TestCase):
     def setUp(self):
-        self.population = population.Population(15, 4)
+        self.population = population.Population(15, 4, use_neat=False)
 
     def test_champSaveLocations(self):
         # checks champion save location
@@ -74,7 +74,7 @@ class PopulationTestCase(unittest.TestCase):
 
 
 def Testing():
-    p = population.Population(15, 1)
+    p = population.Population(15, 1, use_neat=False)
     p.safe_mutations = True
 
     fakeMoves, coefs = p.generate_fake_moves()
@@ -99,7 +99,7 @@ def Testing():
 
 
 def testCrossover():
-    p = population.Population(15, 1)
+    p = population.Population(15, 1, use_neat=False)
     p.safe_mutations = True
 
     fakeMoves, coefs = p.generate_fake_moves()

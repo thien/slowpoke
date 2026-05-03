@@ -152,14 +152,14 @@ class TestEloIntegration(unittest.TestCase):
         """Population should have an elo_system."""
         from core.population import Population
 
-        pop = Population(num_players=5, ply_depth=1)
+        pop = Population(num_players=5, ply_depth=1, use_neat=False)
         self.assertIsNotNone(pop.elo_system)
 
     def test_print_population_includes_elo(self):
         """print_population_by_points should include Elo ratings."""
         from core.population import Population
 
-        pop = Population(num_players=5, ply_depth=1)
+        pop = Population(num_players=5, ply_depth=1, use_neat=False)
 
         # Set known Elo ratings
         for i, pid in enumerate(pop.current_population):
@@ -176,7 +176,7 @@ class TestEloIntegration(unittest.TestCase):
         """print_population_by_elo should include points."""
         from core.population import Population
 
-        pop = Population(num_players=5, ply_depth=1)
+        pop = Population(num_players=5, ply_depth=1, use_neat=False)
 
         # Set known Elo ratings
         for i, pid in enumerate(pop.current_population):
@@ -215,7 +215,7 @@ class TestEloIntegration(unittest.TestCase):
         """Offspring should inherit mean Elo from parents for crossover children."""
         from core.population import Population
 
-        pop = Population(num_players=10, ply_depth=1)
+        pop = Population(num_players=10, ply_depth=1, use_neat=False)
 
         # Set known Elo ratings for first two players
         pop.players[pop.current_population[0]].elo = 1400
@@ -238,7 +238,7 @@ class TestEloIntegration(unittest.TestCase):
         """allocate_points should update Elo ratings after games."""
         from core.population import Population
 
-        pop = Population(num_players=3, ply_depth=1)
+        pop = Population(num_players=3, ply_depth=1, use_neat=False)
 
         # Set known Elo ratings
         black_id = pop.current_population[0]
@@ -264,7 +264,7 @@ class TestEloIntegration(unittest.TestCase):
         """allocate_points should increment games_played for both players."""
         from core.population import Population
 
-        pop = Population(num_players=3, ply_depth=1)
+        pop = Population(num_players=3, ply_depth=1, use_neat=False)
 
         black_id = pop.current_population[0]
         white_id = pop.current_population[1]
@@ -284,7 +284,7 @@ class TestEloIntegration(unittest.TestCase):
         """Offspring should have games_played = 0 (never played)."""
         from core.population import Population
 
-        pop = Population(num_players=6, ply_depth=1)
+        pop = Population(num_players=6, ply_depth=1, use_neat=False)
 
         # Generate next population
         pop.generate_next_population()
@@ -305,7 +305,7 @@ class TestEloIntegration(unittest.TestCase):
         """Elites should preserve games_played across generations."""
         from core.population import Population
 
-        pop = Population(num_players=10, ply_depth=1)
+        pop = Population(num_players=10, ply_depth=1, use_neat=False)
 
         # Set games_played for all players
         for pid in pop.current_population:
@@ -329,7 +329,7 @@ class TestEloIntegration(unittest.TestCase):
         """printEloStats should return Elo statistics."""
         from core.population import Population
 
-        pop = Population(num_players=5, ply_depth=1)
+        pop = Population(num_players=5, ply_depth=1, use_neat=False)
 
         # Set known Elo ratings (excluding baseline)
         pop.players[pop.current_population[0]].elo = 1400

@@ -76,7 +76,7 @@ class Population:
         include_baseline: bool = True,
         baseline_elo: float = 500.0,
         include_onix: bool = False,
-        use_neat: bool = False,
+        use_neat: bool = True,
     ) -> None:
         self.is_debug = is_debug
 
@@ -114,7 +114,8 @@ class Population:
             if self.onixEntity.id not in self.current_population:
                 self.current_population.append(self.onixEntity.id)
 
-        self.num_weights = self.players[0].bot.nn.len_coefficients
+        nn = self.players[0].bot.nn
+        self.num_weights = nn.len_coefficients if hasattr(nn, 'len_coefficients') and nn.len_coefficients > 0 else 100
         self.tau = 1 / math.sqrt(2 * math.sqrt(self.num_weights))
 
         # if safe mutations are enabled, we use it.
