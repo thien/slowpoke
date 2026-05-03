@@ -581,8 +581,8 @@ class Generator:
         info.add_column("Metric", style="cyan", no_wrap=True)
         info.add_column("Value", style="white")
         for metric, value in self.status_info():
-            metric_s = str(metric) if metric else ""
-            value_s = str(value) if value else ""
+            metric_s = str(metric) if metric is not None else ""
+            value_s = str(value) if value is not None else ""
             if metric_s.strip() == "" and value_s.strip() == "":
                 continue
             if metric_s.startswith("Player") or metric_s == "Previous Scoreboard":
