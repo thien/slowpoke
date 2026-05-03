@@ -111,8 +111,9 @@ class Statistics:
             for p in range(len(lb)):
                 lb[p] = lb[p].split("\t")
                 lb[p][0] = lb[p][0].replace("Player ", "")
-                # Strip (baseline) suffix if present
+                # Strip suffixes that aren't player IDs
                 lb[p][0] = lb[p][0].replace(" (baseline)", "")
+                lb[p][0] = lb[p][0].replace(" (Onix)", "")
             # add results into the dict.
             lbEntry["champion"] = lb[0][0]
             lbEntry["scores"] = lb
