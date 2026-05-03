@@ -21,10 +21,10 @@ class TestAgentInit(unittest.TestCase):
         self.assertIs(agent.bot, bot)
 
     def test_agent_default_elo(self):
-        """Default Elo should be 1200."""
+        """Default Elo should be 100."""
         bot = Magikarp()
         agent = Agent(bot)
-        self.assertEqual(agent.elo, 1200)
+        self.assertEqual(agent.elo, 100)
 
     def test_agent_custom_elo(self):
         """Custom Elo should be respected."""

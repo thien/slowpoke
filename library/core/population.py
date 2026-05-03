@@ -164,7 +164,7 @@ class Population:
         from agents.onix import Onix
 
         onix_bot = Onix(ply_depth=self.ply_depth, debug=self.is_debug)
-        ent = agent.Agent(onix_bot, initial_elo=900.0)
+        ent = agent.Agent(onix_bot, initial_elo=600.0)
         ent.set_id(ONIX_ID)
         ent.entity_name = "Onix"
         ent.origin = [[0, 0, 0]]
@@ -293,7 +293,7 @@ class Population:
 
         for i in elites:
             self.players[i].points = 0
-            self.players[i].games_played = 0
+            # games_played is preserved — K-factor decays naturally (32→24→10)
 
         offsprings = []
         for i in range(0, 2):

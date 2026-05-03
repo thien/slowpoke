@@ -26,8 +26,8 @@ class Agent:
     ) -> None:
         self.bot = bot
         self.elo = (
-            initial_elo if initial_elo is not None else 1200
-        )  # Will be updated by Population.allocate_points()
+            initial_elo if initial_elo is not None else 100
+        )  # Updated by Population.allocate_points()
         self.points = 0
         self.champ_range = 0
         self.champ_score = 0
