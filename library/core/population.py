@@ -747,6 +747,38 @@ class Population:
 
         return t
 
+    def build_matrix_table(self):
+        """Build a compact per-player win matrix.
+
+        Cell shows the number of games the row player won against
+        the column player (out of 2 games: one each colour).
+        """
+        from rich.table import Table
+
+        pids = [pid for pid in self.current_population if pid not in (ONIX_ID, -1)]
+        if not pids:
+            return None
+
+        t = Table(title="Win Matrix (row vs col)")
+        t.add_column("", style="cyan", no_wrap=True)
+        for pid in pids:
+            label = getattr(self.players[pid], "entity_name", None) or f"P{pid}"
+            t.add_column(label, justify="center", max_width=3, min_width=3)
+
+        for a in pids:
+            label = getattr(self.players[a], "entity_name", None) or f"P{a}"
+            row = [label]
+            for b in pids:
+                if a == b:
+                    row.append("—")
+                else:
+                    rec = self.head_to_head.get((a, b), [0, 0, 0])
+                    w = rec[0]
+                    row.append(str(w) if w else ".")
+            t.add_row(*row)
+
+        return t
+
     def add_champion(self) -> None:
         for pid in self.current_population:
             if pid not in (ONIX_ID, -1):

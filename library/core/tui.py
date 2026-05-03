@@ -60,36 +60,40 @@ class TournamentDisplay:
             print(f"[TUI error] {e}", file=sys.stderr)
 
     def _build_layout(self) -> Layout:
-        """Build the rich Layout with info and standings panels."""
+        """Build a 3-panel layout: stats left, matrix+standings right."""
         layout = Layout()
-        layout.split_column(
-            Layout(name="info"),
+        layout.split_row(
+            Layout(name="left-stats", ratio=1),
+            Layout(name="right-panels", ratio=2),
+        )
+        layout["right-panels"].split_column(
+            Layout(name="matrix"),
             Layout(name="standings"),
         )
 
-        info_left = Table.grid(padding=(0, 2))
-        info_right = Table.grid(padding=(0, 2))
-        info_left.add_column("Metric", style="cyan", no_wrap=True)
-        info_left.add_column("Value", style="white")
-        info_right.add_column("Metric", style="cyan", no_wrap=True)
-        info_right.add_column("Value", style="white")
-
-        items = self.generator.status_info()
-        mid = len(items) // 2
-        for idx, (metric, value) in enumerate(items):
+        # ── Left: Info metrics ──
+        info = Table.grid(padding=(0, 2))
+        info.add_column("Metric", style="cyan", no_wrap=True)
+        info.add_column("Value", style="white")
+        for metric, value in self.generator.status_info():
             ms = str(metric) if metric else ""
             vs = str(value) if value else ""
             if not ms.strip() and not vs.strip():
                 continue
             if ms.startswith("Player") or ms == "Previous Scoreboard":
                 continue
-            (info_left if idx < mid else info_right).add_row(ms, vs)
-
-        info_panel = Layout()
-        info_panel.split_row(Panel(info_left), Panel(info_right))
+            info.add_row(ms, vs)
         g = self.generator.currentGeneration
-        layout["info"].update(Panel(info_panel, title=f"Generation {g}"))
+        layout["left-stats"].update(Panel(info, title=f"Generation {g}"))
 
+        # ── Right top: Win matrix ──
+        matrix = self.generator.population.build_matrix_table()
+        if matrix:
+            layout["matrix"].update(Panel(matrix, title="Win Matrix"))
+        else:
+            layout["matrix"].update(Panel("Waiting for games..."))
+
+        # ── Right bottom: Standings ──
         standings = self.generator.population.build_standings_table()
         if standings:
             layout["standings"].update(Panel(standings, title="Standings"))

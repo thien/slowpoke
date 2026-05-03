@@ -225,7 +225,6 @@ class Generator:
         self.log(f"Running games with {threadCount} parallel processes...")
         completed = 0
         total_games = len(gamePool)
-        tui_update_interval = max(1, total_games // 50)
         with multiprocessing.Pool(processes=threadCount) as pool:
             for result in pool.imap_unordered(self.game_worker, gamePool, chunksize=16):
                 results[result["idx"]] = result
@@ -235,7 +234,7 @@ class Generator:
                     f"P{result['black']} vs P{result['white']} → "
                     f"{'Black' if result['game']['Winner'] == Black else 'White' if result['game']['Winner'] == White else 'Draw'}"
                 )
-                if self.tui and completed % tui_update_interval == 0:
+                if self.tui:
                     self.tui.push_update()
             pool.close()
             pool.join()
