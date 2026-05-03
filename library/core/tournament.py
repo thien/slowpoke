@@ -237,14 +237,14 @@ class Generator:
             # merge winning players move caches
             if results[i]["game"]["Winner"] == Black:
                 bCache = self.population.players[results[i]["black"]].bot.cache
-                self.population.players[results[i]["black"]].bot.cache = (
-                    self.merge_dicts(bCache, results[i]["black_cache"])
-                )
+                self.population.players[
+                    results[i]["black"]
+                ].bot.cache = self.merge_dicts(bCache, results[i]["black_cache"])
             elif results[i]["game"]["Winner"] == White:
                 wCache = self.population.players[results[i]["white"]].bot.cache
-                self.population.players[results[i]["white"]].bot.cache = (
-                    self.merge_dicts(wCache, results[i]["white_cache"])
-                )
+                self.population.players[
+                    results[i]["white"]
+                ].bot.cache = self.merge_dicts(wCache, results[i]["white_cache"])
             # nullify the cache since its not needed anymore
             results[i]["black_cache"] = None
             results[i]["white_cache"] = None
@@ -417,9 +417,9 @@ class Generator:
             self.cummulativeScore += newChampPoints
             # store points.
             self.progress.append(newChampPoints)
-            self.population.players[self.population.champions[-1]].champ_score = (
-                newChampPoints
-            )
+            self.population.players[
+                self.population.champions[-1]
+            ].champ_score = newChampPoints
             self.population.players[self.population.champions[-1]].champ_range = results
         else:
             # theres only one champion, don't play.

@@ -382,9 +382,9 @@ class Population:
         # Reset games_played for all offspring (they start fresh)
         for offspring_id in offsprings:
             self.players[offspring_id].games_played = 0
-            self.players[offspring_id].points = (
-                0  # Also reset points for new generation
-            )
+            self.players[
+                offspring_id
+            ].points = 0  # Also reset points for new generation
 
         newPopulation = offsprings + elites
         # Preserve Onix across generations (keep its Elo, never reset)

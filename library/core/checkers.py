@@ -656,7 +656,9 @@ class CheckerBoard:
                         (
                             bits[1][0]
                             if len(bits) > 1
-                            else bits[0][0] + 4 if move_abs & 0x11 else bits[0][0] + 5
+                            else bits[0][0] + 4
+                            if move_abs & 0x11
+                            else bits[0][0] + 5
                         ),
                     )
                     src = 1 + src_bit - src_bit // 9
