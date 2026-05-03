@@ -10,12 +10,17 @@ import core.mongo as mongo
 
 # import libraries
 import datetime
-import numpy as np
-import random
-import multiprocessing
-import os
 import json
 import logging
+import multiprocessing
+import os
+import random
+
+import numpy as np
+from rich.console import Console
+from rich.layout import Layout
+from rich.panel import Panel
+from rich.table import Table
 
 # ignore runtime warnings
 import warnings
@@ -41,7 +46,6 @@ def option_defaults(options):
         "Population": 15,
         "printStatus": True,
         "connectMongo": False,
-        "NumberOfGamesPerPlayer": 5,
         "resultsLocation": os.path.join("..", "results"),
         "use_parallel_mcts": None,  # None = auto (True when ply_depth > 1)
         "num_parallel": 4,  # Number of parallel threads for MCTS
@@ -90,7 +94,6 @@ class Generator:
         self.RecentChampionScores = 0
         self.playPreviousChampCount = 5
         self.champGamesRoundsCount = 6  # should always be even and at least 2.
-        self.NumberOfGamesPerPlayer = options["NumberOfGamesPerPlayer"]
         self.progress = []
 
         self.previousGenerationRankings = None
@@ -173,39 +176,40 @@ class Generator:
 
     def Tournament(self) -> None:
         """
-        Tournament; this determines the best players out of them all.
-        returns the players in order of how good they are.
+        Tournament; full round-robin where every pair plays both colours.
+        Returns the players in order of how good they are.
         """
         self.log("=" * 60)
         self.log("STARTING TOURNAMENT")
         self.log(f"Generation: {self.currentGeneration}")
         self.log(f"Population size: {len(self.population.current_population)} players")
-        self.log(f"Games per player: {self.NumberOfGamesPerPlayer}")
+
+        # Full round-robin: each pair plays each colour exactly once
         gamePool = []
-        # initiate game results round robin style (where each player plays as b and w)
-        self.log("Scheduling games...")
-        for player_id in self.population.current_population:
-            for x in range(self.NumberOfGamesPerPlayer):
-                oppoment_id = player_id
-                while oppoment_id == player_id:
-                    oppoment_id = random.choice(self.population.current_population)
-                # make sure they're not playing themselves
-                if player_id != oppoment_id:
-                    # generate ID for the game
-                    game_id = self.gameIDCounter
-                    self.gameIDCounter += 1
-                    # increment game count.
-                    self.GamesQueued += 1
-                    # create game variables
-                    game = {
-                        "game_id": game_id,
-                        "black": self.population.players[player_id],
-                        "white": self.population.players[oppoment_id],
-                        "dbURI": False,
-                        "debugInfo": False,
-                    }
-                    # add it to the list of games that need to be played.
-                    gamePool.append(game)
+        players = self.population.current_population[:]
+        self.log("Scheduling full round-robin games...")
+        for i in range(len(players)):
+            for j in range(i + 1, len(players)):
+                pid_i, pid_j = players[i], players[j]
+                # i as black, j as white
+                gamePool.append({
+                    "game_id": self.gameIDCounter,
+                    "black": self.population.players[pid_i],
+                    "white": self.population.players[pid_j],
+                    "dbURI": False,
+                    "debugInfo": False,
+                })
+                self.gameIDCounter += 1
+                # j as black, i as white
+                gamePool.append({
+                    "game_id": self.gameIDCounter,
+                    "black": self.population.players[pid_j],
+                    "white": self.population.players[pid_i],
+                    "dbURI": False,
+                    "debugInfo": False,
+                })
+                self.gameIDCounter += 1
+        self.GamesQueued = len(gamePool)
         self.log(f"Total games scheduled: {len(gamePool)}")
 
         # run game simulations.
@@ -535,14 +539,35 @@ class Generator:
         return messsages
 
     def display_status_info(self, force_display: bool = False) -> None:
-        """Log status info to file. Always display to console."""
+        """Log status info to file. Display rich panel to console."""
         self.log_status_info()
-        # Always print to console
-        print("SLOWPOKE - Generation", self.currentGeneration)
-        for i in self.status_info():
-            if i[0] not in [" ", "Previous Scoreboard", "Debug Mode:"]:
-                print("{0:30} {1}".format(str(i[0]), str(i[1])))
-        print("----------------------")
+
+        console = Console()
+        layout = Layout()
+        layout.split_column(
+            Layout(name="info", size=35),
+            Layout(name="matrix"),
+        )
+
+        # ── Info panel ──
+        info = Table.grid(padding=(1, 2))
+        info.add_column("Metric", style="cyan", no_wrap=True)
+        info.add_column("Value", style="white")
+        for metric, value in self.status_info():
+            metric_s = str(metric) if metric else ""
+            value_s = str(value) if value else ""
+            if metric_s and metric_s.strip():
+                info.add_row(metric_s, value_s)
+        layout["info"].update(
+            Panel(info, title=f"Generation {self.currentGeneration}")
+        )
+
+        # ── Head-to-head matrix ──
+        matrix = self.population.build_head_to_head_table()
+        if matrix:
+            layout["matrix"].update(Panel(matrix, title="Head-to-Head Results"))
+
+        console.print(layout)
 
     @staticmethod
     def clean_date(timestamp, unixDefault=False):

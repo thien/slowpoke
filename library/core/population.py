@@ -118,10 +118,11 @@ class Population:
 
         # if safe mutations are enabled, we use it.
         self.safe_mutations = True
-        # debug flag
         self.debug = False
-        # flag to handle crossover method; if 2 do heuristic method
         self.crossoverMethod = 2
+
+        # Head-to-head tracking: {(black_id, white_id): [black_wins, white_wins, draws]}
+        self.head_to_head: Dict[Tuple[int, int], List[int]] = {}
 
     """
   Generates an individual player. This is only called in the
@@ -736,6 +737,67 @@ class Population:
             self.players[white].elo = self.elo_system.update_rating(
                 white_rating, black_rating, white_score, white_games
             )
+
+        # Track head-to-head
+        self.record_match(black, white, results["Winner"])
+
+    def record_match(self, black: int, white: int, winner: int) -> None:
+        """Record a game result for head-to-head tracking.
+
+        Args:
+            black: Black player ID.
+            white: White player ID.
+            winner: Winner ID (-1 for draw).
+        """
+        # Key is (black, white) from colour perspective
+        key = (black, white)
+        if key not in self.head_to_head:
+            self.head_to_head[key] = [0, 0, 0]  # black_wins, white_wins, draws
+        if winner == black:
+            self.head_to_head[key][0] += 1
+        elif winner == white:
+            self.head_to_head[key][1] += 1
+        else:
+            self.head_to_head[key][2] += 1
+
+    def build_head_to_head_table(self) -> Table:
+        """Build a rich Table showing W-D-L from the row player's perspective.
+
+        Returns:
+            A rich.Table instance, or None if rich is not available.
+        """
+        from rich.table import Table
+
+        pids = [pid for pid in self.current_population if pid not in (ONIX_ID, -1)]
+        if not pids:
+            return None
+
+        t = Table(title="Head-to-Head W-D-L (row player perspective)")
+        t.add_column("Player", style="cyan")
+        for pid in pids:
+            t.add_column(f"P{pid}", justify="center", max_width=9)
+        t.add_column("W/L/D", justify="center")
+        t.add_column("Score", justify="center")
+
+        for a in pids:
+            row = [f"P{a}"]
+            total_w = total_l = total_d = 0
+            for b in pids:
+                if a == b:
+                    row.append("—")
+                else:
+                    rec = self.head_to_head.get((a, b), [0, 0, 0])
+                    w, l, d = rec[0], rec[1], rec[2]
+                    total_w += w
+                    total_l += l
+                    total_d += d
+                    row.append(f"{w}-{l}-{d}")
+            total_g = total_w + total_l + total_d
+            row.append(f"{total_w}-{total_l}-{total_d}" if total_g else "—")
+            row.append(f"{total_w / total_g:.3f}" if total_g else "—")
+            t.add_row(*row)
+
+        return t
 
     def add_champion(self) -> None:
         for pid in self.current_population:
