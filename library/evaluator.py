@@ -49,6 +49,9 @@ class Evaluate:
     def load_champions(self, extensions: bool = True) -> list:
         champsPath = os.path.join(self.directory, self.champFolderName)
         print("Loading Agents.. ", end="")
+        if not os.path.isdir(champsPath):
+            print(f"No champions directory at {champsPath}")
+            return []
         files = os.listdir(champsPath)
         items = sorted([int(x.split(".json")[0]) for x in files])
         # get the id of the best agent and the worst.

@@ -1,4 +1,8 @@
-"""Textual TUI for live tournament dashboard."""
+"""Textual TUI for live tournament dashboard.
+
+Architecture: Textual runs in a background thread; the tournament runs
+in the main thread (required by ``multiprocessing.Pool``).
+"""
 
 from __future__ import annotations
 
@@ -15,8 +19,10 @@ from textual.widgets import DataTable, Footer, Header, Label, Static
 class TournamentApp(App):
     """Textual app showing live tournament progress.
 
-    Runs the tournament in a background thread and updates the display
-    after each game via ``call_from_thread``.
+    Call ``run_and_wait()`` to start the TUI in a background thread
+    and block until the app is mounted and ready. Then run the
+    tournament in the main thread, calling ``push_*`` methods
+    via ``call_from_thread``.
     """
 
     CSS = """
@@ -48,7 +54,8 @@ class TournamentApp(App):
 
     def __init__(self, generator: Any) -> None:
         self.generator = generator
-        self._ready = threading.Event()
+        self._tui_ready = threading.Event()
+        self._thread: Optional[threading.Thread] = None
         super().__init__()
 
     def compose(self) -> ComposeResult:
@@ -62,22 +69,30 @@ class TournamentApp(App):
         yield Label(id="game-progress")
         yield Footer()
 
+    # ── Lifecycle ──
+
     def on_mount(self) -> None:
-        """Start the tournament in a background thread."""
-        self._ready.set()
-        thread = threading.Thread(target=self._run_tournament, daemon=True)
-        thread.start()
+        """Signal that the app is ready to receive updates."""
+        self._tui_ready.set()
 
-    def _run_tournament(self) -> None:
-        """Run generations loop and exit app when done."""
-        try:
-            self.generator.run_generations()
-        finally:
-            self.call_from_thread(self.exit)
+    def run_and_wait(self) -> None:
+        """Start the TUI in a background thread and block until mounted.
 
-    # ── Public API called from tournament thread ──
-    # NOTE: names intentionally do NOT start with "on_" because Textual
-    # intercepts on_* methods as event handlers.
+        After this returns, the main thread may run the tournament and
+        push updates via ``call_from_thread``.
+        """
+        self._thread = threading.Thread(target=self.run, daemon=False)
+        self._thread.start()
+        self._tui_ready.wait()
+
+    def join(self) -> None:
+        """Wait for the TUI thread to exit."""
+        if self._thread is not None:
+            self._thread.join()
+
+    # ── Public API called from main thread via call_from_thread ──
+    # NOTE: names do NOT start with "on_" because Textual intercepts
+    # on_* methods as event handlers.
 
     def push_game_completed(
         self,
@@ -86,10 +101,7 @@ class TournamentApp(App):
         game_idx: int,
         total_games: int,
     ) -> None:
-        """Update the display after a game finishes.
-
-        Called from the tournament thread via ``call_from_thread``.
-        """
+        """Update the display after a game finishes."""
         self._update_info(gen, total_gens)
         self._update_progress(game_idx, total_games)
         self._update_standings()
@@ -100,8 +112,9 @@ class TournamentApp(App):
         self._update_standings()
         self._update_progress(0, 0)
 
+    # ── Internal helpers ──
+
     def _update_info(self, gen: int, total_gens: int) -> None:
-        """Refresh the two-column info panel from generator.status_info()."""
         left_lines: List[str] = []
         right_lines: List[str] = []
         mid = len(self.generator.status_info()) // 2
@@ -120,23 +133,18 @@ class TournamentApp(App):
         self.query_one("#time-info", Static).update("\n".join(right_lines))
 
     def _update_standings(self) -> None:
-        """Rebuild the standings DataTable from population data."""
         dt = self.query_one("#standings", DataTable)
         dt.clear()
         dt.add_columns("Player", "Elo", "Pts", "W", "D", "L", "Score")
-
         table = self.generator.population.build_standings_table()
         if table is None:
             return
-
-        # Extract rows from the rich Table
         for row in table.rows:
             cells = [c for c in row.cells]
             if len(cells) >= 7:
                 dt.add_row(*[str(c) for c in cells[:7]])
 
     def _update_progress(self, game_idx: int, total_games: int) -> None:
-        """Update the game progress label."""
         label = self.query_one("#game-progress", Label)
         if total_games > 0:
             pct = int(game_idx / total_games * 20)

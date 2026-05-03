@@ -103,26 +103,29 @@ def train() -> None:
             from core.tui import TournamentApp
 
             app = TournamentApp(t)
-            app.run()
+            app.run_and_wait()       # starts TUI in background thread
+            t.run_generations()      # runs tournament in main thread
+            app.call_from_thread(app.exit)
+            app.join()
         else:
             t.run_generations()
         # create statistics
         stats = statistics.Statistics(t.folderName)
-        stats.loadStatisticsFile()
-        stats.saveCharts()
+        stats.load_statistics_file()
+        stats.save_charts()
         # stats.averageNumMovesPerGeneration()
         # stats.getLearningRate()
         # stats.timeStatsPerGeneration()
 
         # evaluate performance
         su = evaluator.Evaluate(t.folderName, options["ply_depth"])
-        su.loadChampions()
-        games = su.createGames()
+        su.load_champions()
+        games = su.create_games()
         su.evaluate(games)
 
         # create statistics of Gold Master
-        stats.loadGMFile()
-        stats.analyseGM()
+        stats.load_gm_file()
+        stats.analyse_gm()
         # print that we're done.
         print("DONE!")
     else:
