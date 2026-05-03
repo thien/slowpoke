@@ -16,6 +16,7 @@ import numpy as np
 import agents.agent as agent
 import agents.slowbro as sb
 import core.mongo as mongo
+import core.neuroevolution as evo
 import core.storage as storage
 from agents.evaluator.neural import NeuralNetwork
 
@@ -78,6 +79,7 @@ class Population:
         include_baseline: bool = True,
         baseline_elo: float = 500.0,
         include_onix: bool = False,
+        use_neat: bool = False,
     ) -> None:
         self.is_debug = is_debug
 
@@ -97,6 +99,10 @@ class Population:
         else:
             self.use_parallel_mcts = use_parallel_mcts
         self.parallel_threads = num_parallel
+        self.use_neat = use_neat
+        self.evolution = (
+            evo.NEATEvolution(self) if use_neat else evo.StandardGA(self)
+        )
 
         self.current_population = self.generate_players(self.count)
 
@@ -130,14 +136,7 @@ class Population:
   """
 
     def generate_player(self) -> Agent:
-        # Slowbro handles [32,40,10,1] NN natively, with optional parallel TMCTS
-        bot = sb.Slowbro(
-            ply_depth=self.ply_depth,
-            use_mlx=True,
-            use_parallel=self.use_parallel_mcts,
-            num_parallel=self.parallel_threads,
-            debug=self.is_debug,
-        )
+        bot = self.evolution.generate_bot(self.ply_depth, self.is_debug)
         human = agent.Agent(bot, initial_elo=self.baseline_elo)
         # generate ID
         human.set_id(self.player_counter)
@@ -366,7 +365,7 @@ class Population:
 
         # now that we have the mutations, load them to each agent.
         for mutation in mutations:
-            self.players[mutation[0]].bot.nn.load_coefficients(mutation[1])
+            self.evolution.load_mutation_result(*mutation)
 
         for i in range(0, 2):
             parent_a_ID, parent_b_ID = eligible[i], eligible[i + 1]
@@ -458,82 +457,25 @@ class Population:
   """
 
     def crossover(self, cpu1, cpu2, child1, child2) -> None:
-        """
-        Basic Crossover Algorithm for the GA.
-        """
+        """Crossover two parents into two children using current evolution strategy."""
         if self.debug:
             print(
-                "Implementing Crossover for IDs " + str(child1) + "," + str(child2),
+                "Implementing Crossover for IDS " + str(child1) + "," + str(child2),
                 end=".. ",
             )
-        mother = self.get_weights(cpu1)
-        father = self.get_weights(cpu2)
-
-        if self.crossoverMethod == 0:
-            for _ in range(10):
-                # generate a random index and swap genes
-                index = random.randint(0, self.num_weights)
-                genome_m, genome_f = mother[index], father[index]
-                mother[index] = genome_m
-                father[index] = genome_f
-            self.set_weights(child1, mother)
-            self.set_weights(child2, father)
-        elif self.crossover == 2:
-            self.heuristic_crossover(cpu1, cpu2, child1, child2)
-        else:
-            # generate random cutoff positions,
-            index1 = random.randint(0, self.num_weights)
-            index2 = random.randint(0, self.num_weights)
-            # check the order of the indexes to make sure they make sense.
-            if index1 > index2:
-                index1, index2 = index2, index1
-            # pythonic crossover
-            child1W = np.append(
-                np.append(father[:index1], mother[index1:index2]), father[index2:]
-            )
-            child2W = np.append(
-                np.append(mother[:index1], father[index1:index2]), mother[index2:]
-            )
-
-            # create new children with it
-            self.set_weights(child1, child1W)
-            self.set_weights(child2, child2W)
-
+        result = self.evolution.crossover(cpu1, cpu2, child1, child2)
         print("Crossover Successful.")
-        # return the pair of children
-        return (child1, child2)
+        return result
 
     """
   Mutate the weights of the neural network.
   """
 
     def mutate(self, cpu) -> None:
-        """
-        Mutate the weights of the neural network.
-        """
+        """Mutate the agent using the current evolution strategy."""
         if self.debug:
             print("Generating mutations for player " + str(cpu))
-
-        weights = self.get_weights(cpu)
-        # weights = self.players[cpu].bot.nn.weights
-        # check whether their moves are cached.
-        moveBase = self.get_move_cache(cpu)
-
-        if self.safe_mutations and len(moveBase) > 100:
-            weights = self.safe_mutation(cpu)
-            # nuke the cache
-            self.players[cpu].bot.cache = {}
-        else:
-            # random mutation multipliers
-            multipliers = np.random.random_sample([self.num_weights])
-            multipliers = self.tau * multipliers
-            multipliers = np.exp(multipliers)
-            weights = weights * multipliers
-            weights = np.clip(weights, -1, 1)
-            self.set_weights(cpu, weights)
-        if self.debug:
-            print("Finished mutations for player " + str(cpu))
-        return (cpu, weights)
+        return self.evolution.mutate(cpu)
 
     """
   Static function to create safe mutations
@@ -818,11 +760,10 @@ class Population:
   """
 
     def set_weights(self, botID, weights) -> None:
-        self.players[botID].bot.nn.load_coefficients(weights)
+        self.evolution.set_weights(botID, weights)
 
-    # Done
     def get_weights(self, botID) -> object:
-        return self.players[botID].bot.nn.get_all_coefficients()
+        return self.evolution.get_weights(botID)
 
     """
   Helper function to retrieve cache if it exists,

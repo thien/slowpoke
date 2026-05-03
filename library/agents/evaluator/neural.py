@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
@@ -17,6 +17,9 @@ try:
 except ImportError:
     mx = None
     MLX_AVAILABLE = False
+
+from agents.evaluator.genome import Genome
+from agents.evaluator.neat_network import NEATNetwork
 
 
 def showVector(v: np.ndarray, dec: int) -> None:
@@ -46,11 +49,19 @@ class NeuralNetwork:
         "_mx_compiled_forward",
         "_last_input_size",
         "_input_size_91",
+        "_mode",
+        "_genome",
     )
 
     def __init__(
-        self, layer_list: Optional[List[int]] = None, use_mlx: bool = False
+        self,
+        layer_list: Optional[List[int]] = None,
+        use_mlx: bool = False,
+        mode: str = "standard",
+        genome: Optional[Genome] = None,
     ) -> None:
+        self._mode = mode
+        self._genome = genome
         self.layer_size = layer_list if layer_list is not None else [32, 40, 10, 1]
         self.num_layers = len(self.layer_size)
         self.num_hidden_layers = self.num_layers - 2
@@ -66,12 +77,20 @@ class NeuralNetwork:
         self._mx_compiled_forward = None
         self._last_input_size = 0
         self._input_size_91 = self.layer_size[0] == 91
-        # initiate layers
+
+        if mode == "neat":
+            if genome is None:
+                self._genome = Genome.minimal(
+                    self.layer_size[0],
+                    4,
+                    self.layer_size[-1],
+                )
+            return
+
+        # Standard mode init
         self.init_layers()
         self.init_weights()
         self.init_biases()
-
-        # Initialize MLX weights if requested
         if self._use_mlx:
             self._init_mlx_weights()
 
@@ -107,7 +126,19 @@ class NeuralNetwork:
             self.biases.append(biases)
 
     def get_all_coefficients(self) -> np.ndarray:
-        """Optimised: collect all weights and biases in one pass."""
+        """Collect all weights and biases in one pass.
+
+        In 'neat' mode, returns the genome dict as a JSON string (bytes).
+        """
+        if self._mode == "neat":
+            if self._genome is None:
+                return np.array([], dtype=np.float32)
+            import json
+            return np.frombuffer(
+                json.dumps(self._genome.to_dict()).encode("utf-8"),
+                dtype=np.uint8,
+            )
+
         arrays = []
         for w in self.weights:
             arrays.append(np.ravel(w))
@@ -116,6 +147,16 @@ class NeuralNetwork:
         return np.concatenate(arrays)
 
     def load_coefficients(self, ravelled: np.ndarray) -> bool:
+        if self._mode == "neat":
+            import json
+            raw = bytes(ravelled)
+            try:
+                data = json.loads(raw.decode("utf-8"))
+                self._genome = Genome.from_dict(data)
+                return True
+            except Exception:
+                return False
+
         if len(ravelled) != self.len_coefficients:
             raise ValueError("The number of coefficents do not match.")
         # calculate number of weights to split array from
@@ -155,10 +196,17 @@ class NeuralNetwork:
 
     def compute(self, x: np.ndarray) -> Union[float, np.ndarray]:
         """
-        Optimised forward pass through the neural network.
+        Forward pass through the neural network.
+        In 'neat' mode, delegates to NEATNetwork.
+        In 'standard' mode, uses optimised vectorised matrix multiply.
+
         Returns Python float for compatibility with existing code.
-        Fully vectorised - no loops over neurons.
         """
+        if self._mode == "neat":
+            if self._genome is None:
+                return 0.0
+            return NEATNetwork.compute(self._genome, x)
+
         current = x
 
         # Forward pass through all hidden layers
