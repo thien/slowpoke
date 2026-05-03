@@ -319,7 +319,10 @@ class Generator:
             )
             self.save_training_stats_to_json(self.saveLocation, self.generationStats)
             if self.generateChartsEveryRound:
-                self.generate_stats()
+                try:
+                    self.generate_stats()
+                except Exception as e:
+                    self.log(f"generate_stats failed (non-fatal): {e}")
             # Display status at generation boundary
             self.display_status_info(force_display=True)
 

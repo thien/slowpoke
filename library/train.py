@@ -102,8 +102,11 @@ def train() -> None:
         if use_tui:
             from core.tui import TournamentDisplay
 
-            with TournamentDisplay(t):
-                t.run_generations()
+            try:
+                with TournamentDisplay(t):
+                    t.run_generations()
+            except Exception as e:
+                print(f"\n[Tournament error] {e}")
         else:
             t.run_generations()
         # create statistics

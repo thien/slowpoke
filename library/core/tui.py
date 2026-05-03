@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from typing import Any, Optional
 
 from rich.layout import Layout
@@ -21,22 +22,23 @@ class TournamentDisplay:
     def __init__(self, generator: Any) -> None:
         self.generator = generator
         self._live: Optional[Live] = None
-        self._initialized = False
+        self._started = False
 
     def start(self) -> None:
         """Enter the Live context and show initial layout."""
-        self._live = Live(refresh_per_second=4, screen=True)
+        self._live = Live(
+            auto_refresh=False,
+            refresh_per_second=4,
+            screen=True,
+            transient=True,
+        )
         self._live.__enter__()
-        self._initialized = True
-        # Show initial layout immediately
-        try:
-            self._live.update(self._build_layout())
-        except Exception:
-            pass
+        self._started = True
+        self.push_update()
 
     def stop(self) -> None:
         """Exit the Live context."""
-        self._initialized = False
+        self._started = False
         if self._live:
             try:
                 self._live.__exit__(None, None, None)
@@ -46,12 +48,16 @@ class TournamentDisplay:
 
     def push_update(self) -> None:
         """Refresh the display (called from tournament thread after games/champs)."""
-        if not self._initialized or self._live is None:
+        if not self._started or self._live is None:
             return
         try:
-            self._live.update(self._build_layout())
-        except Exception:
-            pass
+            layout = self._build_layout()
+            self._live.update(layout)
+            # Force an immediate refresh (auto_refresh is False)
+            self._live.refresh()
+        except Exception as e:
+            # Print to stderr so it shows up even in alt-screen mode
+            print(f"[TUI error] {e}", file=sys.stderr)
 
     def _build_layout(self) -> Layout:
         """Build the rich Layout with info and standings panels."""
@@ -81,9 +87,8 @@ class TournamentDisplay:
 
         info_panel = Layout()
         info_panel.split_row(Panel(info_left), Panel(info_right))
-        layout["info"].update(
-            Panel(info_panel, title=f"Generation {self.generator.currentGeneration}")
-        )
+        g = self.generator.currentGeneration
+        layout["info"].update(Panel(info_panel, title=f"Generation {g}"))
 
         standings = self.generator.population.build_standings_table()
         if standings:
