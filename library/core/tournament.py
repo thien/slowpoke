@@ -587,18 +587,10 @@ class Generator:
             info.add_row(metric_s, value_s)
         layout["info"].update(Panel(info, title=f"Generation {self.currentGeneration}"))
 
-        # ── Player rankings ──
-        if ranking_lines:
-            rank_grid = Table.grid(padding=(0, 1))
-            rank_grid.add_column()
-            for line in ranking_lines.strip().split("\n"):
-                rank_grid.add_row(line)
-            layout["ranking"].update(Panel(rank_grid, title="Player Rankings (Elo)"))
-
-        # ── Head-to-head matrix ──
-        matrix = self.population.build_head_to_head_table()
-        if matrix:
-            layout["matrix"].update(Panel(matrix, title="Head-to-Head Results"))
+        # ── Standings (Elo + W/D/L aggregated) ──
+        standings = self.population.build_standings_table()
+        if standings:
+            layout["ranking"].update(Panel(standings, title="Standings"))
 
         console.print(layout)
 
