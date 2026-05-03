@@ -236,13 +236,7 @@ class Generator:
                     f"{'Black' if result['game']['Winner'] == Black else 'White' if result['game']['Winner'] == White else 'Draw'}"
                 )
                 if self.tui and completed % tui_update_interval == 0:
-                    self.tui.call_from_thread(
-                        self.tui.push_game_completed,
-                        self.currentGeneration,
-                        self.generations,
-                        completed,
-                        total_games,
-                    )
+                    self.tui.push_update()
             pool.close()
             pool.join()
         self.log("All games completed")
@@ -569,13 +563,8 @@ class Generator:
         """Log status info to file. Display rich panels or push to TUI."""
         self.log_status_info()
 
-        # If TUI is active, push generation-completed update instead
         if self.tui:
-            self.tui.call_from_thread(
-                self.tui.push_generation_completed,
-                self.currentGeneration,
-                self.generations,
-            )
+            self.tui.push_update()
             return
 
         console = Console()

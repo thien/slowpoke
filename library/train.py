@@ -100,13 +100,10 @@ def train() -> None:
         t = tournament.Generator(options)
         use_tui = "--no-tui" not in sys.argv
         if use_tui:
-            from core.tui import TournamentApp
+            from core.tui import TournamentDisplay
 
-            app = TournamentApp(t)
-            app.run_and_wait()       # starts TUI in background thread
-            t.run_generations()      # runs tournament in main thread
-            app.call_from_thread(app.exit)
-            app.join()
+            with TournamentDisplay(t):
+                t.run_generations()
         else:
             t.run_generations()
         # create statistics
