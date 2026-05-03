@@ -76,8 +76,10 @@ class TournamentApp(App):
             self.call_from_thread(self.exit)
 
     # ── Public API called from tournament thread ──
+    # NOTE: names intentionally do NOT start with "on_" because Textual
+    # intercepts on_* methods as event handlers.
 
-    def on_game_completed(
+    def push_game_completed(
         self,
         gen: int,
         total_gens: int,
@@ -92,7 +94,7 @@ class TournamentApp(App):
         self._update_progress(game_idx, total_games)
         self._update_standings()
 
-    def on_generation_completed(self, gen: int, total_gens: int) -> None:
+    def push_generation_completed(self, gen: int, total_gens: int) -> None:
         """Update the display at the end of a generation."""
         self._update_info(gen, total_gens)
         self._update_standings()

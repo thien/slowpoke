@@ -308,7 +308,8 @@ class Statistics:
         #   print(i['duration'])
 
         simRuntimes = [float(i["duration"]) for i in sx]
-        # for i in range(len(sx)):
+        if not simRuntimes:
+            return
         plotx.append(1)
         ploty.append(max(simRuntimes) + 10)
         # print(simRuntimes)

@@ -237,7 +237,7 @@ class Generator:
                 )
                 if self.tui and completed % tui_update_interval == 0:
                     self.tui.call_from_thread(
-                        self.tui.on_game_completed,
+                        self.tui.push_game_completed,
                         self.currentGeneration,
                         self.generations,
                         completed,
@@ -572,7 +572,7 @@ class Generator:
         # If TUI is active, push generation-completed update instead
         if self.tui:
             self.tui.call_from_thread(
-                self.tui.on_generation_completed,
+                self.tui.push_generation_completed,
                 self.currentGeneration,
                 self.generations,
             )
