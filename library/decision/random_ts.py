@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 from typing import Any
 
-from decision.minimax import minimax_draw, minimax_empty, minimax_lose, minimax_win
+from core.constants import MINIMAX_WIN as minimax_win, MINIMAX_LOSE as minimax_lose, MINIMAX_DRAW as minimax_draw, MINIMAX_EMPTY as minimax_empty
 
 
 class RandomTS:

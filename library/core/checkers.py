@@ -35,20 +35,16 @@ except ImportError:
 
 ### CONSTANTS
 
-# Black moves "forward", White moves "backward"
-Black, White = 0, 1
-empty = -1
-blackKing = 2
-whiteKing = 3
-boring_no_eat_limit = 50
-# handles n/2 repeated move limits
-repetition_limits = 12
-# The IBM704 had 36-bit words. Arthur Samuel used the extra bits to
-# ensure that every normal move could be performed by flipping the
-# original bit and the bit either 4 or 5 bits away, in the cases of
-# moving right and left respectively.
+from core.constants import BLACK, WHITE, EMPTY, BLACK_KING, WHITE_KING, BORING_NO_EAT_LIMIT, REPETITION_LIMITS, UNUSED_BITS
 
-unused_bits = 0b100000000100000000100000000100000000
+# Backward-compat aliases
+Black, White = BLACK, WHITE
+empty = EMPTY
+blackKing = BLACK_KING
+whiteKing = WHITE_KING
+boring_no_eat_limit = BORING_NO_EAT_LIMIT
+repetition_limits = REPETITION_LIMITS
+unused_bits = UNUSED_BITS
 
 
 def _reconstruct_board(state: Dict[str, Any]) -> "CheckerBoard":

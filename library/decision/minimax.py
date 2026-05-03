@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from typing import Any, Callable, List
 
-minimax_win = 1
-minimax_lose = -minimax_win
-minimax_draw = 0
-minimax_empty = -1
+from core.constants import MINIMAX_WIN, MINIMAX_LOSE, MINIMAX_DRAW, MINIMAX_EMPTY
+
+minimax_win = MINIMAX_WIN
+minimax_lose = MINIMAX_LOSE
+minimax_draw = MINIMAX_DRAW
+minimax_empty = MINIMAX_EMPTY
 
 
 class MiniMax:

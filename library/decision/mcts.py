@@ -9,13 +9,8 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 
-try:
-    import mlx.core as mx
-
-    MLX_AVAILABLE = True
-except ImportError:
-    mx = None
-    MLX_AVAILABLE = False
+from core.constants import MLX_AVAILABLE, mx
+from core.constants import MLX_AVAILABLE, mx
 
 
 class MCTS:

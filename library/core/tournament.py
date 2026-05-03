@@ -28,12 +28,10 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import statistics
+from core.constants import BLACK, WHITE, EMPTY, WIN_PT, DRAW_PT, LOSE_PT
 
-# Piece values on board
-Black, White, empty = 0, 1, -1
-# Blondie was 1,0,-2
-WIN_PT, DRAW_PT, LOSE_PT = 2, 0, -1
-ChampWIN_PT, ChampDRAW_PT, ChampLOSE_PT = 1, 0, -1
+# Champ points
+CHAMP_WIN_PT, CHAMP_DRAW_PT, CHAMP_LOSE_PT = 1, 0, -1
 
 
 def option_defaults(options):

@@ -6,8 +6,9 @@ from typing import Any, Dict, Optional, Union
 
 from core import checkers
 from agents.agent import Agent
+from core.constants import BLACK, WHITE, EMPTY
 
-Black, White, empty = 0, 1, -1
+Black, White, empty = BLACK, WHITE, EMPTY
 
 
 def printStatus(B: checkers.CheckerBoard) -> None:

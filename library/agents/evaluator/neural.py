@@ -10,16 +10,11 @@ try:
 except ImportError:
     from library.agents.evaluator import subsquares
 
-try:
-    import mlx.core as mx
-
-    MLX_AVAILABLE = True
-except ImportError:
-    mx = None
-    MLX_AVAILABLE = False
+from core.constants import MLX_AVAILABLE, mx
 
 from agents.evaluator.genome import Genome
 from agents.evaluator.neat_network import NEATNetwork
+from core.constants import MLX_AVAILABLE, mx
 
 
 def showVector(v: np.ndarray, dec: int) -> None:

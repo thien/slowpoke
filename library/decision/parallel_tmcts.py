@@ -13,13 +13,8 @@ from typing import List, Tuple, Optional, Dict, Any
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-try:
-    import mlx.core as mx
-
-    MLX_AVAILABLE = True
-except ImportError:
-    mx = None
-    MLX_AVAILABLE = False
+from core.constants import MLX_AVAILABLE, mx
+from core.constants import MINIMAX_WIN, MINIMAX_LOSE, MINIMAX_DRAW, MINIMAX_EMPTY
 
 
 class SharedBatchAccumulator:
@@ -478,15 +473,10 @@ class ParallelTMCTS:
         return np.asarray(boardStatus, dtype=np.float32)
 
     def _is_over(self, B, colour: int) -> Tuple[bool, int]:
-        minimax_win = 1
-        minimax_lose = -minimax_win
-        minimax_draw = 0
-        minimax_empty = -1
-
         if B.is_over(check_repetition=False):
-            if B.winner != minimax_empty:
-                return (True, minimax_win if B.winner == colour else minimax_lose)
-            return (True, minimax_draw)
+            if B.winner != MINIMAX_EMPTY:
+                return (True, MINIMAX_WIN if B.winner == colour else MINIMAX_LOSE)
+            return (True, MINIMAX_DRAW)
         return (False, -1)
 
     def move_function(self, board, colour):

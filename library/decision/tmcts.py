@@ -7,19 +7,13 @@ import random
 from typing import Any, List, Optional, Tuple, Union
 
 import numpy as np
+from core.constants import MLX_AVAILABLE, mx, MINIMAX_WIN, MINIMAX_LOSE, MINIMAX_DRAW, MINIMAX_EMPTY
 
-try:
-    import mlx.core as mx
-
-    MLX_AVAILABLE = True
-except ImportError:
-    mx = None
-    MLX_AVAILABLE = False
-
-minimax_win = 1
-minimax_lose = -minimax_win
-minimax_draw = 0
-minimax_empty = -1
+# Backward-compat aliases for code/tests that reference tmcts.minimax_*
+minimax_win = MINIMAX_WIN
+minimax_lose = MINIMAX_LOSE
+minimax_draw = MINIMAX_DRAW
+minimax_empty = MINIMAX_EMPTY
 
 TERMINAL_VALUE_MARKER = -1
 
@@ -483,12 +477,12 @@ class TMCTS:
 
     def is_over(self, B: Any, colour: int) -> Tuple[bool, int]:
         if B.is_over(check_repetition=False):
-            if B.winner != minimax_empty:
+            if B.winner != MINIMAX_EMPTY:
                 if B.winner == colour:
-                    return (True, minimax_win)
+                    return (True, MINIMAX_WIN)
                 else:
-                    return (True, minimax_lose)
+                    return (True, MINIMAX_LOSE)
             else:
-                return (True, minimax_draw)
+                return (True, MINIMAX_DRAW)
         else:
             return (False, -1)

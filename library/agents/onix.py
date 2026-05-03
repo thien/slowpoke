@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from typing import Any, Dict
 
-from agents import minimax_draw, minimax_empty, minimax_lose, minimax_win
+from core.constants import MINIMAX_WIN, MINIMAX_LOSE, MINIMAX_DRAW, MINIMAX_EMPTY
 
 _ROW_MASKS: list = [0xFF, 0x1FE00, 0x3FC0000, 0x7F8000000]
 _CENTRE_MASK: int = (1 << 12) | (1 << 13) | (1 << 21) | (1 << 22)
@@ -34,9 +34,9 @@ class Onix:
         Returns a float in [-1, 1] where positive means good for colour.
         """
         if board.is_over():
-            if board.winner != minimax_empty:
-                return minimax_win if board.winner == colour else minimax_lose
-            return minimax_draw
+            if board.winner != MINIMAX_EMPTY:
+                return MINIMAX_WIN if board.winner == colour else MINIMAX_LOSE
+            return MINIMAX_DRAW
 
         # Read bitboards — Rust backend or Python fallback
         if board._has_core:

@@ -19,6 +19,10 @@ import core.mongo as mongo
 import core.neuroevolution as evo
 import core.storage as storage
 from agents.evaluator.neural import NeuralNetwork
+BLACK, WHITE, EMPTY = 0, 1, -1
+Black, White, empty = BLACK, WHITE, EMPTY
+WIN_PT, DRAW_PT, LOSE_PT = 2, 0, -1
+ONIX_ID = -2
 
 
 class EloRating:
@@ -60,12 +64,6 @@ class EloRating:
             k = self.k_factor
         return player_rating + k * (actual_score - expected)
 
-
-Black, White, empty = 0, 1, -1
-
-WIN_PT, DRAW_PT, LOSE_PT = 2, 0, -1
-
-ONIX_ID = -2  # Permanent heuristic-bot fixture, never champion, never parent
 
 
 class Population:
