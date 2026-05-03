@@ -98,7 +98,14 @@ def train() -> None:
     # run tournament
     if readyBool:
         t = tournament.Generator(options)
-        t.run_generations()
+        use_tui = "--no-tui" not in sys.argv
+        if use_tui:
+            from core.tui import TournamentApp
+
+            app = TournamentApp(t)
+            app.run()
+        else:
+            t.run_generations()
         # create statistics
         stats = statistics.Statistics(t.folderName)
         stats.loadStatisticsFile()

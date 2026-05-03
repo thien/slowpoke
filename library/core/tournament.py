@@ -54,10 +54,11 @@ def option_defaults(options):
 
 
 class Generator:
-    def __init__(self, options):
+    def __init__(self, options, tui=None):
         # initialise default variables when needed.
         options = option_defaults(options)
         self.is_debugMode = options["debugMode"]
+        self.tui = tui  # Optional TournamentApp for live display
         # Declare base information
         self.ply_depth = options["ply_depth"]
         self.generations = options["NumberOfGenerations"]
@@ -185,13 +186,13 @@ class Generator:
         gamePool = []
         players = self.population.current_population[:]
         self.log("Scheduling full round-robin games...")
+        gen_idx = 0
         for i in range(len(players)):
             for j in range(i + 1, len(players)):
                 pid_i, pid_j = players[i], players[j]
-                # i as black, j as white
                 gamePool.append(
                     {
-                        "idx": self.gameIDCounter,
+                        "idx": gen_idx,
                         "game_id": self.gameIDCounter,
                         "black": self.population.players[pid_i],
                         "white": self.population.players[pid_j],
@@ -199,11 +200,11 @@ class Generator:
                         "debugInfo": False,
                     }
                 )
+                gen_idx += 1
                 self.gameIDCounter += 1
-                # j as black, i as white
                 gamePool.append(
                     {
-                        "idx": self.gameIDCounter,
+                        "idx": gen_idx,
                         "game_id": self.gameIDCounter,
                         "black": self.population.players[pid_j],
                         "white": self.population.players[pid_i],
@@ -211,6 +212,7 @@ class Generator:
                         "debugInfo": False,
                     }
                 )
+                gen_idx += 1
                 self.gameIDCounter += 1
         self.GamesQueued = len(gamePool)
         self.log(f"Total games scheduled: {len(gamePool)}")
@@ -222,15 +224,25 @@ class Generator:
             threadCount = len(gamePool)
         self.log(f"Running games with {threadCount} parallel processes...")
         completed = 0
+        total_games = len(gamePool)
+        tui_update_interval = max(1, total_games // 50)
         with multiprocessing.Pool(processes=threadCount) as pool:
             for result in pool.imap_unordered(self.game_worker, gamePool, chunksize=16):
                 results[result["idx"]] = result
                 completed += 1
                 self.log(
-                    f"Game {completed}/{len(gamePool)}: "
+                    f"Game {completed}/{total_games}: "
                     f"P{result['black']} vs P{result['white']} → "
                     f"{'Black' if result['game']['Winner'] == Black else 'White' if result['game']['Winner'] == White else 'Draw'}"
                 )
+                if self.tui and completed % tui_update_interval == 0:
+                    self.tui.call_from_thread(
+                        self.tui.on_game_completed,
+                        self.currentGeneration,
+                        self.generations,
+                        completed,
+                        total_games,
+                    )
             pool.close()
             pool.join()
         self.log("All games completed")
@@ -554,40 +566,39 @@ class Generator:
         return messsages
 
     def display_status_info(self, force_display: bool = False) -> None:
-        """Log status info to file. Display rich panels to console (overwrites previous)."""
+        """Log status info to file. Display rich panels or push to TUI."""
         self.log_status_info()
 
+        # If TUI is active, push generation-completed update instead
+        if self.tui:
+            self.tui.call_from_thread(
+                self.tui.on_generation_completed,
+                self.currentGeneration,
+                self.generations,
+            )
+            return
+
         console = Console()
-        # Clear terminal before re-rendering so we don't flood stdout
         console.clear()
         layout = Layout()
         layout.split_column(
             Layout(name="info"),
-            Layout(name="matrix"),
             Layout(name="ranking"),
         )
 
-        # ── Info panel: single-line metrics ──
         info = Table.grid(padding=(1, 2))
         info.add_column("Metric", style="cyan", no_wrap=True)
         info.add_column("Value", style="white")
-        ranking_lines = None
         for metric, value in self.status_info():
             metric_s = str(metric) if metric else ""
             value_s = str(value) if value else ""
-            # Skip spacers (single-space metric)
             if metric_s.strip() == "" and value_s.strip() == "":
                 continue
-            # Capture ranking for its own panel
-            if metric_s.startswith("Player"):
-                ranking_lines = metric_s
-                continue
-            if metric_s == "Previous Scoreboard":
+            if metric_s.startswith("Player") or metric_s == "Previous Scoreboard":
                 continue
             info.add_row(metric_s, value_s)
         layout["info"].update(Panel(info, title=f"Generation {self.currentGeneration}"))
 
-        # ── Standings (Elo + W/D/L aggregated) ──
         standings = self.population.build_standings_table()
         if standings:
             layout["ranking"].update(Panel(standings, title="Standings"))

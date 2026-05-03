@@ -672,15 +672,16 @@ class Population:
         Args:
             black: Black player ID.
             white: White player ID.
-            winner: Winner ID (-1 for draw).
+            winner: Winner colour (BLACK=0, WHITE=1, EMPTY=-1 for draw).
         """
-        # Key is (black, white) from colour perspective
+        from core.constants import BLACK, WHITE, EMPTY
+
         key = (black, white)
         if key not in self.head_to_head:
             self.head_to_head[key] = [0, 0, 0]  # black_wins, white_wins, draws
-        if winner == black:
+        if winner == BLACK:
             self.head_to_head[key][0] += 1
-        elif winner == white:
+        elif winner == WHITE:
             self.head_to_head[key][1] += 1
         else:
             self.head_to_head[key][2] += 1
