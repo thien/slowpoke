@@ -772,12 +772,20 @@ class Population:
         if not pids:
             return None
 
+        has_data = any(
+            v != [0, 0, 0] for v in self.head_to_head.values()
+        )
+
         t = Table(title="Head-to-Head W-D-L (row player perspective)")
         t.add_column("Player", style="cyan")
         for pid in pids:
             t.add_column(f"P{pid}", justify="center", max_width=9)
         t.add_column("W/L/D", justify="center")
         t.add_column("Score", justify="center")
+
+        if not has_data:
+            t.add_row("No games yet", *["—" for _ in range(len(pids) + 2)])
+            return t
 
         for a in pids:
             row = [f"P{a}"]

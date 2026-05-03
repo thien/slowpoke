@@ -465,15 +465,17 @@ class Generator:
 
         averageGenTimeLength = np.mean(self.GenerationTimeLengths)
 
-        PercentageEst = 0
-        if np.isnan(averageGenTimeLength) == False:
-            PercentageEst = (
-                currentTime - self.currentGenStartTime
-            ) / averageGenTimeLength
+        PercentageEst = 0.0
+        if not np.isnan(averageGenTimeLength) and averageGenTimeLength > 0:
+            PercentageEst = min(
+                (currentTime - self.currentGenStartTime) / averageGenTimeLength,
+                1.0,
+            )
 
         numGens = np.size(self.progress)
-        remainingGenTime = averageGenTimeLength - (
-            currentTime - self.currentGenStartTime
+        remainingGenTime = max(
+            0.0,
+            averageGenTimeLength - (currentTime - self.currentGenStartTime),
         )
         RemainingGenCount = self.generations - numGens
 
@@ -512,15 +514,18 @@ class Generator:
         messsages.append([" ", " "])
         messsages.append(["Champions Currently Playing?", self.AreChampionsPlaying])
         messsages.append(["Previous Score", self.LastChampionScore])
-        messsages.append(["Cummulative Score", self.cummulativeScore])
+        messsages.append(["Cummulative Score", f"{self.cummulativeScore:.2f}"])
 
-        avgRecentScores = 0
+        avgRecentScores = 0.0
         if len(recent_scores) > 0:
-            avgRecentScores = np.mean(recent_scores)
-        messsages.append(["Average Growth", avgRecentScores])
+            avgRecentScores = float(np.mean(recent_scores))
+        messsages.append(["Average Growth", f"{avgRecentScores:.2f}"])
         try:
             messsages.append(
-                ["Recent Scores", ["{:0.2f}".format(x) for x in recent_scores]]
+                [
+                    "Recent Scores",
+                    ", ".join("{:0.2f}".format(x) for x in recent_scores),
+                ]
             )
             messsages.append(
                 [
