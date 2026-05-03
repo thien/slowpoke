@@ -1,24 +1,27 @@
 from __future__ import annotations
 
-import matplotlib
+import ast
+import datetime
+import hashlib
+import json
 import multiprocessing
+import os
+import random
+import sys
+import time
+
+import matplotlib
+import numpy as np
 
 # dirty mira check
 if multiprocessing.cpu_count() > 10:
     matplotlib.use("Agg")
 
-import json
-import os
-import numpy as np
-import sys
-
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import ast
-import time, datetime
-import hashlib
-import random
+
+import core.storage as storage
 
 
 class Statistics:
@@ -36,19 +39,62 @@ class Statistics:
         self.debug = True
 
     def loadStatisticsFile(self, filename: str = "statistics.json") -> dict:
+        # Try Parquet first (new format, more efficient)
+        if filename == "statistics.json":
+            try:
+                rows = storage.load_statistics_parquet(self.directory)
+                if rows:
+                    # Convert flat rows back to per-generation structure
+                    self.statistics = self._parquet_rows_to_gen_structure(rows)
+                    if self.debug:
+                        print(f"Loaded {len(rows)} game rows from Parquet")
+                    return True
+            except Exception:
+                pass
+
+        # Fallback to JSON (legacy format)
         filepath = os.path.join(self.directory, filename)
         if self.debug:
             print("Loading Statistics from file:")
             print("\t", filepath)
         try:
-            f = open(filepath, "r")
-            self.statistics = json.load(f)
-            f.close()
+            with open(filepath, "r") as f:
+                self.statistics = json.load(f)
             if self.debug:
                 print("Loaded Stats File!")
-                return True
+            return True
         except:
             return False
+
+    def _parquet_rows_to_gen_structure(self, rows: list) -> list:
+        """Convert flat parquet rows back to the legacy per-generation nested structure."""
+        from collections import defaultdict
+
+        by_gen = defaultdict(list)
+        for r in rows:
+            by_gen[r["gen"]].append(r)
+
+        stats = []
+        for gen in sorted(by_gen.keys()):
+            gen_rows = by_gen[gen]
+            games = []
+            for r in gen_rows:
+                games.append({
+                    "game": {
+                        "Winner": r.get("winner", -1),
+                        "_id": r.get("game_id", ""),
+                        "Moves": json.loads(r.get("replay", "[]")),
+                    },
+                    "black": r.get("black_id", ""),
+                    "white": r.get("white_id", ""),
+                    "duration": r.get("duration", "00:00:00"),
+                })
+            stats.append({
+                "stats": [],
+                "games": games,
+                "durationInSeconds": "0",
+            })
+        return stats
 
     def parseLeaderboards(self) -> list:
         leaderboards = []

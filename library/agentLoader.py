@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+import json
 import os
 
-# import ijson
-import json
+import numpy as np
+
+import core.storage as storage
 
 
 class agentLoader:
     def __init__(self) -> None:
         self.basepath = os.path.join("..", "results")
-        self.championFiletype = ".json"
+        self.championFiletype = ".npz"
         self.championsFoldername = "champions"
         self.statisticsFilename = "statistics.json"
         self.systems = []
@@ -241,16 +243,23 @@ class agentLoader:
             return False
 
     def load_agent_weights(self, system: str, pid: int) -> object:
-        champfile = str(pid) + ".json"
-        champpath = os.path.join(system["ChampDir"], champfile)
-        agent = {}
+        # Try .npz first (compressed numpy format)
+        npz_path = os.path.join(system["ChampDir"], str(pid) + ".npz")
+        if os.path.isfile(npz_path):
+            try:
+                data = storage.load_champion_npz(npz_path)
+                return data.get("coefficients")
+            except Exception:
+                pass
+
+        # Fallback to .json (legacy format)
+        json_path = os.path.join(system["ChampDir"], str(pid) + ".json")
         try:
-            f = open(champpath, "r")
-            agent = json.load(f)
-            f.close()
-            return agent[str(pid)]["coefficents"]
+            with open(json_path, "r") as f:
+                agent = json.load(f)
+            return np.array(agent[str(pid)]["coefficents"])
         except Exception:
-            print("I can't load the file for some reason.")
+            print(f"I can't load agent {pid} from {system.get('ChampDir', '?')}")
             return False
 
 

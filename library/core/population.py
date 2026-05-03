@@ -9,13 +9,14 @@ import multiprocessing
 import operator
 import os
 import random
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
 import agents.agent as agent
 import agents.slowbro as sb
 import core.mongo as mongo
+import core.storage as storage
 from agents.evaluator.neural import NeuralNetwork
 
 
@@ -623,29 +624,36 @@ class Population:
 
     def save_champions_to_file(self, folderDirectory: str) -> None:
         folderDirectory = os.path.join(folderDirectory, "champions")
-        # check save directory exists prior to saving
         if not os.path.isdir(folderDirectory):
             os.makedirs(folderDirectory)
 
-        championJson = {}
         i = self.generation
-        championJson[i] = {}
-
         championID = self.champions[-1]
-        # store player and its weights.
-        championJson[i]["pid"] = self.players[championID].id
-        championJson[i]["coefficents"] = (
-            self.players[championID].bot.nn.get_all_coefficients().tolist()
-        )
-        championJson[i]["champ_range"] = self.players[championID].champ_range
-        championJson[i]["champ_score"] = self.players[championID].champ_score
+        coeffs = self.players[championID].bot.nn.get_all_coefficients()
+        meta = {
+            "pid": str(self.players[championID].id),
+            "champ_range": json.dumps(self.players[championID].champ_range),
+            "champ_score": float(self.players[championID].champ_score),
+        }
 
-        filename = str(i) + ".json"
-        with open(os.path.join(folderDirectory, filename), "w") as outfile:
+        # Write .npz (compressed numpy, primary format)
+        npz_path = os.path.join(folderDirectory, str(i) + ".npz")
+        storage.save_champion_npz(npz_path, coeffs, meta)
+
+        # Write .json (backward compat, lightweight metadata only)
+        json_path = os.path.join(folderDirectory, str(i) + ".json")
+        championJson = {
+            str(i): {
+                "pid": self.players[championID].id,
+                "coefficents": coeffs.tolist(),
+                "champ_range": self.players[championID].champ_range,
+                "champ_score": self.players[championID].champ_score,
+            }
+        }
+        with open(json_path, "w") as outfile:
             json.dump(championJson, outfile)
 
-            # append to file.
-        print("saved champs to ", filename)
+        print(f"saved champs to {i}.npz + {i}.json")
 
     """
   Saves genomic properties to a file. Each champion's properties

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import core.population as pop
 import core.game as game
+import core.storage as storage
 
 import agents.slowpoke as sp
 import agents.agent as agent
@@ -324,6 +325,12 @@ class Generator:
         filename = "statistics.json"
         with open(os.path.join(saveLocation, filename), "w") as outfile:
             json.dump(stats, outfile)
+
+        # Also write Parquet for efficient columnar access
+        try:
+            storage.save_statistics_parquet(saveLocation, stats)
+        except Exception as e:
+            self.log(f"Parquet write failed (non-fatal): {e}")
 
     def pool_champ_game(self, info) -> None:
         blackPlayer = self.population.players[info["Players"][0]]
