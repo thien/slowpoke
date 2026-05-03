@@ -7,7 +7,6 @@ has the necessary functions to make valid moves on a checkers board.
 
 import pytest
 import unittest
-import pytest
 import unittest.mock as mock
 
 from core import checkers

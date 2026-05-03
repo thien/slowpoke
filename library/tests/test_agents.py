@@ -5,7 +5,6 @@ Test each agent implementation to verify they work correctly.
 import pytest
 import unittest
 
-import pytest
 
 from core import checkers
 from agents.slowpoke import Slowpoke

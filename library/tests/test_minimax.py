@@ -2,7 +2,7 @@
 
 import unittest
 
-from decision import minimax
+from search import minimax
 from core import checkers
 
 Black, White = 0, 1

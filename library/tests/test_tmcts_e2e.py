@@ -3,7 +3,6 @@ End-to-end tests comparing Random vs Greedy vs MCTS AI strategies.
 """
 
 import pytest
-import pytest
 import unittest
 
 from core import checkers

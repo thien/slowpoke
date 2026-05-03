@@ -16,7 +16,7 @@ import pytest
 import unittest
 
 from core import checkers
-from decision import minimax, mcts, tmcts
+from search import minimax, mcts, tmcts
 from agents.evaluator.neural import NeuralNetwork
 import numpy as np
 

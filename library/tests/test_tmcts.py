@@ -3,7 +3,7 @@
 import pytest
 import unittest
 
-from decision import tmcts
+from search import tmcts
 from search.tmcts import TMCTS, TERMINAL_VALUE_MARKER
 from core import checkers
 import numpy as np

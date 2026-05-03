@@ -2,7 +2,7 @@
 
 import unittest
 
-from decision import random_ts
+from search import random_ts
 from core import checkers
 
 Black, White = 0, 1

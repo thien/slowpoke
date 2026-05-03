@@ -24,7 +24,7 @@ print("=" * 80)
 
 import time
 from library.core.checkers import CheckerBoard, Black
-from library.decision.tmcts import TMCTS
+from library.search.tmcts import TMCTS
 from library.agents.evaluator.neural import NeuralNetwork
 import statistics
 

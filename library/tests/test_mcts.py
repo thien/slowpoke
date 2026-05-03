@@ -3,7 +3,7 @@
 import pytest
 import unittest
 
-from decision import mcts
+from search import mcts
 from core import checkers
 
 Black, White = 0, 1

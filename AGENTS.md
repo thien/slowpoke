@@ -43,7 +43,7 @@ All source lives in `library/`. Imports use the `library`-relative path (e.g., `
 |---|---|
 | `library/core/` | CheckerBoard, game loop, tournament, population |
 | `library/agents/` | Bots (Slowbro, Slowpoke, Geodude, Magikarp) |
-| `library/decision/` | MCTS: `tmcts.py`, `parallel_tmcts.py`, `minimax.py` |
+| `library/search/` | MCTS: `tmcts.py`, `parallel_tmcts.py`, `minimax.py` |
 | `src/lib.rs` | Rust `checkers_core` — bitboard ops (hot path) |
 | `Cargo.toml` | Rust build config |
 
