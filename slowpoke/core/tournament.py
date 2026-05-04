@@ -132,6 +132,7 @@ class Generator:
         """Strip unpicklable attributes for multiprocessing workers."""
         state = self.__dict__.copy()
         state["tui"] = None
+        state["tui_event_queue"] = None
         state["logger"] = None
         return state
 
@@ -264,7 +265,9 @@ class Generator:
                     f"{'Black' if result['game']['Winner'] == Black else 'White' if result['game']['Winner'] == White else 'Draw'}"
                 )
                 if self.tui:
-                    self.tui.push_update()
+                    self.tui.after_game(
+                        result["black"], result["white"], result["game"]["Winner"]
+                    )
             pool.close()
             pool.join()
         self.log("All games completed")
@@ -730,7 +733,7 @@ class Generator:
         self.log_status_info()
 
         if self.tui:
-            self.tui.push_update()
+            self.tui.request_refresh()
             return
 
         console = Console()

@@ -113,11 +113,10 @@ def train() -> None:
             t = tournament.Generator(options)
         use_tui = "--no-tui" not in sys.argv
         if use_tui:
-            from slowpoke.core.tui import TournamentDisplay
+            from slowpoke.core.tui import TournamentApp
 
             try:
-                with TournamentDisplay(t):
-                    t.run_generations()
+                TournamentApp(generator=t).run()
             except KeyboardInterrupt:
                 print()
                 print("=" * 60)
