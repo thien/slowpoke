@@ -40,7 +40,7 @@ def print_perspective_board(B: checkers.CheckerBoard, options: Dict[str, Any]) -
         if options["human_black"] and options["human_white"]:
             blackPOV = (
                 True
-                if (B.turn_count % 2 != 0 and options["human_black"])
+                if (B.turn_count % 2 == 0 and options["human_black"])
                 else (False if options["human_white"] else None)
             )
         else:
@@ -79,7 +79,7 @@ def play_game(
     while not B.is_over():
         if options["show_board"]:
             print_perspective_board(B, options)
-        if B.turn_count % 2 != 0:
+        if B.turn_count % 2 == 0:
             if options["show_dialog"]:
                 print("blacks turn")
             B.make_move(black_player.make_move(B, Black))
@@ -167,7 +167,7 @@ def tournament_match(
         if debug:
             generate_debug_msg(debug, B.turn_count, B)
 
-        if B.turn_count % 2 != 0:
+        if B.turn_count % 2 == 0:
             B.make_move(blackCPU.make_move(B, Black))
         else:
             B.make_move(whiteCPU.make_move(B, White))
