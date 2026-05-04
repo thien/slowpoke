@@ -248,3 +248,101 @@ def migrate_champions_json_to_npz(
             count += 1
 
     return count
+
+
+# ── Genomes (Parquet) ──
+
+
+def _genome_schema() -> pa.Schema:
+    """Return the PyArrow schema for genome tracking."""
+    return pa.schema(
+        [
+            pa.field("gen", pa.int32()),
+            pa.field("player_id", pa.int32()),
+            pa.field("score", pa.int32()),
+            pa.field("origin", pa.string()),
+            pa.field("parents", pa.string()),
+        ]
+    )
+
+
+def save_genomes_parquet(
+    directory: str, gen: int, genome_rows: List[Dict[str, Any]]
+) -> str:
+    """Save per-generation genome data as a Parquet file.
+
+    Writes one file per generation to ``{directory}/genomes/gen_{n:04d}.parquet``
+    and updates the combined ``{directory}/genomes/all.parquet``.
+
+    Args:
+        directory: Base results directory.
+        gen: Generation number.
+        genome_rows: List of dicts with keys
+            ``player_id``, ``score``, ``origin``, ``parents``.
+
+    Returns:
+        Path to the per-gen parquet file.
+    """
+    if not HAS_PARQUET:
+        raise ImportError("pyarrow is required for Parquet storage")
+
+    genomes_dir = os.path.join(directory, "genomes")
+    os.makedirs(genomes_dir, exist_ok=True)
+
+    for row in genome_rows:
+        row["gen"] = gen
+        row["origin"] = json.dumps(row.get("origin", []))
+        row["parents"] = json.dumps(row.get("parents", []))
+
+    table = pa.Table.from_pylist(genome_rows, schema=_genome_schema())
+    gen_path = os.path.join(genomes_dir, f"gen_{gen:04d}.parquet")
+    pq.write_table(table, gen_path, compression="zstd")
+
+    # Append to combined
+    combined_path = os.path.join(genomes_dir, "all.parquet")
+    if os.path.isfile(combined_path):
+        existing = pq.read_table(combined_path)
+        combined = pa.concat_tables([existing, table])
+    else:
+        combined = table
+    pq.write_table(combined, combined_path, compression="zstd")
+
+    return gen_path
+
+
+def load_genomes_parquet(
+    directory: str, gen: Optional[int] = None
+) -> List[Dict[str, Any]]:
+    """Load genome data from Parquet files.
+
+    Args:
+        directory: Base results directory.
+        gen: If set, load only that generation; otherwise load combined.
+
+    Returns:
+        List of genome dicts.
+    """
+    if not HAS_PARQUET:
+        raise ImportError("pyarrow is required for Parquet storage")
+
+    genomes_dir = os.path.join(directory, "genomes")
+    if gen is not None:
+        path = os.path.join(genomes_dir, f"gen_{gen:04d}.parquet")
+    else:
+        path = os.path.join(genomes_dir, "all.parquet")
+
+    if not os.path.isfile(path):
+        return []
+
+    table = pq.read_table(path)
+    rows = table.to_pylist()
+    for row in rows:
+        try:
+            row["origin"] = json.loads(row["origin"])
+        except (json.JSONDecodeError, TypeError):
+            pass
+        try:
+            row["parents"] = json.loads(row["parents"])
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return rows

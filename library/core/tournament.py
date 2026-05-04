@@ -343,7 +343,7 @@ class Generator:
                     "durationInSeconds": str(timeDifference),
                 }
             )
-            self.save_training_stats_to_json(self.saveLocation, self.generationStats)
+            self.save_training_stats(self.saveLocation, self.generationStats)
             # Save checkpoint for resume
             try:
                 self.save_checkpoint()
@@ -368,18 +368,15 @@ class Generator:
         stats.saveCharts()
         print("I made some charts!")
 
-    def save_training_stats_to_json(self, saveLocation: str, stats) -> None:
-        # check save directory exists prior to saving
+    def save_training_stats(self, saveLocation: str, stats) -> None:
+        """Save generation game results as Parquet."""
         if not os.path.isdir(saveLocation):
             os.makedirs(saveLocation)
 
-        filename = "statistics.json"
-        with open(os.path.join(saveLocation, filename), "w") as outfile:
-            json.dump(stats, outfile)
-
-        # Also write Parquet for efficient columnar access
         try:
             storage.save_statistics_parquet(saveLocation, stats)
+        except ImportError:
+            self.log("pyarrow not available — skipping statistics export")
         except Exception as e:
             self.log(f"Parquet write failed (non-fatal): {e}")
 

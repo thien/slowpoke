@@ -556,20 +556,7 @@ class Population:
         npz_path = os.path.join(folderDirectory, str(i) + ".npz")
         storage.save_champion_npz(npz_path, coeffs, meta)
 
-        # Write .json (backward compat, lightweight metadata only)
-        json_path = os.path.join(folderDirectory, str(i) + ".json")
-        championJson = {
-            str(i): {
-                "pid": self.players[championID].id,
-                "coefficents": coeffs.tolist(),
-                "champ_range": self.players[championID].champ_range,
-                "champ_score": self.players[championID].champ_score,
-            }
-        }
-        with open(json_path, "w") as outfile:
-            json.dump(championJson, outfile)
-
-        print(f"saved champs to {i}.npz + {i}.json")
+        print(f"saved champ to {i}.npz")
 
     """
   Saves genomic properties to a file. Each champion's properties
@@ -579,24 +566,19 @@ class Population:
   """
 
     def save_population_genomes(self, folderDirectory: str) -> None:
-        # check save directory exists prior to saving
-        if not os.path.isdir(folderDirectory):
-            os.makedirs(folderDirectory)
-
-        agent = {}
+        """Save current population's genomic info as Parquet."""
+        rows = []
         for player_id in self.current_population:
-            # store player and its weights.
-            agent[player_id] = {}
-            agent[player_id]["score"] = self.players[player_id].points
-            agent[player_id]["origin"] = self.players[player_id].origin
-            agent[player_id]["parents"] = self.players[player_id].parents
-
-        filename = "genomes.json"
-        with open(os.path.join(folderDirectory, filename), "w") as outfile:
-            json.dump(agent, outfile)
-
-            # append to file.
-        print("saved players genomic info.")
+            rows.append(
+                {
+                    "player_id": player_id,
+                    "score": self.players[player_id].points,
+                    "origin": self.players[player_id].origin,
+                    "parents": self.players[player_id].parents,
+                }
+            )
+        storage.save_genomes_parquet(folderDirectory, self.generation, rows)
+        print("saved genomes to parquet.")
 
     """
   NOT USED
