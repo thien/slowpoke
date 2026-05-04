@@ -254,6 +254,10 @@ class Generator:
             for result in pool.imap_unordered(self.game_worker, gamePool, chunksize=16):
                 results[result["idx"]] = result
                 self.games_finished += 1
+                # Update head-to-head live so the TUI matrix refreshes immediately
+                self.population.record_match(
+                    result["black"], result["white"], result["game"]["Winner"]
+                )
                 self.log(
                     f"Game {self.games_finished}/{total_games}: "
                     f"P{result['black']} vs P{result['white']} → "

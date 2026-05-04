@@ -635,9 +635,6 @@ class Population:
                 white_rating, black_rating, white_score, white_games
             )
 
-        # Track head-to-head
-        self.record_match(black, white, results["Winner"])
-
     def record_match(self, black: int, white: int, winner: int) -> None:
         """Record a game result for head-to-head tracking.
 
