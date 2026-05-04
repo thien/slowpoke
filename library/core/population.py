@@ -366,11 +366,13 @@ class Population:
         if self.onixEntity is not None:
             newPopulation.append(self.onixEntity.id)
             self.players[ONIX_ID].points = 0
+            self.players[ONIX_ID].games_played = 0
         # Preserve baseline entity across generations
         if self.baseline_entity is not None:
             newPopulation.append(self.baseline_entity.id)
             self.players[self.baseline_entity.id].elo = self.baseline_elo
             self.players[self.baseline_entity.id].points = 0
+            self.players[self.baseline_entity.id].games_played = 0
         self.current_population = newPopulation
         self.count = len(self.current_population)
         end = datetime.datetime.now() - start
@@ -662,7 +664,7 @@ class Population:
             white: White player ID.
             winner: Winner colour (BLACK=0, WHITE=1, EMPTY=-1 for draw).
         """
-        from core.constants import BLACK, WHITE, EMPTY
+        from core.constants import BLACK, WHITE
 
         key = (black, white)
         if key not in self.head_to_head:
@@ -733,11 +735,12 @@ class Population:
 
         return t
 
-    def build_matrix_table(self, max_rows: int = 8):
+    def build_matrix_table(self, max_rows: Optional[int] = None):
         """Build a compact per-player win matrix.
 
-        Only shows the top ``max_rows`` players by Elo to keep the
-        table readable. Cell shows row player's wins vs column player.
+        Shows aggregated W-D-L for each pair (both colours combined).
+        When ``max_rows`` is None, shows all players.
+        When ``max_rows`` is 0 or negative, returns None.
         """
         from rich.table import Table
 
@@ -746,13 +749,15 @@ class Population:
             return None
         # Sort by Elo descending, take top N
         by_elo = sorted(pids, key=lambda pid: self.players[pid].elo, reverse=True)
-        pids = by_elo[:max_rows]
+        if max_rows is not None and max_rows > 0:
+            by_elo = by_elo[:max_rows]
+        pids = by_elo
 
         t = Table(title="Win Matrix (top by Elo)")
         t.add_column("", style="cyan", no_wrap=True)
         for pid in pids:
             label = getattr(self.players[pid], "entity_name", None) or f"P{pid}"
-            t.add_column(label, justify="center", max_width=5)
+            t.add_column(label, justify="center", max_width=8, min_width=5)
 
         for a in pids:
             label = getattr(self.players[a], "entity_name", None) or f"P{a}"
@@ -761,12 +766,84 @@ class Population:
                 if a == b:
                     row.append("—")
                 else:
-                    rec = self.head_to_head.get((a, b), [0, 0, 0])
-                    w = rec[0]
-                    row.append(str(w) if w else ".")
+                    rec_ab = self.head_to_head.get((a, b), [0, 0, 0])
+                    rec_ba = self.head_to_head.get((b, a), [0, 0, 0])
+                    w = rec_ab[0] + rec_ba[1]
+                    d = rec_ab[2] + rec_ba[2]
+                    loss = rec_ab[1] + rec_ba[0]
+                    if w + d + loss == 0:
+                        row.append(".")
+                    else:
+                        row.append(f"{w}-{d}-{loss}")
             t.add_row(*row)
 
         return t
+
+    def get_checkpoint_data(self) -> dict:
+        """Serialize Population state to a JSON-safe dict (for checkpoint)."""
+        # Serialise head_to_head (tuple keys → string keys)
+        h2h = {}
+        for (a, b), v in self.head_to_head.items():
+            h2h[f"{a},{b}"] = v
+
+        players = {}
+        for pid, ag in self.players.items():
+            players[str(pid)] = ag.__getstate__()
+            # Add bot construction params that the Agent dict misses
+            players[str(pid)]["ply_depth"] = self.ply_depth
+            players[str(pid)]["use_mlx"] = False
+            players[str(pid)]["use_parallel_mcts"] = self.use_parallel_mcts
+            players[str(pid)]["num_parallel"] = self.parallel_threads
+            players[str(pid)]["debug"] = self.is_debug
+
+        return {
+            "generation": self.generation,
+            "player_counter": self.player_counter,
+            "current_population": self.current_population,
+            "champions": self.champions,
+            "head_to_head": h2h,
+            "baseline_entity_id": self.baseline_entity.id
+            if self.baseline_entity
+            else None,
+            "onix_entity_id": self.onixEntity.id if self.onixEntity else None,
+            "baseline_elo": self.baseline_elo,
+            "use_neat": self.use_neat,
+            "ply_depth": self.ply_depth,
+            "num_weights": self.num_weights,
+            "tau": self.tau,
+            "players": players,
+        }
+
+    def load_checkpoint_data(self, data: dict) -> None:
+        """Restore Population from a checkpoint dict."""
+        self.generation = data["generation"]
+        self.player_counter = data["player_counter"]
+        self.current_population = list(data["current_population"])
+        self.champions = list(data["champions"])
+        self.num_weights = data.get("num_weights", self.num_weights)
+        self.tau = data.get("tau", self.tau)
+
+        # Restore head_to_head (string keys → tuple keys)
+        self.head_to_head = {}
+        for skey, v in data.get("head_to_head", {}).items():
+            parts = skey.split(",")
+            self.head_to_head[(int(parts[0]), int(parts[1]))] = v
+
+        # Restore players
+        self.players = {}
+        for pid_str, pdata in data["players"].items():
+            pid = int(pid_str)
+            agent_obj = object.__new__(agent.Agent)
+            agent_obj.__setstate__(pdata)
+            self.players[pid] = agent_obj
+
+        # Restore baseline / onix references
+        bid = data.get("baseline_entity_id")
+        self.baseline_entity = self.players.get(bid) if bid is not None else None
+        oid = data.get("onix_entity_id")
+        self.onixEntity = self.players.get(oid) if oid is not None else None
+
+        self.count = len(self.current_population)
 
     def add_champion(self) -> None:
         for pid in self.current_population:

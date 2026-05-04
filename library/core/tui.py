@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import signal
 import sys
 from typing import Any, Optional
 
@@ -21,6 +23,7 @@ class TournamentDisplay:
 
     def __init__(self, generator: Any) -> None:
         self.generator = generator
+        self.generator.tui = self  # wire up so display_status_info pushes to TUI
         self._live: Optional[Live] = None
         self._started = False
 
@@ -34,17 +37,23 @@ class TournamentDisplay:
         )
         self._live.__enter__()
         self._started = True
+        self._old_sigwinch = signal.signal(signal.SIGWINCH, self._on_resize)
         self.push_update()
 
     def stop(self) -> None:
         """Exit the Live context."""
         self._started = False
+        signal.signal(signal.SIGWINCH, self._old_sigwinch)
         if self._live:
             try:
                 self._live.__exit__(None, None, None)
             except Exception:
                 pass
             self._live = None
+
+    def _on_resize(self, signum: int, frame: object) -> None:
+        """Handle terminal resize (SIGWINCH) by refreshing the display."""
+        self.push_update()
 
     def push_update(self) -> None:
         """Refresh the display (called from tournament thread after games/champs)."""
@@ -59,8 +68,18 @@ class TournamentDisplay:
             # Print to stderr so it shows up even in alt-screen mode
             print(f"[TUI error] {e}", file=sys.stderr)
 
+    @staticmethod
+    def _build_sub_table(entries: dict[str, str], title: str) -> Panel:
+        """Build a titled Panel with a two-column key-value Rich Table."""
+        table = Table(show_header=False, box=None, padding=(0, 2))
+        table.add_column("Metric", style="cyan")
+        table.add_column("Value", style="white")
+        for key, value in entries.items():
+            table.add_row(key, value)
+        return Panel(table, title=title)
+
     def _build_layout(self) -> Layout:
-        """Build a 3-panel layout: stats left, matrix+standings right."""
+        """Build a 4-panel layout: three sub-tables left, matrix+standings right."""
         layout = Layout()
         layout.split_row(
             Layout(name="left-stats", ratio=2),
@@ -71,23 +90,33 @@ class TournamentDisplay:
             Layout(name="standings"),
         )
 
-        # ── Left: Info metrics ──
-        info = Table(show_header=False, box=None, padding=(0, 2))
-        info.add_column("Metric", style="cyan")
-        info.add_column("Value", style="white")
-        for metric, value in self.generator.status_info():
-            ms = str(metric) if metric is not None else ""
-            vs = str(value) if value is not None else ""
-            if not ms.strip() or not vs.strip():
-                continue
-            if ms.startswith("Player") or ms == "Previous Scoreboard":
-                continue
-            info.add_row(ms, vs)
+        # ── Left: three sub-tables (progress / timing / champion) ──
+        data = self.generator.status_info()
+        left = Layout()
+        left.split_column(
+            Layout(name="progress-section"),
+            Layout(name="timing-section"),
+            Layout(name="champion-section"),
+        )
+        left["progress-section"].update(
+            self._build_sub_table(data["progress"], "Progress")
+        )
+        left["timing-section"].update(self._build_sub_table(data["timing"], "Timing"))
+        left["champion-section"].update(
+            self._build_sub_table(data["champion"], "Champion")
+        )
         g = self.generator.currentGeneration
-        layout["left-stats"].update(Panel(info, title=f"Generation {g}"))
+        layout["left-stats"].update(Panel(left, title=f"Generation {g}"))
 
         # ── Right top: Win matrix ──
-        matrix = self.generator.population.build_matrix_table()
+        try:
+            term = os.get_terminal_size()
+            avail_rows = (term.lines - 16) // 2
+            avail_cols = (term.columns - 8) // 12
+            matrix_rows = max(4, min(avail_rows, avail_cols))
+        except (ValueError, OSError):
+            matrix_rows = 8
+        matrix = self.generator.population.build_matrix_table(max_rows=matrix_rows)
         if matrix:
             layout["matrix"].update(Panel(matrix, title="Win Matrix"))
         else:

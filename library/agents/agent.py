@@ -11,6 +11,7 @@ It also has a default ELO.
 from __future__ import annotations
 
 import hashlib
+import json
 import time
 from typing import Any, Dict, Optional
 
@@ -46,6 +47,105 @@ class Agent:
         # store parent's ID
         self.parents = []
         self.generate_origin()
+
+    def __getstate__(self) -> dict:
+        """Serialize agent to a plain dict (for checkpoint)."""
+        try:
+            nn_mode = getattr(self.bot.nn, "_mode", "standard")
+            raw = self.bot.nn.get_all_coefficients()
+            if nn_mode == "neat":
+                coefficients = bytes(raw).decode("utf-8")  # JSON string
+            else:
+                coefficients = raw.tolist()  # float list
+        except Exception:
+            coefficients = None
+            nn_mode = "standard"
+
+        bot_type = type(self.bot).__name__
+
+        data: dict = {
+            "id": self.id,
+            "elo": self.elo,
+            "points": self.points,
+            "games_played": self.games_played,
+            "champ_range": self.champ_range,
+            "champ_score": self.champ_score,
+            "origin": self.origin,
+            "parents": self.parents,
+            "bot_type": bot_type,
+            "nn_mode": nn_mode,
+            "coefficients": coefficients,
+        }
+
+        if hasattr(self, "isBaseline"):
+            data["isBaseline"] = self.isBaseline
+        if hasattr(self, "entity_name"):
+            data["entity_name"] = self.entity_name
+
+        return data
+
+    def __setstate__(self, state: dict) -> None:
+        """Restore agent from a checkpoint dict."""
+        import numpy as np
+        from agents.slowbro import Slowbro
+        from agents.onix import Onix
+        from agents.evaluator.neural import NeuralNetwork
+
+        bot_type = state.get("bot_type", "Slowbro")
+        ply = state.get("ply_depth", 4)
+        nn_mode = state.get("nn_mode", "standard")
+
+        if bot_type == "Onix":
+            bot = Onix(ply_depth=ply)
+        else:
+            use_mlx = state.get("use_mlx", True)
+            use_parallel = state.get("use_parallel_mcts", False)
+            num_parallel = state.get("num_parallel", 4)
+            debug = state.get("debug", False)
+
+            if nn_mode == "neat":
+                from agents.evaluator.genome import Genome
+
+                nn = NeuralNetwork(layer_list=[32, 1], use_mlx=False, mode="neat")
+                genome_data = state.get("coefficients")
+                if genome_data is not None:
+                    nn._genome = Genome.from_dict(json.loads(genome_data))
+                bot = Slowbro(
+                    ply_depth=ply,
+                    use_mlx=False,
+                    use_parallel=use_parallel,
+                    num_parallel=num_parallel,
+                    debug=debug,
+                )
+                bot.nn = nn
+            else:
+                bot = Slowbro(
+                    ply_depth=ply,
+                    use_mlx=use_mlx,
+                    use_parallel=use_parallel,
+                    num_parallel=num_parallel,
+                    debug=debug,
+                )
+                coeffs = state.get("coefficients")
+                if coeffs is not None:
+                    bot.nn.load_coefficients(np.array(coeffs, dtype=np.float32))
+
+        self.bot = bot
+        self.elo = state.get("elo", 100)
+        self.points = state.get("points", 0)
+        self.games_played = state.get("games_played", 0)
+        self.champ_range = state.get("champ_range", 0)
+        self.champ_score = state.get("champ_score", 0)
+        self.move_function = bot.move_function
+        self.colour = None
+        self.origin = state.get("origin", [])
+        self.parents = state.get("parents", [])
+        self.id = state.get("id")
+
+        if state.get("isBaseline"):
+            self.isBaseline = True
+        if state.get("entity_name"):
+            self.entity_name = state["entity_name"]
 
     def generate_origin(self) -> None:
         """Generate genesis origin block for evolution tracking."""

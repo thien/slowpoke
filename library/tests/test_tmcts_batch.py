@@ -2,7 +2,6 @@
 Tests for TMCTS batch evaluation and end-to-end AI comparisons.
 """
 
-import pytest
 import unittest
 
 from core import checkers

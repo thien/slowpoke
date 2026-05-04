@@ -25,8 +25,19 @@ def train() -> None:
     }
     readyBool = False
     verifiedBool = False
+    resume_folder = None
     # Check for arguments
-    if len(sys.argv) > 1:
+    if "--resume" in sys.argv:
+        idx = sys.argv.index("--resume")
+        if idx + 1 < len(sys.argv):
+            resume_folder = sys.argv[idx + 1]
+            readyBool = True
+            verifiedBool = True
+        else:
+            print("--resume requires a folder path")
+            print("Terminating.")
+            return
+    elif len(sys.argv) > 1:
         # check arguments
         if "light" in sys.argv:
             print("You are about to load a light simulation.")
@@ -97,7 +108,12 @@ def train() -> None:
         print("     python3 simulate.py vheavy --parallel 8")
     # run tournament
     if readyBool:
-        t = tournament.Generator(options)
+        if resume_folder:
+            print(f"Resuming training from {resume_folder}")
+            t = tournament.Generator.from_checkpoint(resume_folder)
+            options["ply_depth"] = t.ply_depth  # used by evaluator below
+        else:
+            t = tournament.Generator(options)
         use_tui = "--no-tui" not in sys.argv
         if use_tui:
             from core.tui import TournamentDisplay
@@ -105,14 +121,30 @@ def train() -> None:
             try:
                 with TournamentDisplay(t):
                     t.run_generations()
+            except KeyboardInterrupt:
+                print()
+                print("=" * 60)
+                print("Training interrupted.")
+                print(f"To resume, run: python train.py --resume {t.saveLocation}")
+                print("=" * 60)
+                return
             except Exception as e:
                 print(f"\n[Tournament error] {e}")
+                return
         else:
-            t.run_generations()
+            try:
+                t.run_generations()
+            except KeyboardInterrupt:
+                print()
+                print("=" * 60)
+                print("Training interrupted.")
+                print(f"To resume, run: python train.py --resume {t.saveLocation}")
+                print("=" * 60)
+                return
         # create statistics
         stats = statistics.Statistics(t.folderName)
-        stats.load_statistics_file()
-        stats.save_charts()
+        stats.loadStatisticsFile()
+        stats.saveCharts()
         # stats.averageNumMovesPerGeneration()
         # stats.getLearningRate()
         # stats.timeStatsPerGeneration()
@@ -124,8 +156,8 @@ def train() -> None:
         su.evaluate(games)
 
         # create statistics of Gold Master
-        stats.load_gm_file()
-        stats.analyse_gm()
+        stats.loadGMFile()
+        stats.analyseGM()
         # print that we're done.
         print("DONE!")
     else:

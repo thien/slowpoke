@@ -227,8 +227,10 @@ class TestEloIntegration(unittest.TestCase):
             if pid >= player_count_before:
                 has_offspring = True
                 self.assertAlmostEqual(
-                    pop.players[pid].elo, baseline, places=1,
-                    msg=f"Offspring {pid} should start at baseline {baseline}, got {pop.players[pid].elo}"
+                    pop.players[pid].elo,
+                    baseline,
+                    places=1,
+                    msg=f"Offspring {pid} should start at baseline {baseline}, got {pop.players[pid].elo}",
                 )
         self.assertTrue(has_offspring, "No offspring found in new population")
 

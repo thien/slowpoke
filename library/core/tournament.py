@@ -54,7 +54,7 @@ def option_defaults(options):
 
 
 class Generator:
-    def __init__(self, options, tui=None):
+    def __init__(self, options, tui=None, saveLocation=None):
         # initialise default variables when needed.
         options = option_defaults(options)
         self.is_debugMode = options["debugMode"]
@@ -94,7 +94,6 @@ class Generator:
         self.champGamesRoundsCount = 6  # should always be even and at least 2.
         self.progress = []
 
-        self.previousGenerationRankings = None
         self.previousChampPointList = None
         # Initiate other information
         self.processors = multiprocessing.cpu_count() - 1
@@ -108,20 +107,36 @@ class Generator:
         self.init_mongo_connection()
         # we also want to save the stats offline
         self.generationStats = []
-        self.folderName = (
-            str(self.clean_date(self.StartTime, True))
-            + " "
-            + str(self.ply_depth)
-            + "ply"
-        )
-        self.saveLocation = os.path.join(options["resultsLocation"], self.folderName)
+        if saveLocation:
+            self.folderName = os.path.basename(saveLocation.rstrip("/"))
+            self.saveLocation = saveLocation
+        else:
+            self.folderName = (
+                str(self.clean_date(self.StartTime, True))
+                + " "
+                + str(self.ply_depth)
+                + "ply"
+            )
+            self.saveLocation = os.path.join(
+                options["resultsLocation"], self.folderName
+            )
         self.options = options  # Store for reference
         # Set up logging
         self.log_file = os.path.join(self.saveLocation, "training.log")
         self._setup_logging()
-        # self.saveLocation = os.path.join(options['resultsLocation'],self.clean_date(self.StartTime, True))
         # generate charts as we go?
         self.generateChartsEveryRound = True
+        self._resume_from = 0  # generation to start from (set >0 on resume)
+
+    def __getstate__(self) -> dict:
+        """Strip unpicklable attributes for multiprocessing workers."""
+        state = self.__dict__.copy()
+        state["tui"] = None
+        state["logger"] = None
+        return state
+
+    def __setstate__(self, state: dict) -> None:
+        self.__dict__.update(state)
 
     def load_json_config(self, filepath: str) -> dict:
         """
@@ -149,15 +164,21 @@ class Generator:
         if not os.path.isdir(self.saveLocation):
             os.makedirs(self.saveLocation)
 
-        # Configure logging to file
+        # Remove any existing handlers so we can reconfigure
+        for handler in logging.root.handlers[:]:
+            logging.root.removeHandler(handler)
+
+        # Configure logging to file (append mode)
         logging.basicConfig(
             filename=self.log_file,
             level=logging.INFO,
             format="%(asctime)s - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
+            filemode="a",
         )
         self.logger = logging.getLogger(__name__)
-        self.log("Training started")
+        is_resume = self._resume_from > 0 if hasattr(self, "_resume_from") else False
+        self.log("Training resumed" if is_resume else "Training started")
         self.log(
             f"Population: {self.populationSize}, Ply Depth: {self.ply_depth}, Generations: {self.generations}"
         )
@@ -169,8 +190,11 @@ class Generator:
 
     def log_status_info(self) -> None:
         """Write current status info to log file."""
-        for i in self.status_info():
-            self.log(f"{i[0]}: {i[1]}")
+        data = self.status_info()
+        for section, entries in data.items():
+            self.log(f"[{section}]")
+            for key, value in entries.items():
+                self.log(f"  {key}: {value}")
 
     def Tournament(self) -> None:
         """
@@ -181,6 +205,7 @@ class Generator:
         self.log("STARTING TOURNAMENT")
         self.log(f"Generation: {self.currentGeneration}")
         self.log(f"Population size: {len(self.population.current_population)} players")
+        self.population.head_to_head.clear()
 
         # Full round-robin: each pair plays each colour exactly once
         gamePool = []
@@ -271,7 +296,8 @@ class Generator:
 
     def run_generations(self) -> None:
         # loop through the generations.
-        for i in range(self.generations):
+        start_gen = self._resume_from if hasattr(self, "_resume_from") else 0
+        for i in range(start_gen, self.generations):
             print("Initiating generation", i)
             self.log("=" * 60)
             self.log(f"Starting generation {i}")
@@ -284,10 +310,11 @@ class Generator:
             # initiate timestamp
             startTime = datetime.datetime.now()
             # make bots play each other.
-            self.population, generationResults = self.Tournament()
-            self.previousGenerationRankings = (
-                self.population.print_population_by_points()
-            )
+            try:
+                self.population, generationResults = self.Tournament()
+            except KeyboardInterrupt:
+                self.log("Generation interrupted during tournament")
+                raise
 
             # compute champion games (runs independently of others)
             self.log("Running champion games...")
@@ -311,12 +338,17 @@ class Generator:
             # need to store the results of this into a json file!
             self.generationStats.append(
                 {
-                    "stats": [(str(i[0]), str(i[1])) for i in self.status_info()],
+                    "stats": self.status_info(),
                     "games": generationResults,
                     "durationInSeconds": str(timeDifference),
                 }
             )
             self.save_training_stats_to_json(self.saveLocation, self.generationStats)
+            # Save checkpoint for resume
+            try:
+                self.save_checkpoint()
+            except Exception as e:
+                self.log(f"save_checkpoint failed (non-fatal): {e}")
             if self.generateChartsEveryRound:
                 try:
                     self.generate_stats()
@@ -350,6 +382,86 @@ class Generator:
             storage.save_statistics_parquet(saveLocation, stats)
         except Exception as e:
             self.log(f"Parquet write failed (non-fatal): {e}")
+
+    def save_checkpoint(self) -> None:
+        """Save a checkpoint that can be used to resume training."""
+        ckpt_dir = os.path.join(self.saveLocation, "checkpoint")
+        if not os.path.isdir(ckpt_dir):
+            os.makedirs(ckpt_dir)
+
+        data = {
+            "generator_version": 1,
+            "generator": {
+                "currentGeneration": self.currentGeneration,
+                "generations": self.generations,
+                "GenerationTimeLengths": self.GenerationTimeLengths.tolist(),
+                "progress": self.progress,
+                "cummulativeScore": self.cummulativeScore,
+                "AverageGameTime": self.AverageGameTime,
+                "AverageGenrationLength": self.AverageGenrationLength,
+                "gameIDCounter": self.gameIDCounter,
+                "generationStats": self.generationStats,
+                "StartTime": self.StartTime,
+                "folderName": self.folderName,
+                "saveLocation": self.saveLocation,
+                "options": self.options,
+                "ply_depth": self.ply_depth,
+                "populationSize": self.populationSize,
+                "processors": self.processors,
+                "LastChampionScore": self.LastChampionScore,
+                "previousChampPointList": self.previousChampPointList,
+            },
+            "population": self.population.get_checkpoint_data(),
+        }
+
+        path = os.path.join(ckpt_dir, "latest.json")
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2)
+        self.log(f"Checkpoint saved ({path})")
+
+    @classmethod
+    def from_checkpoint(cls, folder_path: str, tui=None) -> "Generator":
+        """Create a Generator from a saved checkpoint for resuming training."""
+        ckpt_path = os.path.join(folder_path, "checkpoint", "latest.json")
+        if not os.path.isfile(ckpt_path):
+            raise FileNotFoundError(f"No checkpoint found at {ckpt_path}")
+
+        with open(ckpt_path) as f:
+            data = json.load(f)
+
+        gen_data = data["generator"]
+        options = gen_data["options"]
+
+        # Create generator (will init a fresh population — we overwrite it)
+        gen = cls(options, tui, saveLocation=gen_data["saveLocation"])
+
+        # Restore generator scalar state
+        gen.currentGeneration = gen_data["currentGeneration"]
+        gen.generations = gen_data.get("generations", gen.generations)
+        gen.GenerationTimeLengths = np.array(gen_data.get("GenerationTimeLengths", []))
+        gen.progress = list(gen_data.get("progress", []))
+        gen.cummulativeScore = gen_data.get("cummulativeScore", 0)
+        gen.AverageGameTime = gen_data.get("AverageGameTime", 0)
+        gen.AverageGenrationLength = gen_data.get("AverageGenrationLength", 0)
+        gen.gameIDCounter = gen_data.get("gameIDCounter", 0)
+        gen.generationStats = list(gen_data.get("generationStats", []))
+        gen.StartTime = gen_data.get("StartTime", gen.StartTime)
+        gen.populationSize = gen_data.get("populationSize", gen.populationSize)
+        gen.LastChampionScore = gen_data.get("LastChampionScore", 0)
+        gen.previousChampPointList = gen_data.get("previousChampPointList")
+
+        # Restore population
+        gen.population.load_checkpoint_data(data["population"])
+
+        # Set resume point (next generation after the last completed one)
+        gen._resume_from = gen.currentGeneration + 1
+        gen.currentGeneration = gen.currentGeneration  # last completed
+
+        # Reconfigure logging for the existing folder
+        gen.log_file = os.path.join(gen.saveLocation, "training.log")
+        gen._setup_logging()
+
+        return gen
 
     def pool_champ_game(self, info) -> None:
         blackPlayer = self.population.players[info["Players"][0]]
@@ -476,90 +588,132 @@ class Generator:
         return data
 
     def status_info(self) -> dict:
-        currentTime = datetime.datetime.now().timestamp()
+        """Return structured status data as a dict of {category: {metric: value}}.
+
+        All values are pre-formatted strings.
+        """
+        current_time = datetime.datetime.now().timestamp()
         recent_scores = self.progress[-7:]
 
-        averageGenTimeLength = np.mean(self.GenerationTimeLengths)
+        average_gen_time = np.mean(self.GenerationTimeLengths)
 
-        PercentageEst = 0.0
-        if not np.isnan(averageGenTimeLength) and averageGenTimeLength > 0:
-            PercentageEst = min(
-                (currentTime - self.currentGenStartTime) / averageGenTimeLength,
+        percentage_est = 0.0
+        if not np.isnan(average_gen_time) and average_gen_time > 0:
+            percentage_est = min(
+                (current_time - self.currentGenStartTime) / average_gen_time,
                 1.0,
             )
 
-        numGens = np.size(self.progress)
-        remainingGenTime = max(
-            0.0,
-            averageGenTimeLength - (currentTime - self.currentGenStartTime),
+        num_gens = np.size(self.progress)
+        remaining_gen_seconds = average_gen_time - (
+            current_time - self.currentGenStartTime
         )
-        RemainingGenCount = self.generations - numGens
+        remaining_gen_count = self.generations - num_gens
 
-        # calculate current run time
-        currentRunTime = datetime.datetime.now() - datetime.datetime.fromtimestamp(
+        current_run_time = datetime.datetime.now() - datetime.datetime.fromtimestamp(
             self.StartTime
         )
-        # calculate remaining time
-        EstRemainingTime = (
-            (RemainingGenCount * averageGenTimeLength)
+
+        est_remaining_seconds = (
+            (remaining_gen_count * average_gen_time)
             + np.sum(self.GenerationTimeLengths)
-            - currentRunTime.total_seconds()
+            - current_run_time.total_seconds()
         )
 
-        EstEndDate = EstRemainingTime + self.StartTime + currentRunTime.total_seconds()
+        est_end_timestamp = (
+            est_remaining_seconds + self.StartTime + current_run_time.total_seconds()
+        )
 
-        messsages = []
+        # -- helpers --
+        def _nan(val: float) -> bool:
+            try:
+                return bool(np.isnan(val))
+            except (TypeError, ValueError):
+                return False
 
-        messsages.append(["Generation", str(numGens) + "/" + str(self.generations)])
-        messsages.append(["Population", self.populationSize])
-        messsages.append(["Ply Depth", self.ply_depth])
-        messsages.append(["Connected To Mongo", self.mongoConnected])
-        messsages.append(["Cores Utilised", self.processors])
-        # start and end dates
-        messsages.append([" ", " "])
-        messsages.append(["Test Start Date", self.clean_date(self.StartTime, True)])
-        messsages.append(["Current Runtime", currentRunTime])
-        messsages.append(["Test End Date*", self.clean_date(EstEndDate, True)])
-        messsages.append(["Remaining Test Time*", self.clean_date(EstRemainingTime)])
-        # Time info
-        messsages.append([" ", " "])
-        messsages.append(["Mean Game Time", self.clean_date(averageGenTimeLength)])
-        messsages.append(["Gen. Progress*", str(round(PercentageEst * 100, 2)) + "%"])
-        messsages.append(["Remaining Gen. Time*", self.clean_date(remainingGenTime)])
-        # champion info
-        messsages.append([" ", " "])
-        messsages.append(["Champions Currently Playing?", self.AreChampionsPlaying])
-        messsages.append(["Previous Score", self.LastChampionScore])
-        messsages.append(["Cummulative Score", f"{self.cummulativeScore:.2f}"])
+        def _dur(val: float) -> str:
+            """Format a duration in seconds, or show dash for no data."""
+            if val is None or _nan(val) or val < 0:
+                return "—"
+            return str(self.clean_date(float(val)))
 
-        avgRecentScores = 0.0
+        def _ts(val: float) -> str:
+            """Format a unix timestamp, or show dash for no data."""
+            if val is None or _nan(val) or val < 0:
+                return "—"
+            return str(self.clean_date(float(val), True))
+
+        def _maybe_nan(val: float) -> str:
+            """Return formatted float or dash."""
+            if val is None or _nan(val):
+                return "—"
+            return f"{float(val):.2f}"
+
+        # -- progress --
+        progress = {
+            "generation": f"{num_gens}/{self.generations}",
+            "population": str(self.populationSize),
+            "ply depth": str(self.ply_depth),
+            "mongo": "Yes" if self.mongoConnected else "No",
+            "cores": str(self.processors),
+            "debug": "Yes" if self.is_debugMode else "No",
+        }
+
+        # -- timing --
+        timing = {
+            "start": _ts(self.StartTime),
+            "runtime": str(current_run_time),
+            "est end": _ts(est_end_timestamp),
+            "est remaining": _dur(est_remaining_seconds),
+            "mean game": _dur(average_gen_time),
+            "gen progress": f"{round(percentage_est * 100, 2)}%",
+            "remaining gen": _dur(remaining_gen_seconds),
+        }
+
+        # -- champion --
+        avg_recent = 0.0
         if len(recent_scores) > 0:
-            avgRecentScores = float(np.mean(recent_scores))
-        messsages.append(["Average Growth", f"{avgRecentScores:.2f}"])
-        try:
-            messsages.append(
-                [
-                    "Recent Scores",
-                    "[{}]".format(
-                        ", ".join("{:0.2f}".format(x) for x in recent_scores)
-                    ),
-                ]
-            )
-            messsages.append(
-                [
-                    "Prev. Champ Point Range",
-                    ["{:0.2f}".format(x) for x in self.previousChampPointList],
-                ]
-            )
-        except:
-            pass
-        messsages.append([" ", " "])
-        messsages.append(["Previous Scoreboard", " "])
-        messsages.append([self.previousGenerationRankings, ""])
-        messsages.append(["", ""])
-        messsages.append(["Debug Mode:", self.is_debugMode])
+            avg_recent = float(np.mean(recent_scores))
 
-        return messsages
+        recent_str = "—"
+        if len(recent_scores) > 0:
+            recent_str = "[{}]".format(
+                ", ".join("{:0.2f}".format(x) for x in recent_scores)
+            )
+
+        champ_range_str = "—"
+        if (
+            self.previousChampPointList is not None
+            and len(self.previousChampPointList) > 0
+        ):
+            champ_range_str = ", ".join(
+                "{:0.2f}".format(x) for x in self.previousChampPointList
+            )
+
+        champion = {
+            "playing": "Yes" if self.AreChampionsPlaying else "No",
+            "prev score": _maybe_nan(self.LastChampionScore),
+            "cumulative": f"{self.cummulativeScore:.2f}",
+            "avg growth": f"{avg_recent:.2f}",
+            "recent scores": recent_str,
+            "prev champ range": champ_range_str,
+        }
+
+        return {
+            "progress": progress,
+            "timing": timing,
+            "champion": champion,
+        }
+
+    @staticmethod
+    def _build_info_table(entries: dict[str, str], title: str) -> Panel:
+        """Build a titled Panel containing a two-column key-value Rich Table."""
+        table = Table(show_header=False, box=None, padding=(0, 2))
+        table.add_column("Metric", style="cyan")
+        table.add_column("Value", style="white")
+        for key, value in entries.items():
+            table.add_row(key, value)
+        return Panel(table, title=title)
 
     def display_status_info(self, force_display: bool = False) -> None:
         """Log status info to file. Display rich panels or push to TUI."""
@@ -577,15 +731,20 @@ class Generator:
             Layout(name="ranking"),
         )
 
-        info = Table(show_header=False, box=None, padding=(0, 2))
-        info.add_column("Metric", style="cyan")
-        info.add_column("Value", style="white")
-        for metric, value in self.status_info():
-            metric_s = str(metric) if metric is not None else ""
-            value_s = str(value) if value is not None else ""
-            if not metric_s.strip() or not value_s.strip():
-                continue
-            info.add_row(metric_s, value_s)
+        data = self.status_info()
+        info = Layout()
+        info.split_column(
+            Layout(name="progress-section"),
+            Layout(name="timing-section"),
+            Layout(name="champion-section"),
+        )
+        info["progress-section"].update(
+            self._build_info_table(data["progress"], "Progress")
+        )
+        info["timing-section"].update(self._build_info_table(data["timing"], "Timing"))
+        info["champion-section"].update(
+            self._build_info_table(data["champion"], "Champion")
+        )
         layout["info"].update(Panel(info, title=f"Generation {self.currentGeneration}"))
 
         standings = self.population.build_standings_table()
