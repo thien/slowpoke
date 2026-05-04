@@ -248,14 +248,14 @@ class Generator:
         if self.processors > len(gamePool):
             threadCount = len(gamePool)
         self.log(f"Running games with {threadCount} parallel processes...")
-        completed = 0
+        self.games_finished = 0
         total_games = len(gamePool)
         with multiprocessing.Pool(processes=threadCount) as pool:
             for result in pool.imap_unordered(self.game_worker, gamePool, chunksize=16):
                 results[result["idx"]] = result
-                completed += 1
+                self.games_finished += 1
                 self.log(
-                    f"Game {completed}/{total_games}: "
+                    f"Game {self.games_finished}/{total_games}: "
                     f"P{result['black']} vs P{result['white']} → "
                     f"{'Black' if result['game']['Winner'] == Black else 'White' if result['game']['Winner'] == White else 'Draw'}"
                 )
@@ -654,12 +654,22 @@ class Generator:
             "debug": "Yes" if self.is_debug_mode else "No",
         }
 
+        def _progress_bar(current: int, total: int, width: int = 20) -> str:
+            """Build a text progress bar like '████████░░ 80% (42/210)'."""
+            if total == 0:
+                return "—"
+            ratio = current / total
+            filled = int(ratio * width)
+            bar = "█" * filled + "░" * (width - filled)
+            return f"{bar} {ratio:.0%} ({current}/{total})"
+
         # -- timing --
         timing = {
             "start": _ts(self.start_time),
             "runtime": str(current_run_time),
             "est end": _ts(est_end_timestamp),
             "est remaining": _dur(est_remaining_seconds),
+            "games": _progress_bar(self.games_finished, self.games_queued),
             "mean game": _dur(average_gen_time),
             "gen progress": f"{round(percentage_est * 100, 2)}%",
             "remaining gen": _dur(remaining_gen_seconds),
