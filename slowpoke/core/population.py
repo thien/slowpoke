@@ -406,9 +406,9 @@ class Population:
                 newWeightSetA.append(mother[randomlayer][i].tolist()[0])
                 newWeightSetB.append(father[randomlayer][i].tolist()[0])
 
-        # turn back into matrix
-        newWeightSetA = np.matrix(newWeightSetA)
-        newWeightSetB = np.matrix(newWeightSetB)
+        # turn back into 2D array (shape matches original layer weight)
+        newWeightSetA = np.array([newWeightSetA])
+        newWeightSetB = np.array([newWeightSetB])
 
         # for i in newWeightSetA:
         #   print(i)
