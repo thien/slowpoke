@@ -589,5 +589,84 @@ class TestPopulationWeightDiversity(unittest.TestCase):
         )
 
 
+# ─────────────────────────────────────────────────────────────
+# ParallelTMCTS seed diversity
+# ─────────────────────────────────────────────────────────────
+
+class TestParallelTMCTSSeedDiversity(unittest.TestCase):
+    """ParallelTMCTS must not use the same fixed seed for every agent.
+
+    All agents sharing seed=42 → identical thread RNGs → identical tree
+    exploration → homogeneous play despite different NN weights.
+    """
+
+    def _make_parallel_tmcts(self):
+        from slowpoke.search.parallel_tmcts import ParallelTMCTS
+
+        class DummyEvaluator:
+            def evaluate_board(self, board, colour):
+                return 0.0
+
+        return ParallelTMCTS(ply=1, evaluator=DummyEvaluator())
+
+    def test_default_seed_is_not_fixed_42(self):
+        """Two independently created ParallelTMCTS instances must not both use seed 42."""
+        t1 = self._make_parallel_tmcts()
+        t2 = self._make_parallel_tmcts()
+        self.assertNotEqual(
+            t1.seed, 42,
+            "ParallelTMCTS default seed is 42 — all agents explore identical trees."
+        )
+        self.assertNotEqual(
+            t2.seed, 42,
+            "ParallelTMCTS default seed is 42 — all agents explore identical trees."
+        )
+
+    def test_two_instances_have_different_seeds(self):
+        """Two independently created ParallelTMCTS instances should have different seeds."""
+        seeds = {self._make_parallel_tmcts().seed for _ in range(5)}
+        self.assertGreater(
+            len(seeds), 1,
+            f"All 5 ParallelTMCTS instances got the same seed: {seeds}. "
+            "Agents will explore identical MCTS trees."
+        )
+
+    def test_explicit_seed_is_preserved(self):
+        """Passing an explicit seed must still be honoured (for reproducible tests)."""
+        from slowpoke.search.parallel_tmcts import ParallelTMCTS
+
+        class DummyEvaluator:
+            def evaluate_board(self, board, colour):
+                return 0.0
+
+        t = ParallelTMCTS(ply=1, evaluator=DummyEvaluator(), seed=99)
+        self.assertEqual(t.seed, 99)
+
+    def test_population_agents_have_different_parallel_tmcts_seeds(self):
+        """Agents created via Population must each get a distinct ParallelTMCTS seed."""
+        from slowpoke.core.population import Population
+        from slowpoke.search.parallel_tmcts import ParallelTMCTS
+
+        pop = Population(
+            num_players=6, ply_depth=1,
+            use_parallel_mcts=True, num_parallel=2,
+            include_baseline=False, include_onix=False,
+        )
+        seeds = []
+        for pid in pop.current_population:
+            df = pop.players[pid].bot.decision_function
+            if isinstance(df, ParallelTMCTS):
+                seeds.append(df.seed)
+
+        if not seeds:
+            self.skipTest("No ParallelTMCTS agents in population at ply=1")
+
+        self.assertGreater(
+            len(set(seeds)), 1,
+            f"All ParallelTMCTS agents share the same seed: {seeds[0]}. "
+            "Every agent explores identical MCTS trees."
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

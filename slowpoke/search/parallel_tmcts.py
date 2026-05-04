@@ -201,7 +201,7 @@ class ParallelTMCTS:
         self.evaluator = evaluator
         self.num_parallel = num_parallel
         self.debug = debug
-        self.seed = seed
+        self.seed = seed if seed is not None else random.randint(0, 2**31)
 
         # Progressive narrowing with Gumbel-Top-K
         self.progressive_narrowing = True
@@ -290,7 +290,7 @@ class ParallelTMCTS:
             futures = []
             for i in range(self.num_parallel):
                 # Each thread gets a deterministic seed derived from base seed
-                thread_seed = (self.seed if self.seed is not None else 42) + i
+                thread_seed = self.seed + i
                 future = executor.submit(
                     self._run_instance,
                     B,

@@ -228,7 +228,7 @@ class NeuralNetwork:
             current = current + np.sum(x)
 
         # Return scalar value (Python float for compatibility)
-        return float(current[0]) if current.size == 1 else current
+        return float(np.tanh(current[0])) if current.size == 1 else np.tanh(current)
 
     def compute_mlx(self, x: np.ndarray) -> Any:
         """
@@ -280,7 +280,7 @@ class NeuralNetwork:
         else:
             result = result + mx.sum(mx_x)
 
-        return result[0]  # Return scalar mx.array
+        return mx.tanh(result[0])  # Return scalar mx.array
 
     def compute_batch_mlx(self, batch_inputs: List[np.ndarray]) -> Any:
         """
@@ -329,7 +329,7 @@ class NeuralNetwork:
             sums = mx.sum(batch_arr, axis=1)
             current = current + sums[:, None]
 
-        return current.flatten()  # Returns mx.array
+        return mx.tanh(current.flatten())  # Returns mx.array
 
     def compute_batch(self, batch_inputs: List[np.ndarray]) -> np.ndarray:
         """

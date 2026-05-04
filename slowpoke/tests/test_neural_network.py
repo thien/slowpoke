@@ -158,28 +158,32 @@ class TestNeuralNetworkCompute(unittest.TestCase):
         self.assertIsInstance(result, float)
 
     def test_compute_terminal_contribution_32(self):
-        """32-input path adds np.sum(x) as terminal layer contribution."""
+        """32-input path adds np.sum(x) then tanh — output must be in (-1, 1)."""
         nn = NeuralNetwork([32, 40, 10, 1])
         x = np.full(32, 2.0, dtype=np.float32)
-        # With all weights = 0, the contribution is just 0 + np.sum(x) = 64.0
+        # With all weights = 0, pre-tanh value = np.sum(x) = 64.0; tanh(64) ≈ 1.0
         for w in nn.weights:
             w.fill(0)
         for b in nn.biases:
             b.fill(0)
         result = nn.compute(x)
-        self.assertAlmostEqual(result, 64.0, places=4)
+        self.assertAlmostEqual(result, np.tanh(64.0), places=4)
+        self.assertGreater(result, -1.0)
+        self.assertLess(result, 1.0 + 1e-6)  # tanh saturates at 1
 
     def test_compute_terminal_contribution_91(self):
-        """91-input path adds x[-1]*32 as terminal layer contribution."""
+        """91-input path adds x[-1]*32 then tanh — output must be in (-1, 1)."""
         nn = NeuralNetwork([91, 40, 10, 1])
         x = np.full(91, 2.0, dtype=np.float32)
         for w in nn.weights:
             w.fill(0)
         for b in nn.biases:
             b.fill(0)
-        # x[-1] = 2.0, so contribution = 2.0 * 32 = 64.0
+        # x[-1] = 2.0, pre-tanh = 2.0 * 32 = 64.0; tanh(64) ≈ 1.0
         result = nn.compute(x)
-        self.assertAlmostEqual(result, 64.0, places=4)
+        self.assertAlmostEqual(result, np.tanh(64.0), places=4)
+        self.assertGreater(result, -1.0)
+        self.assertLess(result, 1.0 + 1e-6)
 
     def test_compute_deterministic(self):
         """Same input should always produce same output."""
