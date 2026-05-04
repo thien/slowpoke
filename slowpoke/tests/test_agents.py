@@ -130,6 +130,55 @@ class TestGameOutcomes(unittest.TestCase):
         )
 
 
+class ColourRecorder:
+    """Minimal agent that records every colour it receives via make_move."""
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.colours: list[int] = []
+        self.id = name
+
+    def assign_colour(self, colour: int) -> None:
+        pass
+
+    def make_move(self, board: checkers.CheckerBoard, colour: int) -> int:
+        """Record the colour, then play the first legal move."""
+        self.colours.append(colour)
+        return board.get_moves()[0]
+
+
+class TestTurnParity(unittest.TestCase):
+    """Verify turn parity: Black agent plays on even turns, White on odd."""
+
+    def setUp(self) -> None:
+        self.black = ColourRecorder("black")
+        self.white = ColourRecorder("white")
+
+    def test_black_always_receives_colour_black(self) -> None:
+        """Black agent's make_move should always receive colour=Black."""
+        from slowpoke.core.game import tournament_match
+
+        tournament_match(self.black, self.white, 0, False, False)
+        for c in self.black.colours:
+            self.assertEqual(c, Black, "Black agent must always receive colour=Black")
+
+    def test_white_always_receives_colour_white(self) -> None:
+        """White agent's make_move should always receive colour=White."""
+        from slowpoke.core.game import tournament_match
+
+        tournament_match(self.black, self.white, 0, False, False)
+        for c in self.white.colours:
+            self.assertEqual(c, White, "White agent must always receive colour=White")
+
+    def test_games_still_complete(self) -> None:
+        """Tournament_match with dummy agents still produces a result (doesn't hang)."""
+        from slowpoke.core.game import tournament_match
+
+        result = tournament_match(self.black, self.white, 0, False, False)
+        self.assertIn("Winner", result)
+        self.assertIn(result["Winner"], (Black, White, -1))
+
+
 @pytest.mark.slow
 class TestOnixAgent(unittest.TestCase):
     """Test Onix heuristic-based agent."""
