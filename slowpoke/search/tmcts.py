@@ -58,6 +58,10 @@ class TMCTS(MCTSBase):
         self._ucb_cache: Optional[Dict[int, float]] = None  # {move: ucb_score}
         self._ucb_cache_avg: int = -1  # total_visits at which cache was valid
 
+        # Set of unvisited moves within the current decision.  Avoids scanning
+        # movesets to build a list comprehension every round.
+        self._unvisited_moves: set[int] = set()
+
         if self.debug:
             self.base_round = 10
 
@@ -112,8 +116,12 @@ class TMCTS(MCTSBase):
 
         # Pick randomly from unvisited if any remain
         if found_unvisited:
-            unvisited = [m for m in moves if self.movesets[m]["plays"] == 0]
-            return random.choice(unvisited)
+            if not self._unvisited_moves:
+                # Lazily populate (e.g. called directly from tests).
+                self._unvisited_moves = {
+                    m for m in moves if self.movesets[m]["plays"] == 0
+                }
+            return random.choice(list(self._unvisited_moves))
 
         # All moves visited: return highest-scached best
         return max(moves, key=lambda m: ucb_scores.get(m, -float("inf")))
@@ -136,6 +144,7 @@ class TMCTS(MCTSBase):
                 value = float(result)
             self.movesets[move]["chances"] += value
             self.movesets[move]["plays"] += 1
+            self._unvisited_moves.discard(move)
             self._total_visits += 1
         self._round_results = []
         # Invalidate incremental UCB1 cache (movesets and total_visits changed).
@@ -210,7 +219,7 @@ class TMCTS(MCTSBase):
             if hasattr(results, "numpy"):
                 results = np.array(results.numpy())
             else:
-                results = np.array([float(r) for r in results])
+                results = np.asarray(results, dtype=np.float32)
         else:
             results = []
 
@@ -284,6 +293,7 @@ class TMCTS(MCTSBase):
             self._round_results = []
 
             # set up moves
+            self._unvisited_moves = set(narrowed_moves)
             for move in narrowed_moves:
                 self.movesets[move] = {"plays": 0, "chances": 0}
 
@@ -305,6 +315,7 @@ class TMCTS(MCTSBase):
                     result = self.tree_search(B, ply, colour)
                     self.movesets[random_move]["chances"] += result
                     self.movesets[random_move]["plays"] += 1
+                    self._unvisited_moves.discard(random_move)
                     self._total_visits += 1
                 B.pop_move()
 
@@ -460,7 +471,7 @@ class TMCTS(MCTSBase):
             if hasattr(results, "numpy"):
                 results = np.array(results.numpy())
             elif not isinstance(results, np.ndarray):
-                results = np.array([float(r) for r in results])
+                results = np.asarray(results, dtype=np.float32)
         else:
             # Fallback: evaluate individually using evaluator
             if callable(self.evaluator):
