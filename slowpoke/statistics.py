@@ -463,12 +463,16 @@ class Statistics:
 
     def load_gm_file(self) -> None:
         filepath = os.path.join(self.directory, self.gm_filename)
+        if not os.path.isfile(filepath):
+            if self.debug:
+                print("No GM stats file found (skipping).")
+            self.gm_stats = {}
+            return
         if self.debug:
             print("Loading Statistics from file:")
             print("\t", filepath)
-        f = open(filepath, "r")
-        self.gm_stats = json.load(f)
-        f.close()
+        with open(filepath) as f:
+            self.gm_stats = json.load(f)
         if self.debug:
             print("Loaded GM Stats File!")
 
@@ -477,6 +481,10 @@ class Statistics:
   """
 
     def analyse_gm(self) -> None:
+        if not self.gm_stats:
+            print("No GM stats to analyse (skipping).")
+            return
+
         opp_names = []
         w, l, d = [], [], []
         aw_w, aw_l, aw_d = [], [], []
