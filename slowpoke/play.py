@@ -4310,7 +4310,8 @@ def run_game(blackAgent, whiteAgent, options: dict = None) -> None:
     return board
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Entry point for playing checkers."""
     ply = None
     blackAgent, whiteAgent = None, None
 
@@ -4322,3 +4323,7 @@ if __name__ == "__main__":
         blackAgent, whiteAgent = init_agents()
     # run when agents are loaded.
     run_game(blackAgent, whiteAgent)
+
+
+if __name__ == "__main__":
+    main()
