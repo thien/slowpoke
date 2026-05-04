@@ -53,6 +53,11 @@ class TMCTS(MCTSBase):
         self._round_results: List[Tuple[Union[int, float], int]] = []
         self._total_visits: int = 0  # incremental counter, avoids sum() per round
 
+        # Incremental UCB1 cache: per-move UCB1 values keyed by (total_visits ->
+        # score).  Skips re-computing math.sqrt/log when total_visits is unchanged.
+        self._ucb_cache: Optional[Dict[int, float]] = None  # {move: ucb_score}
+        self._ucb_cache_avg: int = -1  # total_visits at which cache was valid
+
         if self.debug:
             self.base_round = 10
 
@@ -67,6 +72,10 @@ class TMCTS(MCTSBase):
         - Moves with 0 visits get infinite score (always explored first)
         - As visits increase, exploration bonus shrinks
         - As total_visits grows, exploration bonus grows slowly (sublinear)
+
+        Uses incremental caching: when total_visits is unchanged between calls,
+        per-move UCB1 scores are returned from cache instead of re-computing
+        math.sqrt/log on every move.
         """
         if C is None:
             C = self.ucb_exploration
@@ -78,29 +87,36 @@ class TMCTS(MCTSBase):
             else sum(self.movesets[m]["plays"] for m in moves)
         )
 
-        # First pass: track best and check for unvisited
-        best_score = -float("inf")
-        best_move = moves[0]
+        # Check cache: only recompute when state changes
+        cache_hit = self._ucb_cache is not None and self._ucb_cache_avg == total_visits
+        ucb_scores: Dict[int, float] = {}
         found_unvisited = False
-        for m in moves:
-            visits = self.movesets[m]["plays"]
-            if visits == 0:
-                found_unvisited = True
-                continue  # skip UCB1 for unvisited, pick randomly below
-            wins = self.movesets[m]["chances"]
-            win_rate = wins / visits
-            exploration_bonus = C * math.sqrt(math.log(total_visits + 1) / visits)
-            score = win_rate + exploration_bonus
-            if score > best_score:
-                best_score = score
-                best_move = m
+        if cache_hit:
+            ucb_scores = self._ucb_cache  # reuse cached scores
+        else:
+            # Not cache_hit: recompute UCB1 for all moves and cache.
+            for m in moves:
+                visits = self.movesets[m]["plays"]
+                if visits == 0:
+                    found_unvisited = True
+                    continue
+                wins = self.movesets[m]["chances"]
+                win_rate = wins / visits
+                exploration_bonus = C * math.sqrt(math.log(total_visits + 1) / visits)
+                score = win_rate + exploration_bonus
+                ucb_scores[m] = score
+            # Store cache for all-visited (no unvisited check in cache path)
+            if not found_unvisited:
+                self._ucb_cache = ucb_scores
+                self._ucb_cache_avg = total_visits
 
         # Pick randomly from unvisited if any remain
         if found_unvisited:
             unvisited = [m for m in moves if self.movesets[m]["plays"] == 0]
             return random.choice(unvisited)
 
-        return best_move
+        # All moves visited: return highest-scached best
+        return max(moves, key=lambda m: ucb_scores.get(m, -float("inf")))
 
     def _resolve_batch_results(self) -> None:
         """Evaluate accumulated batch positions and resolve all deferred results into movesets.
@@ -122,6 +138,9 @@ class TMCTS(MCTSBase):
             self.movesets[move]["plays"] += 1
             self._total_visits += 1
         self._round_results = []
+        # Invalidate incremental UCB1 cache (movesets and total_visits changed).
+        self._ucb_cache = None
+        self._ucb_cache_avg = -1
 
     def _sample_gumbel(
         self, n: int, temperature: Optional[float] = None
@@ -257,6 +276,9 @@ class TMCTS(MCTSBase):
             self._position_to_result = {}
             self._position_counter = 0
             self._total_visits = 0
+            # Invalidate incremental UCB1 cache (movesets reset above).
+            self._ucb_cache = None
+            self._ucb_cache_avg = -1
 
             # Track result info for each round: (result_or_pos_idx, move)
             self._round_results = []
