@@ -28,7 +28,11 @@ dependencies = [
     "mlx>=0.18.1",
     "pyarrow>=14.0.0",
     "rich>=13.0.0",
+    "textual>=8.2.5",
 ]
+
+[project.scripts]
+play-checkers = "slowpoke.play_tui:main"
 
 [project.optional-dependencies]
 dev = [

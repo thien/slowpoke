@@ -29,5 +29,7 @@ bench:
 smoke:
 	$(PYTHON) -c "from slowpoke.core.checkers import CheckerBoard; b = CheckerBoard(); print(f'Rust: {b._has_core}'); print(f'Moves: {len(b.get_moves())}')"
 
-# Dev shortcut: build, install, test
-dev: install test
+# Dev shortcut: build in-place (editable) + test
+dev:
+	maturin develop
+	$(PYTHON) -m pytest
