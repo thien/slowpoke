@@ -1,20 +1,23 @@
 """Textual TUI for playing checkers via slowpoke agents."""
 from __future__ import annotations
 
+import re
 from typing import Optional
 
-from rich.text import Text
-from textual import on, work
+from rich.segment import Segment
+from rich.style import Style
+from textual import events, on, work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, ScrollableContainer, Vertical
+from textual.message import Message
 from textual.screen import Screen
+from textual.strip import Strip
+from textual.widget import Widget
 from textual.widgets import (
     Button,
     Footer,
     Header,
     Label,
-    ListItem,
-    ListView,
     Select,
     Static,
 )
@@ -24,9 +27,29 @@ import slowpoke.agents.magikarp as ma
 import slowpoke.agents.slowpoke as sp
 import slowpoke.agents.agent as agent_mod
 from slowpoke.core import checkers
-from slowpoke.core.constants import BLACK, WHITE
+from slowpoke.core.constants import BLACK, WHITE, EMPTY, BLACK_KING, WHITE_KING
 from slowpoke.play import coef_master
 
+
+# ── Board coordinate mapping ──────────────────────────────────────────────────
+# Derives (board_row 0–7, board_col 0–7) from the state[i][j] layout used in
+# checkers.py's generate_ascii_board, so our widget matches that orientation.
+
+_BOARD_TO_STATE: dict[tuple[int, int], tuple[int, int]] = {}
+_SQ_TO_BOARD: dict[int, tuple[int, int]] = {}
+
+for _i in range(4):
+    for _j in range(8):
+        _sq = 1 + _j + 8 * _i
+        if _j < 4:
+            _r, _c = 7 - 2 * _i, 6 - 2 * _j
+        else:
+            _r, _c = 6 - 2 * _i, 15 - 2 * _j
+        _BOARD_TO_STATE[(_r, _c)] = (_i, _j)
+        _SQ_TO_BOARD[_sq] = (_r, _c)
+
+
+# ── Agent helpers ─────────────────────────────────────────────────────────────
 
 AGENT_CHOICES: list[tuple[str, str]] = [
     ("Slowpoke (Neural Net/MCTS)", "slowpoke"),
@@ -60,7 +83,7 @@ def build_agent(name: str, ply: int) -> Optional[agent_mod.Agent]:
 
 
 class SetupScreen(Screen):
-    """Agent selection and ply configuration."""
+    """Agent and ply selection."""
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -85,11 +108,192 @@ class SetupScreen(Screen):
         self.app.push_screen(GameScreen(str(black), str(white), int(ply)))
 
 
+# ── Board Widget ──────────────────────────────────────────────────────────────
+
+
+class CheckersBoardWidget(Widget):
+    """
+    Renders an 8×8 checkers board using render_line / Strip / Segment.
+
+    Each square is CELL_W×CELL_H terminal cells.  Dark squares are interactive
+    when it is a human's turn: click a highlighted piece to select it, then
+    click a green destination to play the move.
+    """
+
+    CELL_W = 6
+    CELL_H = 3
+
+    _BG_LIGHT = "#c8a46e"
+    _BG_DARK = "#4a2c0a"
+    _BG_MOVEABLE = "#6e4e00"   # can-move piece
+    _BG_SELECTED = "#b8860b"   # selected piece
+    _BG_DEST = "#1a4a1a"       # valid destination
+
+    # Cached styles keyed by (bg_hex, fg_spec | None)
+    _STYLE_CACHE: dict[tuple[str, str | None], Style] = {}
+
+    class MoveSelected(Message):
+        """Emitted when the user clicks a valid destination square."""
+
+        def __init__(self, move: int) -> None:
+            super().__init__()
+            self.move = move
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._board: Optional[checkers.CheckerBoard] = None
+        self._is_human_turn = False
+        self._selected_sq: Optional[int] = None
+        self._moveable: set[int] = set()
+        self._dests: dict[int, int] = {}  # dest_sq → move int
+
+    # ── Public API ────────────────────────────────────────────────────────────
+
+    def set_state(self, board: checkers.CheckerBoard, is_human_turn: bool) -> None:
+        self._board = board
+        self._is_human_turn = is_human_turn
+        self._selected_sq = None
+        self._dests = {}
+        self._moveable = set()
+        if is_human_turn and not board.is_over():
+            for ms in board.get_move_strings():
+                src = int(re.split(r"[-x]", ms)[0])
+                self._moveable.add(src)
+        self.refresh()
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _style(bg: str, fg: str | None = None) -> Style:
+        key = (bg, fg)
+        if key not in CheckersBoardWidget._STYLE_CACHE:
+            s = Style.parse(f"on {bg}")
+            if fg:
+                s += Style.parse(f"bold {fg}")
+            CheckersBoardWidget._STYLE_CACHE[key] = s
+        return CheckersBoardWidget._STYLE_CACHE[key]
+
+    def _sq_at(self, row: int, col: int) -> Optional[int]:
+        key = (row, col)
+        if key not in _BOARD_TO_STATE:
+            return None
+        i, j = _BOARD_TO_STATE[key]
+        return 1 + j + 8 * i
+
+    def _piece_at(self, row: int, col: int):
+        if self._board is None:
+            return None
+        key = (row, col)
+        if key not in _BOARD_TO_STATE:
+            return None
+        i, j = _BOARD_TO_STATE[key]
+        v = self._board.state[i][j]
+        return None if v == EMPTY else v
+
+    def _bg(self, sq: Optional[int]) -> str:
+        if sq is None:
+            return self._BG_DARK
+        if sq == self._selected_sq:
+            return self._BG_SELECTED
+        if sq in self._dests:
+            return self._BG_DEST
+        if sq in self._moveable:
+            return self._BG_MOVEABLE
+        return self._BG_DARK
+
+    # ── Rendering ─────────────────────────────────────────────────────────────
+
+    def render_line(self, y: int) -> Strip:
+        row = y // self.CELL_H
+        if row >= 8:
+            return Strip.blank(self.size.width)
+        line = y % self.CELL_H
+        return Strip([self._cell_seg(row, col, line) for col in range(8)])
+
+    def _cell_seg(self, row: int, col: int, line: int) -> Segment:
+        W = self.CELL_W
+        is_dark = (row + col) % 2 == 1
+
+        if not is_dark:
+            return Segment(" " * W, self._style(self._BG_LIGHT))
+
+        sq = self._sq_at(row, col)
+        bg = self._bg(sq)
+
+        if line == 0:
+            # Top line: square number in dim text
+            label = str(sq) if sq is not None else ""
+            return Segment(label.ljust(W), self._style(bg, "dim white"))
+
+        if line == 1:
+            # Middle line: piece symbol
+            piece = self._piece_at(row, col)
+            if piece is None:
+                # Show a faint dot on destination squares so they're obvious
+                if sq in self._dests:
+                    sym, fg = "·", "bright_white"
+                else:
+                    return Segment(" " * W, self._style(bg))
+            elif piece == BLACK:
+                sym, fg = "●", "#ff6b6b"
+            elif piece == WHITE:
+                sym, fg = "●", "bright_white"
+            elif piece == BLACK_KING:
+                sym, fg = "★", "#ff6b6b"
+            else:  # WHITE_KING
+                sym, fg = "★", "bright_white"
+            left = (W - 1) // 2
+            content = " " * left + sym + " " * (W - 1 - left)
+            return Segment(content, self._style(bg, fg))
+
+        # Bottom line: blank
+        return Segment(" " * W, self._style(bg))
+
+    # ── Mouse ─────────────────────────────────────────────────────────────────
+
+    def on_click(self, event: events.Click) -> None:
+        if not self._is_human_turn or self._board is None:
+            return
+        col = event.x // self.CELL_W
+        row = event.y // self.CELL_H
+        if col >= 8 or row >= 8:
+            return
+        if (row + col) % 2 == 0:  # light square — not playable
+            return
+        sq = self._sq_at(row, col)
+        if sq is None:
+            return
+
+        if sq in self._dests:
+            self.post_message(self.MoveSelected(self._dests[sq]))
+            return
+
+        if sq in self._moveable:
+            self._select(sq)
+            self.refresh()
+            return
+
+        self._selected_sq = None
+        self._dests = {}
+        self.refresh()
+
+    def _select(self, sq: int) -> None:
+        self._selected_sq = sq
+        self._dests = {}
+        if self._board is None:
+            return
+        moves = self._board.get_moves()
+        for idx, ms in enumerate(self._board.get_move_strings()):
+            sqs = list(map(int, re.split(r"[-x]", ms)))
+            if sqs[0] == sq:
+                self._dests[sqs[-1]] = moves[idx]
+
+
 # ── Game Screen ───────────────────────────────────────────────────────────────
 
 
 class GameScreen(Screen):
-    """Live board display with move controls."""
+    """Live board + side-panel."""
 
     BINDINGS = [("escape", "pop_screen", "Setup")]
 
@@ -98,98 +302,81 @@ class GameScreen(Screen):
         self.black_name = black_name
         self.white_name = white_name
         self.ply = ply
-        self.board: checkers.CheckerBoard = checkers.CheckerBoard()
+        self.board = checkers.CheckerBoard()
         self._human_waiting = False
-
-    # ── Layout ────────────────────────────────────────────────────────────────
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         with Horizontal(id="game-layout"):
             with Vertical(id="board-panel"):
-                yield Label("Board", classes="panel-title")
-                yield Static("", id="board-display")
+                yield CheckersBoardWidget(id="board")
             with Vertical(id="side-panel"):
                 yield Static("", id="status-box", classes="status-box")
                 yield Label("History", classes="panel-title")
                 with ScrollableContainer(id="history-scroll"):
                     yield Static("", id="history-text")
-                yield Label("Your Move", id="move-label", classes="panel-title")
-                yield ListView(id="move-list")
+                yield Label("Available Moves", id="moves-label", classes="panel-title")
+                yield Static("", id="moves-text")
         yield Footer()
 
-    # ── Lifecycle ─────────────────────────────────────────────────────────────
-
     def on_mount(self) -> None:
-        self._refresh_display()
+        self._refresh()
         self._start_turn()
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
-    def _player_name(self, colour: int) -> str:
+    def _player(self, colour: int) -> str:
         return self.black_name if colour == BLACK else self.white_name
 
     def _is_human(self, colour: int) -> bool:
-        return self._player_name(colour) == "human"
+        return self._player(colour) == "human"
 
     # ── Display ───────────────────────────────────────────────────────────────
 
-    def _refresh_display(self) -> None:
+    def _refresh(self) -> None:
         B = self.board
+        human_turn = not B.is_over() and self._is_human(B.active)
 
-        # Board (convert termcolor ANSI to Rich)
-        self.query_one("#board-display", Static).update(
-            Text.from_ansi(B.print_board(black_pov=True))
-        )
+        self.query_one("#board", CheckersBoardWidget).set_state(B, human_turn)
 
-        # Status
         if B.is_over():
             w = B.winner
             if w == BLACK:
-                msg = f"[bold green]Black ({self.black_name}) wins![/]"
+                status = f"[bold green]Black ({self.black_name}) wins![/]"
             elif w == WHITE:
-                msg = f"[bold cyan]White ({self.white_name}) wins![/]"
+                status = f"[bold cyan]White ({self.white_name}) wins![/]"
             else:
-                msg = "[bold yellow]Draw![/]"
+                status = "[bold yellow]Draw![/]"
         else:
-            colour = B.active
-            side = "Black" if colour == BLACK else "White"
-            pname = self._player_name(colour)
+            side = "Black" if B.active == BLACK else "White"
             jump = "  [bold red][JUMP][/]" if B.jump else ""
-            msg = f"Turn [bold]{B.turn_count}[/] — {side}: [bold]{pname}[/]{jump}"
-        self.query_one("#status-box", Static).update(msg)
+            status = f"Turn [bold]{B.turn_count}[/] — {side}: [bold]{self._player(B.active)}[/]{jump}"
+        self.query_one("#status-box", Static).update(status)
 
-        # Move history
-        moves = B.moves
         history = (
-            "\n".join(f"{i + 1:>3}. {m[1]}" for i, m in enumerate(moves))
-            or "(none)"
+            "\n".join(f"{i+1:>3}. {m[1]}" for i, m in enumerate(B.moves)) or "(none)"
         )
         self.query_one("#history-text", Static).update(history)
 
-        # Human move list (only when it's a human's turn)
-        move_list = self.query_one("#move-list", ListView)
-        move_label = self.query_one("#move-label", Label)
-        move_list.clear()
-        show_moves = not B.is_over() and self._is_human(B.active)
-        move_label.display = show_moves
-        move_list.display = show_moves
-        if show_moves:
-            for i, ms in enumerate(B.get_move_strings()):
-                move_list.append(ListItem(Label(f"[{i}]  {ms}"), id=f"move-{i}"))
+        ml = self.query_one("#moves-label", Label)
+        mt = self.query_one("#moves-text", Static)
+        if human_turn:
+            mt.update("\n".join(f"[{i}] {ms}" for i, ms in enumerate(B.get_move_strings())))
+            ml.display = mt.display = True
+        else:
+            ml.display = mt.display = False
 
     # ── Game loop ─────────────────────────────────────────────────────────────
 
     def _start_turn(self) -> None:
-        B = self.board
-        if B.is_over():
+        if self.board.is_over():
             return
-        colour = B.active
+        colour = self.board.active
         if self._is_human(colour):
             self._human_waiting = True
         else:
             self._human_waiting = False
-            ag = build_agent(self._player_name(colour), self.ply)
+            ag = build_agent(self._player(colour), self.ply)
             self._run_ai(ag, colour)
 
     @work(thread=True)
@@ -199,97 +386,53 @@ class GameScreen(Screen):
 
     def _apply_move(self, move: int) -> None:
         self.board.make_move(move)
-        self._refresh_display()
+        self._refresh()
         if not self.board.is_over():
             self._start_turn()
 
-    # ── Human input ───────────────────────────────────────────────────────────
-
-    @on(ListView.Selected, "#move-list")
-    def on_human_move(self, event: ListView.Selected) -> None:
-        if not self._human_waiting:
-            return
-        item_id = event.item.id or ""
-        if not item_id.startswith("move-"):
-            return
-        idx = int(item_id.removeprefix("move-"))
-        legal = self.board.get_moves()
-        if idx < len(legal):
+    @on(CheckersBoardWidget.MoveSelected)
+    def on_board_move(self, event: CheckersBoardWidget.MoveSelected) -> None:
+        if self._human_waiting:
             self._human_waiting = False
-            self._apply_move(legal[idx])
+            self._apply_move(event.move)
 
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
 
 class PlayApp(App):
-    """Slowpoke Checkers TUI."""
-
     TITLE = "Slowpoke Checkers"
 
     CSS = """
-    /* ── Setup screen ── */
-    SetupScreen {
-        align: center middle;
-    }
+    /* ── Setup ── */
+    SetupScreen { align: center middle; }
     #setup-box {
-        width: 64;
-        height: auto;
-        border: thick $primary;
-        padding: 1 3;
+        width: 64; height: auto;
+        border: thick $primary; padding: 1 3;
     }
     #setup-title {
-        text-align: center;
-        text-style: bold;
-        color: $accent;
-        margin-bottom: 1;
+        text-align: center; text-style: bold;
+        color: $accent; margin-bottom: 1;
     }
-    #start-btn {
-        margin-top: 2;
-        width: 100%;
-    }
+    #start-btn { margin-top: 2; width: 100%; }
+    .field-label { color: $text-disabled; margin-top: 1; }
 
-    /* ── Game screen ── */
-    #game-layout {
-        height: 1fr;
-    }
+    /* ── Game ── */
+    #game-layout { height: 1fr; }
     #board-panel {
-        width: 40;
+        width: auto; min-width: 50;
         border: solid $primary;
-        padding: 0 1;
+        padding: 1; align: center middle;
     }
-    #side-panel {
-        width: 1fr;
-        padding: 0 1;
-    }
-    .panel-title {
-        color: $accent;
-        text-style: bold;
-        margin-top: 1;
-    }
+    CheckersBoardWidget { width: 48; height: 24; }
+    #side-panel { width: 1fr; padding: 0 1; }
     .status-box {
-        border: solid $accent;
-        background: $surface;
-        padding: 1;
-        height: auto;
-        margin-bottom: 1;
+        border: solid $accent; background: $surface;
+        padding: 1; height: auto; margin-bottom: 1;
     }
-    #history-scroll {
-        height: 1fr;
-        border: solid $surface-lighten-2;
-        margin-bottom: 1;
-    }
-    #move-list {
-        height: auto;
-        max-height: 14;
-        border: solid $success;
-    }
-
-    /* ── Shared ── */
-    .field-label {
-        color: $text-disabled;
-        margin-top: 1;
-    }
+    .panel-title { color: $accent; text-style: bold; margin-top: 1; }
+    #history-scroll { height: 1fr; border: solid $surface-lighten-2; }
+    #moves-text { padding: 0 1; }
     """
 
     def on_mount(self) -> None:
