@@ -407,4 +407,200 @@ make smoke      # quick: prints "Rust: True" if backend active
 - `library/core/checkers.py` — `make_move()`, `push_move()`, `pop_move()` all properly handle player state for Rust path
 
 **Test status**: 124 passed, 1 skipped (RNG-dependent jump test), 0 failures.
+
+---
+
+### Full CheckerBoard Migration to Rust — COMPLETED
+
+**Problem**: All game state was split between Python and Rust. The Python `CheckerBoard` (~973 lines, 26 slots) was a God Object handling bitboard ops, PDN/FEN formatting, ASCII display, NN input extraction, pickle, repetition detection, and game-over logic — while delegating hot bitboard operations to a Rust PyO3 extension. This created:
+- Dual state that had to be manually kept in sync (~30 `if _has_core:` branches)
+- Extra FFI overhead (push_move made 4 Rust calls: push_move + swap_active + get_active + get_passive)
+- Python-side list management for `mandatory_jumps`, `multiple_jump_stack`, `alt_move_stack`, `moves`
+- A rotting Python fallback path (`_has_core = False`)
+
+**Solution**: Migrated ALL game state and logic into the Rust `checkers_core` Rust struct (`src/lib.rs`). Added fields for `mandatory_jumps`, `multiple_jump_stack`, `alt_move_stack`, `moves`, `winner`. Expanded `HistoryEntry` to save/restore full state. Made make_move/push_move/pop_move handle move strings, multi-jump tracking, king promotion, and player switching entirely in Rust. Striped the Python `checkers.py` from 973 to 309 lines.
+
+| File | Before | After | Δ |
+|---|---|---|---|
+| `src/lib.rs` | 291 lines | 515 lines | +224 |
+| `checkers.py` | 973 lines | 309 lines | -664 |
+| **Combined** | **1264 lines** | **824 lines** | **-440** |
+
+**Removed**:
+- Pure Python fallback (Rust is now required — removed the `try: from checkers_core` conditional)
+- All 30+ `if self._has_core:` / `else:` branches
+- `_set_bits()`, `_update_rank()`, `ai_board_pos`, `_ai_board_array`, `is_over_called`
+- Duplicate bitboard direction helpers in Python
+- All Python-side history management for push/pop
+
+**Impact** (benchmarked on M2 Ultra, 2000 boards, varying states):
+
+| Operation | Before (hybrid Rust) | After (full Rust) | Speedup |
+|---|---|---|---|
+| `get_board_pos_weighted` | 0.67us | 0.33us | **2.0×** |
+| `push_move` | 1.00us | 0.80us | **1.25×** |
+| `pop_move` | 0.40us | 0.20us | **2.0×** |
+| `is_over` (search path, no repetition) | 0.13us | 0.12us | **~1.1×** |
+| `get_moves` | 0.29us | 0.31us | similar |
+| Search round (push + eval×2 + pop) | 1.6us | 1.3us | **1.23×** |
+| Push/pop throughput | 44,398/s | 67,834/s | **1.53×** |
+
+Primary savings:
+- **push_move**: 4 Rust FFI calls → 1 (was: push_move + swap_active + get_active + get_passive; now: push_move does everything)
+- **pop_move**: Restores stacks from Rust Vec directly instead of Python tuple indexing + list reconstruction
+- **get_board_pos_weighted**: Only Rust call, no Python list wrapping or type conversion (eliminated `_ai_board_array` intermediate)
+
+**Test status**: 334 passed, 0 failed.
+
+**Files modified**:
+- `src/lib.rs` — 291→515 lines: added all game state fields, expanded HistoryEntry, full make_move/push_move/pop_move, get_moves (mandatory-jump-aware), is_over (repetition + draw), get_pdn_moves, get_move_strings, __getstate__/__setstate__
+- `slowpoke/core/checkers.py` — 973→309 lines: stripped to thin wrapper (Rust delegation, PDN metadata, ASCII display, property accessors)
+- `slowpoke/core/game.py` — removed `ai_board_pos` reference in `print_status`
+- `slowpoke/agents/onix.py` — removed `_has_core` branch, always reads from `_core`
+- `slowpoke/agents/human.py` — `ai_board_pos` → `_core.get_rank()`
+- `slowpoke/tests/bench_perf.py` — removed old Python-vs-Rust comparison benchmarks (no longer relevant since Python path is gone)
+- `slowpoke/tests/test_move_stack_optimization.py` — updated to use B.get_moves() instead of B.pieces/B.forward/B.backward
+
+---
+
+### Profile-driven optimizations: list() wrapper, replay cloning, UCB1 counter, NEAT cache — COMPLETED
+
+**Problem**: py-spy profiling of a 1-ply NEAT training run (25 processes) identified four hot spots:
+
+| Hot spot | % Own | Cause |
+|---|---|---|
+| `get_moves` (checkers.py) | 39% | `list()` wrapper on PyO3 return (redundant copy) |
+| `_update_pdn_result` | 24% | `get_move_log()` cloned entire move history at game-end |
+| `_select_move_ucb1` | 41% | `total_visits = sum(...)` recomputed from scratch every round |
+| `compute` (neat_network.py) | 315% | Input IDs, adjacency dict, output IDs rebuilt on every single eval |
+
+**Fixes applied**:
+
+1. **`list()` wrapper removed** — `checkers.py` line 159: `return list(self._core.get_moves())` → `return self._core.get_moves()`. PyO3 already returns a Python `list`; `list()` created a useless shallow copy.
+
+2. **Replay generation deferred** — `_update_pdn_result()` no longer calls `self._core.get_move_log()` at game-end. Instead, `pdn["replay"]` is populated lazily in `tournament_match()` (game.py) right before returning `B.pdn`. Saves one full `Vec<(u8, String)>` clone per game.
+
+3. **UCB1 incremental counter** — Replaced `sum(self.movesets[m]["plays"] for m in moves)` with an incremental `self._total_visits` counter, incremented once per round. Eliminates O(n) recomputation of total plays on every UCB1 selection. Also removed the redundant unvisited-list rebuild and redundant zero-visit guard.
+
+4. **NEAT topology cache** — Added `Genome._cache` (dict) that stores precomputed `input_ids`, `hidden_and_output`, `incoming` adjacency dict, and `output_ids`. Built once via `build_cache()` (called lazily on first eval, or after mutation). Invalidated on any structural mutation (`mutate_add_node`, `mutate_add_connection`, `mutate`). Eliminates 3 list comprehensions + 2 sorts per NEAT 𝘦𝘷𝘢𝘭 (previously ran on every MCTS leaf — millions of times).
+
+**Impact** (benchmarked on M2 Ultra, 2000 boards):
+
+| Metric | Before | After | Speedup |
+|---|---|---|---|
+| `get_moves` | 0.31 µs | 0.25 µs | **1.24×** |
+| `push_move` | 0.80 µs | 0.75 µs | **1.07×** |
+| `pop_move` | 0.20 µs | 0.19 µs | **1.05×** |
+| Search round (push+eval×2+pop) | 1.6 µs | 1.3 µs | **1.23×** |
+| Push/pop throughput | 67,834/s | 116,619/s | **1.72×** |
+
+The NEAT cache fix doesn't show in micro-benchmarks (it only activates during NEAT Genome eval), but in the profiled 1-ply NEAT run it should cut the 315% NEAT `compute` overhead by eliminating the per-eval list comprehensions and sorts.
+
+**Files modified**:
+- `slowpoke/core/checkers.py` — removed `list()` wrapper in `get_moves()`; removed `get_move_log()` from `_update_pdn_result()`
+- `slowpoke/core/game.py` — added `B.pdn["replay"] = B._core.get_move_log()` before return
+- `slowpoke/search/tmcts.py` — added incremental `_total_visits` counter; updated `_select_move_ucb1` and `_resolve_batch_results` to use it
+- `slowpoke/agents/evaluator/genome.py` — added `_cache` slot, `build_cache()`, `invalidate_cache()`; cache invalidated on mutation
+- `slowpoke/agents/evaluator/neat_network.py` — `compute()` now uses `genome._cache` instead of rebuilding structures
+
+**Test status**: 334 passed, 0 failed.
+
+---
+
+# Technical Debt & Code Smells (2026-05-04 Review)
+
+## 🔴 Critical Issues
+
+### 1. CheckerBoard is a God Object (~1000 lines, 26 slots)
+
+Single class handling: bitboard state, move gen/execution, PDN/FEN formatting, ASCII display, NN feature extraction, pickle serialization, deep copy, repetition detection, and game-over logic. At least 5 distinct responsibilities in one class. The 26 `__slots__` include transient artifacts of different subsystems (`ai_board_pos` for display, `_ai_board_array` for NN input, `pdn` for game recording, `alt_move_stack` for repetition detection).
+
+### 2. Dual State Between Python and Rust — Extremely Fragile
+
+Python tracks `mandatory_jumps`, `multiple_jump_stack`, `turn_count`, `no_eat_count`, `alt_move_stack`, `moves`, `pdn` state. Rust tracks bitboards via `Vec<HistoryEntry>`. The two must be manually kept in sync — every `push_move`/`pop_move`/`make_move` has conditional logic for both paths. A single desync causes silent corruption. The Rust `make_move` path doesn't crown kings in `make_move` (handled in Python after the fact). `copy()` explicitly copies both sides, another maintenance burden.
+
+**The Python fallback (`_has_core = False`) is likely rotting** — few tests exercise this path, and new features are only tested on Rust.
+
+### 3. No Backend Abstraction
+
+`if self._has_core:` / `else:` branches scattered throughout `checkers.py` (~30 check sites). Classic **Strategy pattern** violation. Adding a new method that touches bitboard state requires duplicating logic for both backends.
+
+### 4. CheckerBoard is NOT Thread-Safe — Used in ThreadPoolExecutor
+
+`parallel_tmcts.py:289` runs `ThreadPoolExecutor` where each thread calls `B.push_move()` / `B.pop_move()` on the **same** `CheckerBoard` instance. Python-side state (`mandatory_jumps`, `multiple_jump_stack`, `moves`, `alt_move_stack`) is modified via `list.append()` / `del` without any locking. This is a **latent data race** — CPython's GIL makes Python `list.append` atomic per-op, but the multi-step `push_move` → `make_move` → `pop_move` sequence is not. If two threads interleave, the board state corrupts.
+
+### 5. Search Code Duplication (~200 lines)
+
+`TMCTS` and `ParallelTMCTS` duplicate these methods nearly verbatim:
+
+| Method | TMCTS location | ParallelTMCTS location |
+|---|---|---|
+| `_extract_position` | `base.py:65` (shared) | `parallel_tmcts.py:467` (duplicated) |
+| `_is_over` | `base.py:48` (shared) | `parallel_tmcts.py:479` (duplicated) |
+| `_sample_gumbel` | `tmcts.py:114` | `parallel_tmcts.py:330` |
+| `_evaluate_moves_batch` | `tmcts.py:137` | `parallel_tmcts.py:338` (different signature) |
+
+The progressive narrowing / Gumbel-Top-K logic is also duplicated. `ParallelTMCTS` should likely compose with `TMCTS` rather than reinventing the wheel.
+
+## 🟠 Moderate Issues
+
+### 6. Agent Hierarchy is Awkward
+
+- `Slowbro` and `Slowpoke` share significant NN evaluation logic but `Bot` is a 27-line marker interface with just `move_function`
+- `Onix` is `Agent`-like but not an `Agent` — duck-typed protocol (`move_function` + `evaluate_board`)
+- `Agent` wraps `Bot` with Elo/ID, creating a two-level delegation: `Agent.make_move` → `Bot.move_function`
+
+### 7. Evolution Strategy Interface is Leaky
+
+`StandardGA` and `NEATEvolution` share an interface but `StandardGA` manipulates flat weight vectors while `NEATEvolution` passes `Genome` dicts. `get_weights` / `set_weights` return type varies (`np.ndarray` vs `dict`) with no type safety. `Population.generate_next_population()` has a fixed elite selection of 5 with hardcoded crossover pairs.
+
+### 8. Magic Numbers in Search Code
+
+- `base_round = 300` (`tmcts.py:39`, `parallel_tmcts.py:229`)
+- `ucb_exploration = 1.4` (`tmcts.py:40`) — also in `base.py:86` as default
+- `progressive_narrowing_k = 5` (both files)
+- `gumbel_temperature = 0.5` (both files)
+- `_max_cache_size = 50000` (both files)
+
+These are search hyperparameters not easily tunable from outside. Some appear in two places (class default vs `_ucb1_score` default).
+
+### 9. Multiprocessing Pickling is Fragile
+
+`Generator.__getstate__` strips `tui` and `logger`. `SharedBatchAccumulator.__getstate__` removes `Lock`. `CheckerBoard.__reduce__` excludes `_core`. `Agent.__getstate__` deeply serializes. Any attribute added without updating the corresponding `__getstate__`/`__setstate__`/`__reduce__` is **silently lost** during multiprocessing. No test validates round-trip pickling for any of these classes.
+
+### 10. NEAT Disables MLX
+
+`NEATEvolution.generate_bot()` forces `use_mlx=False`. NEAT training is always CPU-only, significantly slower for MCTS search. Hardcoded constraint that should be configurable.
+
+## 🟡 Minor Issues
+
+### 11. Mixed Naming Conventions
+
+Despite AGENTS.md mandating snake_case, there's `gen_id` vs `genID`, `generate_ascii_board` vs `check_winner`, `saveLocation` vs `save_location`. Python-side calls to Rust methods use camelCase (`getBoardPosWeighted`) which is fine since that's the Rust API.
+
+### 12. Dead Code
+
+- `CheckerBoard.peek_move()` — commented out (checkers.py:271-314)
+- `Population.heuristic_crossover()` — called nowhere
+- `Population.save_population_to_db()` — explicitly marked "NOT USED"
+- Backward-compat aliases proliferate (`Black, White = BLACK, WHITE`; `minimax_*` in tmcts.py)
+
+### 13. Bare excepts
+
+`load_json_config` catches bare `except:`, `init_mongo_connection` too, `Agent.__getstate__` catches `Exception` broadly. This can mask real errors.
+
+### 14. RNG Strategy Inconsistency
+
+- `TMCTS.random_ts` uses `random.choice()` (global RNG) and `random.random()` for Gumbel
+- `ParallelTMCTS._run_instance` creates thread-local `random.Random(seed)` but `_sample_gumbel` uses module-level `import random as _random`
+- `Population` uses `np.random` and `random` interchangeably
+
+## 🔧 Architecture Recommendations
+
+1. **Extract a `BitBoard` strategy** from `CheckerBoard` — trait/ABC that `RustBitBoard` and `PythonBitBoard` implement. `CheckerBoard` uses composition rather than `if _has_core:` branches.
+2. **Separate concerns in CheckerBoard**: Extract `PdnFormatter`, `AsciiRenderer`, `BoardEvaluator` (NN input), `RepetitionDetector` as separate classes.
+3. **TMCTS / ParallelTMCTS** share a common base or use composition. `ParallelTMCTS` could wrap a `TMCTS` instance per thread rather than duplicating search logic.
+4. **Thread safety**: `CheckerBoard` should either be explicitly documented as not thread-safe with each parallel thread owning its own `Board.copy()`, or add a `BoardShard` concept for parallel search.
+5. **Hyperparameter objects**: Move TMCTS parameters into a config dataclass that can be passed around and serialized.
+6. **Remove the Python fallback** or test it in CI. Half the code in `checkers.py` is the Python fallback path — if unused in production, it's maintenance debt.
 ```

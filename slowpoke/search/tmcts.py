@@ -51,6 +51,7 @@ class TMCTS(MCTSBase):
         # Movesets for the current decision: {move: {"plays": int, "chances": float}}
         self.movesets: Dict[int, Dict[str, float]] = {}
         self._round_results: List[Tuple[Union[int, float], int]] = []
+        self._total_visits: int = 0  # incremental counter, avoids sum() per round
 
         if self.debug:
             self.base_round = 10
@@ -69,26 +70,36 @@ class TMCTS(MCTSBase):
         """
         if C is None:
             C = self.ucb_exploration
-        total_visits = sum(self.movesets[m]["plays"] for m in moves)
 
-        # Always explore unvisited moves first (infinite UCB score)
-        unvisited = [m for m in moves if self.movesets[m]["plays"] == 0]
-        if unvisited:
-            return random.choice(unvisited)
+        # Use incremental counter when available, fall back to sum for tests
+        total_visits = (
+            self._total_visits
+            if self._total_visits > 0
+            else sum(self.movesets[m]["plays"] for m in moves)
+        )
 
+        # First pass: track best and check for unvisited
         best_score = -float("inf")
         best_move = moves[0]
+        found_unvisited = False
         for m in moves:
-            wins = self.movesets[m]["chances"]
             visits = self.movesets[m]["plays"]
             if visits == 0:
-                return m  # Safety: give infinite UCB score to unvisited
+                found_unvisited = True
+                continue  # skip UCB1 for unvisited, pick randomly below
+            wins = self.movesets[m]["chances"]
             win_rate = wins / visits
             exploration_bonus = C * math.sqrt(math.log(total_visits + 1) / visits)
             score = win_rate + exploration_bonus
             if score > best_score:
                 best_score = score
                 best_move = m
+
+        # Pick randomly from unvisited if any remain
+        if found_unvisited:
+            unvisited = [m for m in moves if self.movesets[m]["plays"] == 0]
+            return random.choice(unvisited)
+
         return best_move
 
     def _resolve_batch_results(self) -> None:
@@ -109,6 +120,7 @@ class TMCTS(MCTSBase):
                 value = float(result)
             self.movesets[move]["chances"] += value
             self.movesets[move]["plays"] += 1
+            self._total_visits += 1
         self._round_results = []
 
     def _sample_gumbel(
@@ -244,6 +256,7 @@ class TMCTS(MCTSBase):
             self._batch_positions = []
             self._position_to_result = {}
             self._position_counter = 0
+            self._total_visits = 0
 
             # Track result info for each round: (result_or_pos_idx, move)
             self._round_results = []
@@ -270,6 +283,7 @@ class TMCTS(MCTSBase):
                     result = self.tree_search(B, ply, colour)
                     self.movesets[random_move]["chances"] += result
                     self.movesets[random_move]["plays"] += 1
+                    self._total_visits += 1
                 B.pop_move()
 
             # Flush any remaining batch results and resolve into movesets

@@ -1,14 +1,14 @@
 """
-Benchmark for hot-path functions in checkers.py.
+Benchmark for hot-path functions in the Rust CheckerBoard backend.
 
-Measures per-call timing for _set_bits, get_board_pos_weighted,
+Measures per-call timing for get_board_pos_weighted,
 push_move/pop_move, is_over, and combined search round simulation.
 """
 
 import time
 import random
 import numpy as np
-from slowpoke.core.checkers import CheckerBoard, Black, White, _set_bits
+from slowpoke.core.checkers import CheckerBoard, Black, White
 
 
 def _make_boards(count=2000, max_moves=40):
@@ -23,104 +23,18 @@ def _make_boards(count=2000, max_moves=40):
     return boards
 
 
-def bench_set_bits(boards):
-    """Benchmark _set_bits vs old bin()-based iteration."""
-    moves = set()
-    for b in boards[:200]:
-        for m in b.get_moves():
-            moves.add(abs(m))
-
-    # _set_bits
-    t0 = time.perf_counter()
-    for _ in range(2000):
-        for m in moves:
-            list(_set_bits(m))
-    t1 = time.perf_counter()
-    new_t = t1 - t0
-
-    # bin() - for reference
-    t0 = time.perf_counter()
-    for _ in range(2000):
-        for m in moves:
-            [i for (i, b) in enumerate(bin(m)[::-1]) if b == "1"]
-    t1 = time.perf_counter()
-    old_t = t1 - t0
-
-    print(f"_set_bits:       {new_t:.4f}s")
-    print(f"bin() enumerate: {old_t:.4f}s")
-    print(f"speedup: {old_t / new_t:.1f}x")
-    return old_t / new_t
-
-
 def bench_get_board_pos_weighted(boards):
-    """Benchmark direct bitboard→weighted vs old rank_loop+dict_lookup."""
+    """Benchmark Rust get_board_pos_weighted."""
     weights = {"Black": 1, "White": -1, "empty": 0, "blackKing": 1.5, "whiteKing": -1.5}
     N = len(boards)
-
-    # New direct approach
     t0 = time.perf_counter()
     for b in boards:
         b.get_board_pos_weighted(Black, weights)
         b.get_board_pos_weighted(White, weights)
     t1 = time.perf_counter()
-    new_t = t1 - t0
-
-    # Old two-pass approach (replicated inline)
-    def old_black(b):
-        bk = b.backward[Black]
-        bm = b.forward[Black] ^ bk
-        wk = b.forward[White]
-        wm = b.backward[White] ^ wk
-        rank = [-1] * 32
-        for i in range(4):
-            for j in range(8):
-                cell = 1 << (9 * i + j)
-                idx = 8 * i + j
-                if cell & bm:
-                    rank[idx] = 0
-                elif cell & wm:
-                    rank[idx] = 1
-                elif cell & bk:
-                    rank[idx] = 2
-                elif cell & wk:
-                    rank[idx] = 3
-        rep = {0: 1, 1: -1, -1: 0, 2: 1.5, 3: -1.5}
-        return np.array([rep[n] for n in rank], dtype=np.float32)
-
-    def old_white(b):
-        bk = b.backward[Black]
-        bm = b.forward[Black] ^ bk
-        wk = b.forward[White]
-        wm = b.backward[White] ^ wk
-        rank = [-1] * 32
-        for i in range(4):
-            for j in range(8):
-                cell = 1 << (9 * i + j)
-                idx = 8 * i + j
-                if cell & bm:
-                    rank[idx] = 0
-                elif cell & wm:
-                    rank[idx] = 1
-                elif cell & bk:
-                    rank[idx] = 2
-                elif cell & wk:
-                    rank[idx] = 3
-        rep = {0: -1, 1: 1, -1: 0, 2: -1.5, 3: 1.5}
-        return np.array([rep[n] for n in reversed(rank)], dtype=np.float32)
-
-    t0 = time.perf_counter()
-    for b in boards:
-        old_black(b)
-        old_white(b)
-    t1 = time.perf_counter()
-    old_t = t1 - t0
-
-    us_new = new_t / N * 1e6
-    us_old = old_t / N * 1e6
-    print(f"get_board_pos_weighted OLD: {us_old:.2f}us/call")
-    print(f"get_board_pos_weighted NEW: {us_new:.2f}us/call")
-    print(f"speedup: {us_old / us_new:.1f}x")
-    return us_old / us_new
+    us_per = (t1 - t0) / (N * 2) * 1e6
+    print(f"get_board_pos_weighted: {us_per:.2f}us/call ({N * 2} calls)")
+    return us_per
 
 
 def bench_search_round(boards):
@@ -175,10 +89,6 @@ if __name__ == "__main__":
     print(f"{len(boards)} boards ready")
     print()
 
-    print("=== _set_bits ===")
-    bench_set_bits(boards)
-    print()
-
     print("=== get_board_pos_weighted ===")
     bench_get_board_pos_weighted(boards)
     print()
@@ -191,21 +101,4 @@ if __name__ == "__main__":
     bench_search_round(boards)
     print()
 
-    # Correctness: verify matches the canonical Rust output
-    weights = {"Black": 1, "White": -1, "empty": 0, "blackKing": 1.5, "whiteKing": -1.5}
-    w = weights
-    for b in boards:
-        py_out = b.get_board_pos_weighted(Black, weights)
-        if hasattr(b, "_core") and b._core is not None:
-            rs_out = np.asarray(
-                b._core.get_board_pos_weighted(
-                    0,
-                    w["empty"],
-                    w["Black"],
-                    w["White"],
-                    w["blackKing"],
-                    w["whiteKing"],
-                )
-            )
-            assert np.allclose(py_out, rs_out, atol=1e-6), "Python/Rust mismatch!"
-    print(f"Correctness: OK ({len(boards)} boards match)")
+    print("Benchmark complete.")

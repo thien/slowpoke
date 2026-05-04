@@ -18,7 +18,7 @@ class Human:
         print("--------")
         print(B)
         print(B.pdn)
-        print(B.ai_board_pos)
+        print(B._core.get_rank())
         print("--------")
 
     def move_function(self, B: Any, colour: Optional[int] = None) -> int:

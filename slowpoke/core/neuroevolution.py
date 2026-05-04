@@ -121,10 +121,10 @@ class NEATEvolution(EvolutionMethod):
     def generate_bot(self, ply_depth: int, debug: bool) -> Any:
         import slowpoke.agents.slowbro as sb
 
-        nn = NeuralNetwork(layer_list=[32, 1], use_mlx=False, mode="neat")
+        nn = NeuralNetwork(layer_list=[32, 1], use_mlx=True, mode="neat")
         bot = sb.Slowbro(
             ply_depth=ply_depth,
-            use_mlx=False,
+            use_mlx=True,
             use_parallel=self.population.use_parallel_mcts,
             num_parallel=self.population.parallel_threads,
             debug=debug,

@@ -652,6 +652,7 @@ class Generator:
             "mongo": "Yes" if self.mongo_connected else "No",
             "cores": str(self.processors),
             "debug": "Yes" if self.is_debug_mode else "No",
+            "pid": str(os.getpid()),
         }
 
         def _progress_bar(current: int, total: int, width: int = 20) -> str:

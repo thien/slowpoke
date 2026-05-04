@@ -43,15 +43,10 @@ class Onix:
                 return MINIMAX_WIN if board.winner == colour else MINIMAX_LOSE
             return MINIMAX_DRAW
 
-        # Read bitboards — Rust backend or Python fallback
-        if board._has_core:
-            pieces = board._core.get_pieces()
-            fwd = board._core.get_forward()
-            bwd = board._core.get_backward()
-        else:
-            pieces = board.pieces
-            fwd = board.forward
-            bwd = board.backward
+        # Read bitboards from Rust backend
+        pieces = board._core.get_pieces()
+        fwd = board._core.get_forward()
+        bwd = board._core.get_backward()
 
         opp = 1 - colour
         my_pieces = pieces[colour]

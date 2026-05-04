@@ -42,7 +42,9 @@ class TestCheckerBoardInitialization(unittest.TestCase):
 
     def test_initial_board_has_no_kings(self):
         """Verify no pieces are kings at start."""
-        king_count = sum(1 for p in self.B.ai_board_pos if p in [blackKing, whiteKing])
+        king_count = sum(
+            1 for p in self.B._core.get_rank() if p in [blackKing, whiteKing]
+        )
         self.assertEqual(king_count, 0)
 
     def test_initial_active_player_is_black(self):
@@ -406,7 +408,6 @@ class TestEvaluatorIntegration(unittest.TestCase):
             return 1.0 if b.winner == c else -1.0 if b.winner != empty else 0
 
         B.winner = Black
-        B.is_over_called = True
         result = evaluator(B, Black)
         self.assertEqual(result, 1)
 

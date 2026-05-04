@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Dict, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import numpy as np
 
@@ -89,7 +89,14 @@ class ConnectionGene:
 class Genome:
     """A full NEAT genome: collection of node genes and connection genes."""
 
-    __slots__ = ("nodes", "connections", "fitness", "innovation_history")
+    __slots__ = (
+        "nodes",
+        "connections",
+        "fitness",
+        "innovation_history",
+        "_cache",
+        "_compiled",
+    )
 
     def __init__(self) -> None:
         self.nodes: Dict[int, NodeGene] = {}
@@ -97,6 +104,33 @@ class Genome:
         self.fitness: float = 0.0
         # Local innovation history for this genome's lineage
         self.innovation_history: Dict[Tuple[int, int], int] = {}
+        self._cache: Optional[Dict] = None
+        self._compiled: Optional[Any] = None
+
+    # ── Compute cache (avoids rebuilding topology on every NN eval) ──
+
+    def build_cache(self) -> None:
+        """Precompute node ordering + adjacency for fast NEATNetwork.compute()."""
+        enabled = [c for c in self.connections.values() if c.enabled]
+        incoming: Dict[int, List] = {}
+        for c in enabled:
+            incoming.setdefault(c.to_node, []).append(c)
+        self._cache = {
+            "input_ids": sorted(
+                nid for nid, n in self.nodes.items() if n.kind == "input"
+            ),
+            "hidden_and_output": sorted(
+                nid for nid, n in self.nodes.items() if n.kind != "input"
+            ),
+            "incoming": incoming,
+            "output_ids": sorted(
+                nid for nid, n in self.nodes.items() if n.kind == "output"
+            ),
+        }
+
+    def invalidate_cache(self) -> None:
+        self._cache = None
+        self._compiled = None
 
     # ── Factory methods ──
 
@@ -172,10 +206,8 @@ class Genome:
         The old connection is disabled, and two new connections are created:
         from→new_node (weight=1.0) and new_node→to (weight=old_weight).
         This preserves the network output function.
-
-        Returns:
-            True if a node was added.
         """
+        self.invalidate_cache()
         enabled = [c for c in self.connections.values() if c.enabled]
         if not enabled:
             return False
@@ -208,10 +240,8 @@ class Genome:
 
         Only creates feed-forward connections (from lower-ID group to higher-ID group),
         preventing cycles.
-
-        Returns:
-            True if a connection was added.
         """
+        self.invalidate_cache()
         existing = set((c.from_node, c.to_node) for c in self.connections.values())
         candidates = []
 
@@ -239,6 +269,7 @@ class Genome:
 
     def mutate(self, tau: float) -> None:
         """Apply all mutation operators with default probabilities."""
+        self.invalidate_cache()
         self.mutate_weights(tau)
         if random.random() < 0.03:
             self.mutate_add_node()

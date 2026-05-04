@@ -193,7 +193,7 @@ class NeuralNetwork:
     def compute(self, x: np.ndarray) -> Union[float, np.ndarray]:
         """
         Forward pass through the neural network.
-        In 'neat' mode, delegates to NEATNetwork.
+        In 'neat' mode, uses CompiledNEAT (MLX) or NEATNetwork (CPU).
         In 'standard' mode, uses optimised vectorised matrix multiply.
 
         Returns Python float for compatibility with existing code.
@@ -201,6 +201,14 @@ class NeuralNetwork:
         if self._mode == "neat":
             if self._genome is None:
                 return 0.0
+            if self._use_mlx and MLX_AVAILABLE:
+                if self._genome._compiled is None:
+                    from slowpoke.agents.evaluator.neat_network import CompiledNEAT
+
+                    compiled = CompiledNEAT()
+                    compiled.compile(self._genome)
+                    self._genome._compiled = compiled
+                return self._genome._compiled.evaluate(x)
             return NEATNetwork.compute(self._genome, x)
 
         current = x
@@ -232,7 +240,20 @@ class NeuralNetwork:
             result = self.compute(x)
             return np.array([result], dtype=np.float32)
 
-        # Convert input to MLX array
+        if self._mode == "neat":
+            # NEAT compiled evaluator
+            if self._genome is not None:
+                if self._genome._compiled is None:
+                    from slowpoke.agents.evaluator.neat_network import CompiledNEAT
+
+                    compiled = CompiledNEAT()
+                    compiled.compile(self._genome)
+                    self._genome._compiled = compiled
+                val = self._genome._compiled.evaluate(x)
+                return mx.array([val], mx.float32)
+            return mx.array([0.0], mx.float32)
+
+        # Standard mode: matrix-multiply forward pass
         x_arr = np.asarray(x, dtype=np.float32)
         mx_x = mx.array(x_arr)
 
@@ -269,6 +290,19 @@ class NeuralNetwork:
         if not self._use_mlx or not MLX_AVAILABLE or len(batch_inputs) == 0:
             # Fallback
             return np.array([self.compute(x) for x in batch_inputs], dtype=np.float32)
+
+        if self._mode == "neat":
+            # NEAT compiled batch evaluator
+            if self._genome is not None:
+                if self._genome._compiled is None:
+                    from slowpoke.agents.evaluator.neat_network import CompiledNEAT
+
+                    compiled = CompiledNEAT()
+                    compiled.compile(self._genome)
+                    self._genome._compiled = compiled
+                batch_np = np.array(batch_inputs, dtype=np.float32)
+                return self._genome._compiled.evaluate_batch_mlx(batch_np)
+            return mx.array([0.0] * len(batch_inputs), mx.float32)
 
         # Stack inputs as batch (N, input_size)
         batch_np = np.array(batch_inputs, dtype=np.float32)

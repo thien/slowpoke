@@ -106,13 +106,13 @@ class Agent:
             if nn_mode == "neat":
                 from slowpoke.agents.evaluator.genome import Genome
 
-                nn = NeuralNetwork(layer_list=[32, 1], use_mlx=False, mode="neat")
+                nn = NeuralNetwork(layer_list=[32, 1], use_mlx=use_mlx, mode="neat")
                 genome_data = state.get("coefficients")
                 if genome_data is not None:
                     nn._genome = Genome.from_dict(json.loads(genome_data))
                 bot = Slowbro(
                     ply_depth=ply,
-                    use_mlx=False,
+                    use_mlx=use_mlx,
                     use_parallel=use_parallel,
                     num_parallel=num_parallel,
                     debug=debug,

@@ -9,12 +9,9 @@ from slowpoke import statistics
 
 
 def train() -> None:
-    try:
-        from checkers_core import CheckerBoard as _RustCB
+    from checkers_core import CheckerBoard as _RustCB
 
-        print(f"[checkers-core] Rust backend active ({_RustCB.__module__})")
-    except ImportError:
-        print("[checkers-core] Rust backend NOT AVAILABLE - using pure Python")
+    print(f"[checkers-core] Rust backend active ({_RustCB.__module__})")
     options = {
         "mongoConfigPath": "config2.json",
         "Population": 15,

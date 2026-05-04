@@ -16,7 +16,7 @@ def print_status(B: checkers.CheckerBoard) -> None:
     print("--------")
     print(B)
     print(B.pdn)
-    print(B.ai_board_pos)
+    print(B._core.get_rank())
     print("--------")
 
 
@@ -179,4 +179,6 @@ def tournament_match(
         if debug and debug.get("print_board"):
             debug_print(True, B)
 
+    # Populate replay lazily — avoid eager get_move_log() during game
+    B.pdn["replay"] = B._core.get_move_log()
     return B.pdn

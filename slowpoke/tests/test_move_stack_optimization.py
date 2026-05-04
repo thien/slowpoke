@@ -20,9 +20,7 @@ def test_move_stack_correctness():
     original_state = (
         B1.active,
         B1.passive,
-        B1.pieces.copy(),
-        B1.forward.copy(),
-        B1.backward.copy(),
+        B1.get_moves(),
     )
     for _ in range(5):
         move = np.random.choice(moves)
@@ -33,9 +31,7 @@ def test_move_stack_correctness():
     # Should be back to original state
     assert B1.active == original_state[0]
     assert B1.passive == original_state[1]
-    assert B1.pieces == original_state[2]
-    assert B1.forward == original_state[3]
-    assert B1.backward == original_state[4]
+    assert B1.get_moves() == original_state[2]
 
 
 def test_move_stack_performance():
