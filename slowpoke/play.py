@@ -11,7 +11,7 @@ import slowpoke.core.game as game
 
 import sys
 import numpy as np
-import agentLoader as al
+from slowpoke import agentLoader as al
 
 """
 python3 play.py b=slowpoke w=slowpoke ply=4

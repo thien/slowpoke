@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import play
+from slowpoke import play
 import multiprocessing
 
 # initiate players

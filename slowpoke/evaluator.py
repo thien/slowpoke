@@ -9,7 +9,7 @@ import json
 import numpy as np
 import multiprocessing
 
-import play as p
+from slowpoke import play as p
 import slowpoke.agents.agent as agent
 
 

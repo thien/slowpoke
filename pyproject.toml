@@ -3,7 +3,7 @@ name = "slowpoke"
 version = "0.1.0"
 description = "Checkboard playing program using GANNs and MCTS - inspired by Blondie24"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
     {name = "Slowpoke Developer"}
@@ -28,7 +28,6 @@ dependencies = [
     "mlx>=0.18.1",
     "pyarrow>=14.0.0",
     "rich>=13.0.0",
-    "textual>=1.0.0",
 ]
 
 [project.optional-dependencies]

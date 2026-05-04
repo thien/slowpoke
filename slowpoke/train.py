@@ -4,8 +4,8 @@ from __future__ import annotations
 import slowpoke.core.tournament as tournament
 import sys
 import os
-import evaluator
-import statistics
+from slowpoke import evaluator
+from slowpoke import statistics
 
 
 def train() -> None:

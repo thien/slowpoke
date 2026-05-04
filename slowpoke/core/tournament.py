@@ -25,7 +25,7 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-import statistics
+from slowpoke import statistics
 
 from slowpoke.core.constants import BLACK, WHITE, EMPTY
 
