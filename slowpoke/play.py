@@ -4312,7 +4312,6 @@ def run_game(blackAgent, whiteAgent, options: dict = None) -> None:
 
 def main() -> None:
     """Entry point for playing checkers."""
-    ply = None
     blackAgent, whiteAgent = None, None
 
     # check if theres any parameters?

@@ -7,7 +7,6 @@ push_move/pop_move, is_over, and combined search round simulation.
 
 import time
 import random
-import numpy as np
 from slowpoke.core.checkers import CheckerBoard, Black, White
 
 
