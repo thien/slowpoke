@@ -125,7 +125,7 @@ def train() -> None:
                 print()
                 print("=" * 60)
                 print("Training interrupted.")
-                print(f"To resume, run: python train.py --resume {t.saveLocation}")
+                print(f"To resume, run: python train.py --resume {t.save_location}")
                 print("=" * 60)
                 return
             except Exception as e:
@@ -138,26 +138,26 @@ def train() -> None:
                 print()
                 print("=" * 60)
                 print("Training interrupted.")
-                print(f"To resume, run: python train.py --resume {t.saveLocation}")
+                print(f"To resume, run: python train.py --resume {t.save_location}")
                 print("=" * 60)
                 return
         # create statistics
-        stats = statistics.Statistics(t.folderName)
-        stats.loadStatisticsFile()
-        stats.saveCharts()
-        # stats.averageNumMovesPerGeneration()
+        stats = statistics.Statistics(t.folder_name)
+        stats.load_statistics_file()
+        stats.save_charts()
+        # stats.average_num_moves_per_generation()
         # stats.getLearningRate()
         # stats.timeStatsPerGeneration()
 
         # evaluate performance
-        su = evaluator.Evaluate(t.folderName, options["ply_depth"])
+        su = evaluator.Evaluate(t.folder_name, options["ply_depth"])
         su.load_champions()
         games = su.create_games()
         su.evaluate(games)
 
         # create statistics of Gold Master
-        stats.loadGMFile()
-        stats.analyseGM()
+        stats.load_gm_file()
+        stats.analyse_gm()
         # print that we're done.
         print("DONE!")
     else:

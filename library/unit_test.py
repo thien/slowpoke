@@ -29,9 +29,9 @@ class PopulationTestCase(unittest.TestCase):
     def setUp(self):
         self.population = population.Population(15, 4, use_neat=False)
 
-    def test_champSaveLocations(self):
+    def test_champ_save_locations(self):
         # checks champion save location
-        k = os.path.realpath(self.population.folderDirectory)
+        k = os.path.realpath(self.population.folder_directory)
         l = os.path.join("..", "results", "champions")
         l = os.path.realpath(l)
         self.assertEqual(k, l)
@@ -73,7 +73,7 @@ class PopulationTestCase(unittest.TestCase):
         # self.assert
 
 
-def Testing():
+def testing():
     p = population.Population(15, 1, use_neat=False)
     p.safe_mutations = True
 
@@ -98,7 +98,7 @@ def Testing():
     print(p.current_population)
 
 
-def testCrossover():
+def test_crossover():
     p = population.Population(15, 1, use_neat=False)
     p.safe_mutations = True
 
@@ -127,4 +127,4 @@ def testCrossover():
 if __name__ == "__main__":
     # unittest.main()
     # Testing()
-    testCrossover()
+    test_crossover()

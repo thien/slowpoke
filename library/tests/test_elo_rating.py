@@ -326,7 +326,7 @@ class TestEloIntegration(unittest.TestCase):
         self.assertTrue(elite_found, "At least one elite should have games_played > 0")
 
     def test_print_elo_stats(self):
-        """printEloStats should return Elo statistics."""
+        """print_elo_stats should return Elo statistics."""
         from core.population import Population
 
         pop = Population(num_players=5, ply_depth=1, use_neat=False)
@@ -339,7 +339,7 @@ class TestEloIntegration(unittest.TestCase):
         pop.players[pop.current_population[4]].elo = 1000
         # Baseline is at 500 by default
 
-        output = pop.printEloStats()
+        output = pop.print_elo_stats()
 
         # Check output contains stats
         self.assertIn("Avg:", output)

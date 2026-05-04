@@ -83,11 +83,11 @@ class Population:
         self.generation = 0
         self.count = num_players
         self.ply_depth = ply_depth
-        self.mutationRate = 0.9
+        self.mutation_rate = 0.9
         self.players = {}
         self.champions = []
         self.player_counter = 0
-        self.folderDirectory = os.path.join("..", "results", "champions")
+        self.folder_directory = os.path.join("..", "results", "champions")
         self.elo_system = EloRating(k_factor=32, initial_rating=1200)
         self.baseline_elo = baseline_elo
 
@@ -108,11 +108,11 @@ class Population:
                 self.current_population.append(self.baseline_entity.id)
 
         # Onix: permanent heuristic-bot fixture at ~900 Elo
-        self.onixEntity = None
+        self.onix_entity = None
         if include_onix:
-            self.onixEntity = self.generate_onix_player()
-            if self.onixEntity.id not in self.current_population:
-                self.current_population.append(self.onixEntity.id)
+            self.onix_entity = self.generate_onix_player()
+            if self.onix_entity.id not in self.current_population:
+                self.current_population.append(self.onix_entity.id)
 
         nn = self.players[0].bot.nn
         self.num_weights = (
@@ -125,7 +125,7 @@ class Population:
         # if safe mutations are enabled, we use it.
         self.safe_mutations = True
         self.debug = False
-        self.crossoverMethod = 2
+        self.crossover_method = 2
 
         # Head-to-head tracking: {(black_id, white_id): [black_wins, white_wins, draws]}
         self.head_to_head: Dict[Tuple[int, int], List[int]] = {}
@@ -154,7 +154,7 @@ class Population:
         bot = sb.Slowbro(ply_depth=self.ply_depth, debug=self.is_debug, use_mlx=True)
         human = agent.Agent(bot, initial_elo=self.baseline_elo)
         human.set_id(-1)
-        human.isBaseline = True
+        human.is_baseline = True
         human.entity_name = "baseline"
         self.players[human.id] = human
         return human
@@ -231,7 +231,7 @@ class Population:
             output += f"{player_label}\tElo: {i[1]:.1f}\tPts: {i[2]}\n"
         return output
 
-    def printEloStats(self) -> str:
+    def print_elo_stats(self) -> str:
         """Print Elo statistics for the current population."""
         elos = [self.players[pid].elo for pid in self.current_population]
         avg_elo = sum(elos) / len(elos)
@@ -363,8 +363,8 @@ class Population:
 
         newPopulation = offsprings + elites
         # Preserve Onix across generations (keep its Elo, never reset)
-        if self.onixEntity is not None:
-            newPopulation.append(self.onixEntity.id)
+        if self.onix_entity is not None:
+            newPopulation.append(self.onix_entity.id)
             self.players[ONIX_ID].points = 0
             self.players[ONIX_ID].games_played = 0
         # Preserve baseline entity across generations
@@ -538,10 +538,10 @@ class Population:
   Saves champions to a file.
   """
 
-    def save_champions_to_file(self, folderDirectory: str) -> None:
-        folderDirectory = os.path.join(folderDirectory, "champions")
-        if not os.path.isdir(folderDirectory):
-            os.makedirs(folderDirectory)
+    def save_champions_to_file(self, folder_directory: str) -> None:
+        folder_directory = os.path.join(folder_directory, "champions")
+        if not os.path.isdir(folder_directory):
+            os.makedirs(folder_directory)
 
         i = self.generation
         championID = self.champions[-1]
@@ -553,7 +553,7 @@ class Population:
         }
 
         # Write .npz (compressed numpy, primary format)
-        npz_path = os.path.join(folderDirectory, str(i) + ".npz")
+        npz_path = os.path.join(folder_directory, str(i) + ".npz")
         storage.save_champion_npz(npz_path, coeffs, meta)
 
         print(f"saved champ to {i}.npz")
@@ -565,7 +565,7 @@ class Population:
   and so on.
   """
 
-    def save_population_genomes(self, folderDirectory: str) -> None:
+    def save_population_genomes(self, folder_directory: str) -> None:
         """Save current population's genomic info as Parquet."""
         rows = []
         for player_id in self.current_population:
@@ -577,7 +577,7 @@ class Population:
                     "parents": self.players[player_id].parents,
                 }
             )
-        storage.save_genomes_parquet(folderDirectory, self.generation, rows)
+        storage.save_genomes_parquet(folder_directory, self.generation, rows)
         print("saved genomes to parquet.")
 
     """
@@ -787,7 +787,7 @@ class Population:
             "baseline_entity_id": self.baseline_entity.id
             if self.baseline_entity
             else None,
-            "onix_entity_id": self.onixEntity.id if self.onixEntity else None,
+            "onix_entity_id": self.onix_entity.id if self.onix_entity else None,
             "baseline_elo": self.baseline_elo,
             "use_neat": self.use_neat,
             "ply_depth": self.ply_depth,
@@ -823,7 +823,7 @@ class Population:
         bid = data.get("baseline_entity_id")
         self.baseline_entity = self.players.get(bid) if bid is not None else None
         oid = data.get("onix_entity_id")
-        self.onixEntity = self.players.get(oid) if oid is not None else None
+        self.onix_entity = self.players.get(oid) if oid is not None else None
 
         self.count = len(self.current_population)
 

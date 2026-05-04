@@ -67,7 +67,7 @@ def game_worker(i: int) -> dict:
 # --------------------------
 
 
-def verifyClasses(games: list) -> None:
+def verify_classes(games: list) -> None:
     try:
         for x in games:
             {"black": players[x[0]], "white": players[x[1]], "gameOpt": gameOpt}
@@ -110,7 +110,7 @@ def create_csv(entry: dict) -> str:
     return csv_ent
 
 
-def printStatus(entry: dict, startTime=None) -> None:
+def print_status(entry: dict, startTime=None) -> None:
     print("\033c", end=None)
     for evaluate_id, _ in entry.items():
         scoreboard = (
@@ -168,7 +168,7 @@ def printStatus(entry: dict, startTime=None) -> None:
 
 # iterate through the games.
 def evaluate(games, numberOfGames: int = 10, filename: str = "evaluations") -> None:
-    if verifyClasses(games):
+    if verify_classes(games):
         entry = {}
         for x in games:
             black, white = 0, 1
@@ -265,7 +265,7 @@ def evaluate(games, numberOfGames: int = 10, filename: str = "evaluations") -> N
                 "lose_ratio": bw_loseratio,
                 "draw_ratio": bw_drawratio,
             }
-            printStatus(entry)
+            print_status(entry)
 
             savepath = os.path.join("..", "results", "evaluations", filename)
 

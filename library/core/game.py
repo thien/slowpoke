@@ -11,7 +11,7 @@ from core.constants import BLACK, WHITE, EMPTY
 Black, White, empty = BLACK, WHITE, EMPTY
 
 
-def printStatus(B: checkers.CheckerBoard) -> None:
+def print_status(B: checkers.CheckerBoard) -> None:
     """Print current board status and PGN info."""
     print("--------")
     print(B)

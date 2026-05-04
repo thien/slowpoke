@@ -96,7 +96,7 @@ class TestBaselineEntity(unittest.TestCase):
             pop.baseline_entity.elo, 500.0, "Baseline Elo should be default 500"
         )
         self.assertTrue(
-            pop.baseline_entity.isBaseline, "Baseline should have isBaseline=True"
+            pop.baseline_entity.is_baseline, "Baseline should have is_baseline=True"
         )
 
     def test_baseline_not_in_regular_population(self):

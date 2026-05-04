@@ -77,8 +77,8 @@ class Agent:
             "coefficients": coefficients,
         }
 
-        if hasattr(self, "isBaseline"):
-            data["isBaseline"] = self.isBaseline
+        if hasattr(self, "is_baseline"):
+            data["is_baseline"] = self.is_baseline
         if hasattr(self, "entity_name"):
             data["entity_name"] = self.entity_name
 
@@ -142,8 +142,8 @@ class Agent:
         self.parents = state.get("parents", [])
         self.id = state.get("id")
 
-        if state.get("isBaseline"):
-            self.isBaseline = True
+        if state.get("is_baseline"):
+            self.is_baseline = True
         if state.get("entity_name"):
             self.entity_name = state["entity_name"]
 

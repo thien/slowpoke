@@ -31,12 +31,12 @@ class Statistics:
         self.statistics = {}
         self.directory = os.path.join(self.path, self.date)
         self.leaderboards = []
-        self.saveChartsToImages = True
-        self.gmFilename = "gm_stats.json"
-        self.enableTitles = True
+        self.save_charts_to_images = True
+        self.gm_filename = "gm_stats.json"
+        self.enable_titles = True
         self.debug = True
 
-    def loadStatisticsFile(self, filename: str = "statistics.json") -> dict:
+    def load_statistics_file(self, filename: str = "statistics.json") -> dict:
         # Try Parquet first (new format, more efficient)
         if filename == "statistics.json":
             try:
@@ -98,7 +98,7 @@ class Statistics:
             )
         return stats
 
-    def parseLeaderboards(self) -> list:
+    def parse_leaderboards(self) -> list:
         leaderboards = []
         for i in range(len(self.statistics)):
             lbEntry = {}
@@ -196,10 +196,10 @@ class Statistics:
         plt.scatter(jitterx, jittery, c="r", zorder=10, alpha=0.25)
 
         t = "Distribution of Champion Learning Rates by Agent Type"
-        if self.enableTitles:
+        if self.enable_titles:
             plt.suptitle(t)
-        if self.saveChartsToImages:
-            self.saveChartToFile("champ_score_distribution", plt)
+        if self.save_charts_to_images:
+            self.save_chart_to_file("champ_score_distribution", plt)
         # plt.show()
         plt.close()
 
@@ -244,11 +244,11 @@ class Statistics:
         t = "Generation Champion Distribution"
 
         # save chart
-        if self.enableTitles:
+        if self.enable_titles:
             plt.suptitle(t)
         # plt.show()
-        if self.saveChartsToImages:
-            self.saveChartToFile("champ_gen_dist", plt)
+        if self.save_charts_to_images:
+            self.save_chart_to_file("champ_gen_dist", plt)
         plt.close()
 
     @staticmethod
@@ -258,7 +258,7 @@ class Statistics:
         randomint = 5
         return "#" + hex[randomint : randomint + 6]
 
-    def saveChartToFile(self, title: str, chart, filetype: str = "pdf") -> None:
+    def save_chart_to_file(self, title: str, chart, filetype: str = "pdf") -> None:
         directory = os.path.join(self.directory, "charts")
         if not os.path.isdir(directory):
             os.makedirs(directory)
@@ -272,7 +272,7 @@ class Statistics:
   Gets tournament timing information
   """
 
-    def timeStatsPerGeneration(self) -> None:
+    def time_stats_per_generation(self) -> None:
         sx = []
         plotx = []
         ploty = []
@@ -330,7 +330,7 @@ class Statistics:
         # needs title
         plt.ylabel("Seconds")
         plt.xlabel("Generation")
-        if self.enableTitles:
+        if self.enable_titles:
             plt.suptitle("Game Run Time Over Generations")
         # plt.colorbar()
         # set axis
@@ -338,8 +338,8 @@ class Statistics:
         plt.axis((x1, x2, y1, max(simRuntimes)))
 
         # plt.show()
-        if self.saveChartsToImages:
-            self.saveChartToFile("simulation_timings", plt)
+        if self.save_charts_to_images:
+            self.save_chart_to_file("simulation_timings", plt)
         plt.close()
 
         self.timings = {"sx": sx, "plotx": plotx, "ploty": ploty}
@@ -349,7 +349,7 @@ class Statistics:
   Calculates the average number of moves per generation.
   """
 
-    def averageNumMovesPerGeneration(self) -> None:
+    def average_num_moves_per_generation(self) -> None:
         if self.debug:
             print("Calculating Move Counts (Per Generation)")
         means = []
@@ -384,13 +384,13 @@ class Statistics:
         # needs title
         plt.ylabel("Number of Moves")
         plt.xlabel("Generation")
-        if self.enableTitles:
+        if self.enable_titles:
             plt.suptitle("Move Count Distribution Over Generations")
         plt.colorbar(orientation="horizontal", shrink=0.8, pad=0.1)
 
         # plt.show()
-        if self.saveChartsToImages:
-            self.saveChartToFile("moves", plt)
+        if self.save_charts_to_images:
+            self.save_chart_to_file("moves", plt)
         plt.close()
         return means
 
@@ -398,7 +398,7 @@ class Statistics:
   Calculates the scores and learning rates
   """
 
-    def getLearningRate(self) -> None:
+    def get_learning_rate(self) -> None:
         scores = []
         cummulative = []
         champ_range = []
@@ -435,34 +435,34 @@ class Statistics:
         plt.axhline(0, color="grey")
         plt.plot(cummulative, "--", linewidth=2, color="blue")
         # needs title
-        if self.enableTitles:
+        if self.enable_titles:
             plt.suptitle("Cummulative Learning Rate Over Generations")
         plt.ylabel("Learning Rate (Cummulative)")
         plt.xlabel("Generation")
         # plt.show()
-        if self.saveChartsToImages:
-            self.saveChartToFile("cummulative_growth", plt)
+        if self.save_charts_to_images:
+            self.save_chart_to_file("cummulative_growth", plt)
         plt.close()
 
         # plot standard point range
         plt.axhline(0, color="grey")
         plt.plot(scores, "--", linewidth=2, color="blue")
         # needs title
-        if self.enableTitles:
+        if self.enable_titles:
             plt.suptitle("Champion Scores Over Generations")
         plt.ylabel("Scores")
         plt.xlabel("Generation")
         # plt.show()
-        if self.saveChartsToImages:
-            self.saveChartToFile("champ_scores", plt)
+        if self.save_charts_to_images:
+            self.save_chart_to_file("champ_scores", plt)
         plt.close()
 
     """
   Load GM file
   """
 
-    def loadGMFile(self) -> None:
-        filepath = os.path.join(self.directory, self.gmFilename)
+    def load_gm_file(self) -> None:
+        filepath = os.path.join(self.directory, self.gm_filename)
         if self.debug:
             print("Loading Statistics from file:")
             print("\t", filepath)
@@ -476,7 +476,7 @@ class Statistics:
   Parse the GM performance
   """
 
-    def analyseGM(self) -> None:
+    def analyse_gm(self) -> None:
         opp_names = []
         w, l, d = [], [], []
         aw_w, aw_l, aw_d = [], [], []
@@ -519,15 +519,15 @@ class Statistics:
         # create overall wld chart
         t = "Overall Game Statistics Against All Opponents"
         data = [aw_w, aw_d, aw_l, ab_w, ab_d, ab_l]
-        self.createWDLChart(opp_names, data, t)
+        self.create_wdl_chart(opp_names, data, t)
         # plt.show()
-        if self.saveChartsToImages:
-            self.saveChartToFile("gm_net_stats", plt)
+        if self.save_charts_to_images:
+            self.save_chart_to_file("gm_net_stats", plt)
         plt.close()
 
         return False
 
-    def createWDLChart(self, opp_names: list, data, title: str = None) -> None:
+    def create_wdl_chart(self, opp_names: list, data, title: str = None) -> None:
         ww, dw, lw, wb, db, lb = data
         #  normalise values to 100%
         totals = [
@@ -609,7 +609,7 @@ class Statistics:
         #                 box.width, box.height * 0.9])
 
         # plt.legend(loc='upper left', bbox_to_anchor=(1,1), ncol=1)
-        if self.enableTitles:
+        if self.enable_titles:
             if title:
                 plt.suptitle(title)
 
@@ -637,7 +637,7 @@ class Statistics:
             "--",
             linewidth=2,
             label="Win Trend",
-            color=self.hexMedian(colours["win_black"], colours["win_white"]),
+            color=self.hex_median(colours["win_black"], colours["win_white"]),
         )
         plt.plot(
             r,
@@ -645,7 +645,7 @@ class Statistics:
             "-.",
             linewidth=2,
             label="Draw Trend",
-            color=self.hexMedian(colours["draw_black"], colours["draw_white"]),
+            color=self.hex_median(colours["draw_black"], colours["draw_white"]),
         )
         plt.plot(
             r,
@@ -653,9 +653,9 @@ class Statistics:
             ":",
             linewidth=2,
             label="Loss Trend",
-            color=self.hexMedian(colours["lose_black"], colours["lose_white"]),
+            color=self.hex_median(colours["lose_black"], colours["lose_white"]),
         )
-        # print(self.hexMedian(colours['win_black'], colours['win_white']))
+        # print(self.hex_median(colours['win_black'], colours['win_white']))
 
         # Put a legend below current axis
         plt.legend(
@@ -667,7 +667,7 @@ class Statistics:
         )
 
     @staticmethod
-    def hexMedian(a, b):
+    def hex_median(a, b):
         a = a[1:]
         b = b[1:]
         colour = ""
@@ -685,11 +685,11 @@ class Statistics:
             colour = colour + col
         return "#" + colour
 
-    def saveCharts(self) -> None:
-        self.averageNumMovesPerGeneration()
-        self.getLearningRate()
-        self.timeStatsPerGeneration()
-        self.parseLeaderboards()
+    def save_charts(self) -> None:
+        self.average_num_moves_per_generation()
+        self.get_learning_rate()
+        self.time_stats_per_generation()
+        self.parse_leaderboards()
 
 
 def batch_run() -> None:
@@ -709,14 +709,14 @@ def batch_run() -> None:
             if "statistics.json" in os.listdir(newPath):
                 print("Running stats for", folder)
                 s = Statistics(folder)
-                s.saveChartsToImages = True
-                s.enableTitles = False
+                s.save_charts_to_images = True
+                s.enable_titles = False
                 s.debug = False
-                s.loadStatisticsFile()
-                s.saveCharts()
+                s.load_statistics_file()
+                s.save_charts()
                 if "gm_stats.json" in os.listdir(newPath):
-                    s.loadGMFile()
-                    s.analyseGM()
+                    s.load_gm_file()
+                    s.analyse_gm()
                 stats.append({"folder": folder, "ob": s})
     run_batch_cumulative_chart(stats)
     # measure_batch_timings(stats)
@@ -733,7 +733,7 @@ def measure_batch_timings(stats) -> None:
 
     # init timings graph
     s = Statistics("General")
-    s.enableTitles = False
+    s.enable_titles = False
     plt.close()
 
     colours = []
@@ -763,7 +763,7 @@ def measure_batch_timings(stats) -> None:
         plt.plot(batchx, batchy, "-", linewidth=2, color=hexColour, label=keyString)
     # plt.legend(handles=su, labels = labels)
 
-    # if s.enableTitles:
+    # if s.enable_titles:
     #   plt.suptitle('Cummulative Learning Rate Over Generations')
 
     # plt.ylabel('Learning Rate (Cummulative)')
@@ -783,7 +783,7 @@ def run_batch_cumulative_chart(stats) -> None:
         cummulatives[tuple(folderName)] = ob["ob"].scores["cummulative"]
 
     s = Statistics("General")
-    s.enableTitles = False
+    s.enable_titles = False
     # iterate through the keys
     colours = []
     charts = []
@@ -811,20 +811,20 @@ def run_batch_cumulative_chart(stats) -> None:
 
     plt.legend(handles=su, labels=labels)
 
-    if s.enableTitles:
+    if s.enable_titles:
         plt.suptitle("Cummulative Learning Rate Over Generations")
 
     plt.ylabel("Learning Rate (Cummulative)")
     plt.xlabel("Generation")
     # plt.show()
-    # if self.saveChartsToImages:
-    #   self.saveChartToFile("cummulative_growth", plt)
+    # if self.save_charts_to_images:
+    #   self.save_chart_to_file("cummulative_growth", plt)
     title = "combined_cummulative"
-    s.saveChartToFile(title, plt)
+    s.save_chart_to_file(title, plt)
     plt.close()
 
 
-def handleArguments() -> object:
+def handle_arguments() -> object:
     for i in range(1, len(sys.argv)):
         entry = sys.argv[i]
         maxSize = len(sys.argv) - 1
@@ -834,12 +834,12 @@ def handleArguments() -> object:
                 foldername = sys.argv[i + 1]
                 # check if this foldername is actually a directory.
                 s = Statistics(foldername)
-                s.saveChartsToImages = False
-                check = s.loadStatisticsFile()
+                s.save_charts_to_images = False
+                check = s.load_statistics_file()
                 if check:
-                    s.saveCharts()
-                    s.loadGMFile()
-                    s.analyseGM()
+                    s.save_charts()
+                    s.load_gm_file()
+                    s.analyse_gm()
                 else:
                     print(
                         "The folder either does not exist or a statistics.json is not found."
@@ -856,16 +856,16 @@ def handleArguments() -> object:
 
 if __name__ == "__main__":
     # batch_run()
-    handleArguments()
+    handle_arguments()
     # foldername = "2018-03-19 16:42:47 (1ply 100 generations)"
     # s = Statistics(foldername)
-    # s.saveChartsToImages = False
-    # s.loadStatisticsFile()
-    # s.getLearningRate()
-    # s.parseLeaderboards()
-    # s.saveCharts()
-    # s.loadGMFile()
-    # s.analyseGM()
-    # s.averageNumMovesPerGeneration()
-    # s.getLearningRate()
-    # s.timeStatsPerGeneration()
+    # s.save_charts_to_images = False
+    # s.load_statistics_file()
+    # s.get_learning_rate()
+    # s.parse_leaderboards()
+    # s.save_charts()
+    # s.load_gm_file()
+    # s.analyse_gm()
+    # s.average_num_moves_per_generation()
+    # s.get_learning_rate()
+    # s.time_stats_per_generation()

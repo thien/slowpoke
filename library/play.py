@@ -4129,16 +4129,16 @@ coef_master = np.array(
 
 
 def gen_slowpoke_class(
-    plyCount: int = 6, bot_layers: list = None, weights: list = None
+    ply_count: int = 6, bot_layers: list = None, weights: list = None
 ) -> object:
     # need to load the layers here.
-    bot = sp.Slowpoke(ply_depth=plyCount, layers=bot_layers)
+    bot = sp.Slowpoke(ply_depth=ply_count, layers=bot_layers)
     if len(weights) > 0:
         bot.load_weights(weights)
     return bot
 
 
-def generate_playerOptions(plyCount: int = 6) -> list:
+def generate_player_options(ply_count: int = 6) -> list:
     playerTypes = {
         "geodude": {
             "description": "Geodude plays with a pure MCTS approach.",
@@ -4148,11 +4148,11 @@ def generate_playerOptions(plyCount: int = 6) -> list:
         "human": {"description": "Human player.", "class": human.Human()},
         "slowpoke_rand": {
             "description": "This slowpoke uses a random set of weights.",
-            "class": gen_slowpoke_class(plyCount),
+            "class": gen_slowpoke_class(ply_count),
         },
         "slowpoke": {
             "description": "Slowpoke is a Neural Network/Genetic Algorithm AI.",
-            "class": gen_slowpoke_class(plyCount, weights=coef_master),
+            "class": gen_slowpoke_class(ply_count, weights=coef_master),
         },
     }
     return playerTypes
@@ -4192,7 +4192,7 @@ def handle_arguments() -> object:
             if custom_ply >= 1:
                 pass
 
-    playerTypes = generate_playerOptions(custom_ply)
+    playerTypes = generate_player_options(custom_ply)
     # here we loop to generate agents.
     for i in sys.argv:
         if "b=" in i:
@@ -4219,7 +4219,7 @@ def load_player(options: dict = None) -> object:
         print("White player plays second.")
     print()
 
-    playerTypes = generate_playerOptions()
+    playerTypes = generate_player_options()
 
     player = None
     while player is None:
@@ -4262,7 +4262,7 @@ def handle_slowpoke_options() -> dict:
     agentID = lo.load_specific_agent(system)
     # load weights
     botWeights = np.array(lo.load_agent_weights(system, agentID))
-    return gen_slowpoke_class(plyCount=ply_depth, weights=botWeights)
+    return gen_slowpoke_class(ply_count=ply_depth, weights=botWeights)
 
 
 def init_agents() -> None:

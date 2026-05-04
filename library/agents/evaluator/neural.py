@@ -16,7 +16,7 @@ from agents.evaluator.genome import Genome
 from agents.evaluator.neat_network import NEATNetwork
 
 
-def showVector(v: np.ndarray, dec: int) -> None:
+def show_vector(v: np.ndarray, dec: int) -> None:
     fmt = "%." + str(dec) + "f"  # like %.4f
     for i in range(len(v)):
         x = v[i]
@@ -34,7 +34,7 @@ class NeuralNetwork:
         "weights",
         "biases",
         "len_coefficients",
-        "rebuildCoefficents",
+        "rebuild_coefficients",
         "rnd",
         "ravel",
         "_use_mlx",
@@ -63,7 +63,7 @@ class NeuralNetwork:
         self.weights = []
         self.biases = []
         self.len_coefficients = 0
-        self.rebuildCoefficents = None
+        self.rebuild_coefficients = None
         self.rnd = np.random.seed()
         self._use_mlx = use_mlx and MLX_AVAILABLE
         self._mx_weights = None

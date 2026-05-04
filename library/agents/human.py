@@ -12,7 +12,7 @@ class Human:
         """Initialise Human player."""
         self.null = 0
 
-    def printStatus(self, B: Any) -> None:
+    def print_status(self, B: Any) -> None:
         """Print the current board state and move information."""
         print("\033c", end=None)
         print("--------")

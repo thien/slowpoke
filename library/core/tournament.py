@@ -54,78 +54,78 @@ def option_defaults(options):
 
 
 class Generator:
-    def __init__(self, options, tui=None, saveLocation=None):
+    def __init__(self, options, tui=None, save_location=None):
         # initialise default variables when needed.
         options = option_defaults(options)
-        self.is_debugMode = options["debugMode"]
+        self.is_debug_mode = options["debugMode"]
         self.tui = tui  # Optional TournamentApp for live display
         # Declare base information
         self.ply_depth = options["ply_depth"]
         self.generations = options["NumberOfGenerations"]
-        self.populationSize = options["Population"]  # number of players
+        self.population_size = options["Population"]  # number of players
         # generate the initial population.
         self.population = pop.Population(
-            self.populationSize,
+            self.population_size,
             self.ply_depth,
-            self.is_debugMode,
+            self.is_debug_mode,
             options["use_parallel_mcts"],
             options["num_parallel"],
             include_onix=True,
         )
         # time handlers
-        self.StartTime = datetime.datetime.now().timestamp()
-        self.AverageGameTime = 0
-        self.AverageGenrationLength = 0
-        self.RemainingTime = 0
-        self.EstDateFinished = 0
-        self.GenerationTimeLengths = np.array([])
-        self.currentGenStartTime = datetime.datetime.now().timestamp()
+        self.start_time = datetime.datetime.now().timestamp()
+        self.average_game_time = 0
+        self.average_gen_length = 0
+        self.remaining_time = 0
+        self.est_date_finished = 0
+        self.gen_time_lengths = np.array([])
+        self.current_gen_start_time = datetime.datetime.now().timestamp()
         # current generation game counts
-        self.GamesFinished = 0
-        self.GamesQueued = 0
+        self.games_finished = 0
+        self.games_queued = 0
         self.currentGeneration = 0
         # champions
-        self.AreChampionsPlaying = False
-        self.LastChampionScore = 0
-        self.cummulativeScore = 0
-        self.AverageChampionGrowth = 0
-        self.RecentChampionScores = 0
-        self.playPreviousChampCount = 5
-        self.champGamesRoundsCount = 6  # should always be even and at least 2.
+        self.are_champions_playing = False
+        self.last_champion_score = 0
+        self.cumulative_score = 0
+        self.average_champion_growth = 0
+        self.recent_champion_scores = 0
+        self.play_previous_champ_count = 5
+        self.champ_games_rounds_count = 6  # should always be even and at least 2.
         self.progress = []
 
-        self.previousChampPointList = None
+        self.previous_champ_point_list = None
         # Initiate other information
         self.processors = multiprocessing.cpu_count() - 1
         self.config = self.load_json_config(options["mongoConfigPath"])
-        self.mongoConnected = options["connectMongo"]
-        self.totalGamesPerGen = (options["Population"] ^ 2) - options["Population"]
+        self.mongo_connected = options["connectMongo"]
+        self.total_games_per_gen = (options["Population"] ^ 2) - options["Population"]
 
         # placeholder values
-        self.gameIDCounter = 0
+        self.game_id_counter = 0
         # once we have the config file we can proceed and initiate our MongoDB connection.
         self.init_mongo_connection()
         # we also want to save the stats offline
-        self.generationStats = []
-        if saveLocation:
-            self.folderName = os.path.basename(saveLocation.rstrip("/"))
-            self.saveLocation = saveLocation
+        self.generation_stats = []
+        if save_location:
+            self.folder_name = os.path.basename(save_location.rstrip("/"))
+            self.save_location = save_location
         else:
-            self.folderName = (
-                str(self.clean_date(self.StartTime, True))
+            self.folder_name = (
+                str(self.clean_date(self.start_time, True))
                 + " "
                 + str(self.ply_depth)
                 + "ply"
             )
-            self.saveLocation = os.path.join(
-                options["resultsLocation"], self.folderName
+            self.save_location = os.path.join(
+                options["resultsLocation"], self.folder_name
             )
         self.options = options  # Store for reference
         # Set up logging
-        self.log_file = os.path.join(self.saveLocation, "training.log")
+        self.log_file = os.path.join(self.save_location, "training.log")
         self._setup_logging()
         # generate charts as we go?
-        self.generateChartsEveryRound = True
+        self.generate_charts_every_round = True
         self._resume_from = 0  # generation to start from (set >0 on resume)
 
     def __getstate__(self) -> dict:
@@ -153,7 +153,7 @@ class Generator:
     def init_mongo_connection(self) -> None:
         self.db = mongo.Mongo()
         try:
-            if self.mongoConnected:
+            if self.mongo_connected:
                 self.db.initiate(self.config["MongoURI"])
         except:
             pass
@@ -161,8 +161,8 @@ class Generator:
     def _setup_logging(self) -> None:
         """Set up logging to both file and console."""
         # Ensure save directory exists
-        if not os.path.isdir(self.saveLocation):
-            os.makedirs(self.saveLocation)
+        if not os.path.isdir(self.save_location):
+            os.makedirs(self.save_location)
 
         # Remove any existing handlers so we can reconfigure
         for handler in logging.root.handlers[:]:
@@ -180,7 +180,7 @@ class Generator:
         is_resume = self._resume_from > 0 if hasattr(self, "_resume_from") else False
         self.log("Training resumed" if is_resume else "Training started")
         self.log(
-            f"Population: {self.populationSize}, Ply Depth: {self.ply_depth}, Generations: {self.generations}"
+            f"Population: {self.population_size}, Ply Depth: {self.ply_depth}, Generations: {self.generations}"
         )
 
     def log(self, message: str) -> None:
@@ -196,7 +196,7 @@ class Generator:
             for key, value in entries.items():
                 self.log(f"  {key}: {value}")
 
-    def Tournament(self) -> None:
+    def tournament(self) -> None:
         """
         Tournament; full round-robin where every pair plays both colours.
         Returns the players in order of how good they are.
@@ -218,7 +218,7 @@ class Generator:
                 gamePool.append(
                     {
                         "idx": gen_idx,
-                        "game_id": self.gameIDCounter,
+                        "game_id": self.game_id_counter,
                         "black": self.population.players[pid_i],
                         "white": self.population.players[pid_j],
                         "dbURI": False,
@@ -226,11 +226,11 @@ class Generator:
                     }
                 )
                 gen_idx += 1
-                self.gameIDCounter += 1
+                self.game_id_counter += 1
                 gamePool.append(
                     {
                         "idx": gen_idx,
-                        "game_id": self.gameIDCounter,
+                        "game_id": self.game_id_counter,
                         "black": self.population.players[pid_j],
                         "white": self.population.players[pid_i],
                         "dbURI": False,
@@ -238,8 +238,8 @@ class Generator:
                     }
                 )
                 gen_idx += 1
-                self.gameIDCounter += 1
-        self.GamesQueued = len(gamePool)
+                self.game_id_counter += 1
+        self.games_queued = len(gamePool)
         self.log(f"Total games scheduled: {len(gamePool)}")
 
         # run game simulations.
@@ -303,15 +303,15 @@ class Generator:
             self.log(f"Starting generation {i}")
             # increment generation count
             self.currentGeneration = i
-            self.currentGenStartTime = datetime.datetime.now().timestamp()
+            self.current_gen_start_time = datetime.datetime.now().timestamp()
             # reset game count statistics prior to running
-            self.GamesFinished = 0
-            self.GamesQueued = 0
+            self.games_finished = 0
+            self.games_queued = 0
             # initiate timestamp
             startTime = datetime.datetime.now()
             # make bots play each other.
             try:
-                self.population, generationResults = self.Tournament()
+                self.population, generationResults = self.tournament()
             except KeyboardInterrupt:
                 self.log("Generation interrupted during tournament")
                 raise
@@ -321,35 +321,33 @@ class Generator:
             self.run_champions()
             # save champions to file
             self.log("Saving champions to file...")
-            self.population.save_champions_to_file(self.saveLocation)
+            self.population.save_champions_to_file(self.save_location)
             # save genomic details
             self.log("Saving population genomes...")
-            self.population.save_population_genomes(self.saveLocation)
+            self.population.save_population_genomes(self.save_location)
             # get the best players and generate a new population from them.
             self.log("Generating next population...")
             self.population.generate_next_population()
-            self.populationSize = self.population.count
+            self.population_size = self.population.count
             # initiate end timestamp and add time difference length to list.
             timeDifference = (datetime.datetime.now() - startTime).total_seconds()
-            self.GenerationTimeLengths = np.hstack(
-                (self.GenerationTimeLengths, timeDifference)
-            )
+            self.gen_time_lengths = np.hstack((self.gen_time_lengths, timeDifference))
             self.log(f"Generation complete ({timeDifference:.1f}s)")
             # need to store the results of this into a json file!
-            self.generationStats.append(
+            self.generation_stats.append(
                 {
                     "stats": self.status_info(),
                     "games": generationResults,
                     "durationInSeconds": str(timeDifference),
                 }
             )
-            self.save_training_stats(self.saveLocation, self.generationStats)
+            self.save_training_stats(self.save_location, self.generation_stats)
             # Save checkpoint for resume
             try:
                 self.save_checkpoint()
             except Exception as e:
                 self.log(f"save_checkpoint failed (non-fatal): {e}")
-            if self.generateChartsEveryRound:
+            if self.generate_charts_every_round:
                 try:
                     self.generate_stats()
                 except Exception as e:
@@ -363,18 +361,18 @@ class Generator:
 
     def generate_stats(self) -> None:
         # create statistics
-        stats = statistics.Statistics(self.folderName)
-        stats.loadStatisticsFile()
-        stats.saveCharts()
+        stats = statistics.Statistics(self.folder_name)
+        stats.load_statistics_file()
+        stats.save_charts()
         print("I made some charts!")
 
-    def save_training_stats(self, saveLocation: str, stats) -> None:
+    def save_training_stats(self, save_location: str, stats) -> None:
         """Save generation game results as Parquet."""
-        if not os.path.isdir(saveLocation):
-            os.makedirs(saveLocation)
+        if not os.path.isdir(save_location):
+            os.makedirs(save_location)
 
         try:
-            storage.save_statistics_parquet(saveLocation, stats)
+            storage.save_statistics_parquet(save_location, stats)
         except ImportError:
             self.log("pyarrow not available — skipping statistics export")
         except Exception as e:
@@ -382,7 +380,7 @@ class Generator:
 
     def save_checkpoint(self) -> None:
         """Save a checkpoint that can be used to resume training."""
-        ckpt_dir = os.path.join(self.saveLocation, "checkpoint")
+        ckpt_dir = os.path.join(self.save_location, "checkpoint")
         if not os.path.isdir(ckpt_dir):
             os.makedirs(ckpt_dir)
 
@@ -391,22 +389,22 @@ class Generator:
             "generator": {
                 "currentGeneration": self.currentGeneration,
                 "generations": self.generations,
-                "GenerationTimeLengths": self.GenerationTimeLengths.tolist(),
+                "GenerationTimeLengths": self.gen_time_lengths.tolist(),
                 "progress": self.progress,
-                "cummulativeScore": self.cummulativeScore,
-                "AverageGameTime": self.AverageGameTime,
-                "AverageGenrationLength": self.AverageGenrationLength,
-                "gameIDCounter": self.gameIDCounter,
-                "generationStats": self.generationStats,
-                "StartTime": self.StartTime,
-                "folderName": self.folderName,
-                "saveLocation": self.saveLocation,
+                "cummulativeScore": self.cumulative_score,
+                "AverageGameTime": self.average_game_time,
+                "AverageGenrationLength": self.average_gen_length,
+                "gameIDCounter": self.game_id_counter,
+                "generationStats": self.generation_stats,
+                "StartTime": self.start_time,
+                "folderName": self.folder_name,
+                "saveLocation": self.save_location,
                 "options": self.options,
                 "ply_depth": self.ply_depth,
-                "populationSize": self.populationSize,
+                "populationSize": self.population_size,
                 "processors": self.processors,
-                "LastChampionScore": self.LastChampionScore,
-                "previousChampPointList": self.previousChampPointList,
+                "LastChampionScore": self.last_champion_score,
+                "previousChampPointList": self.previous_champ_point_list,
             },
             "population": self.population.get_checkpoint_data(),
         }
@@ -430,22 +428,22 @@ class Generator:
         options = gen_data["options"]
 
         # Create generator (will init a fresh population — we overwrite it)
-        gen = cls(options, tui, saveLocation=gen_data["saveLocation"])
+        gen = cls(options, tui, save_location=gen_data["saveLocation"])
 
         # Restore generator scalar state
         gen.currentGeneration = gen_data["currentGeneration"]
         gen.generations = gen_data.get("generations", gen.generations)
-        gen.GenerationTimeLengths = np.array(gen_data.get("GenerationTimeLengths", []))
+        gen.gen_time_lengths = np.array(gen_data.get("GenerationTimeLengths", []))
         gen.progress = list(gen_data.get("progress", []))
-        gen.cummulativeScore = gen_data.get("cummulativeScore", 0)
-        gen.AverageGameTime = gen_data.get("AverageGameTime", 0)
-        gen.AverageGenrationLength = gen_data.get("AverageGenrationLength", 0)
-        gen.gameIDCounter = gen_data.get("gameIDCounter", 0)
-        gen.generationStats = list(gen_data.get("generationStats", []))
-        gen.StartTime = gen_data.get("StartTime", gen.StartTime)
-        gen.populationSize = gen_data.get("populationSize", gen.populationSize)
-        gen.LastChampionScore = gen_data.get("LastChampionScore", 0)
-        gen.previousChampPointList = gen_data.get("previousChampPointList")
+        gen.cumulative_score = gen_data.get("cummulativeScore", 0)
+        gen.average_game_time = gen_data.get("AverageGameTime", 0)
+        gen.average_gen_length = gen_data.get("AverageGenrationLength", 0)
+        gen.game_id_counter = gen_data.get("gameIDCounter", 0)
+        gen.generation_stats = list(gen_data.get("generationStats", []))
+        gen.start_time = gen_data.get("StartTime", gen.start_time)
+        gen.population_size = gen_data.get("populationSize", gen.population_size)
+        gen.last_champion_score = gen_data.get("LastChampionScore", 0)
+        gen.previous_champ_point_list = gen_data.get("previousChampPointList")
 
         # Restore population
         gen.population.load_checkpoint_data(data["population"])
@@ -455,7 +453,7 @@ class Generator:
         gen.currentGeneration = gen.currentGeneration  # last completed
 
         # Reconfigure logging for the existing folder
-        gen.log_file = os.path.join(gen.saveLocation, "training.log")
+        gen.log_file = os.path.join(gen.save_location, "training.log")
         gen._setup_logging()
 
         return gen
@@ -475,11 +473,11 @@ class Generator:
     def create_champ_games(self) -> None:
         currentChampID = self.population.champions[-1]
         champGames = []
-        gameRound = int(self.champGamesRoundsCount / 2)
+        gameRound = int(self.champ_games_rounds_count / 2)
         # playback counter
         playcounter = np.size(self.progress)
-        if playcounter > self.playPreviousChampCount:
-            playcounter = self.playPreviousChampCount
+        if playcounter > self.play_previous_champ_count:
+            playcounter = self.play_previous_champ_count
 
         for i in range(playcounter):
             previousChampID = self.population.champions[-i + 1]
@@ -499,7 +497,7 @@ class Generator:
         These champion games are called at the end of every generation
         and are used to determine the progress of the bots.
         """
-        self.AreChampionsPlaying = True
+        self.are_champions_playing = True
         self.display_status_info()
 
         # check if theres more than 5 champions.
@@ -524,7 +522,7 @@ class Generator:
 
             # split results into equal segments
             l = results
-            n = self.playPreviousChampCount
+            n = self.play_previous_champ_count
             results = [l[i : i + n] for i in range(0, len(l), n)]
             # calculate the gradient of the scores.
 
@@ -532,11 +530,11 @@ class Generator:
             for i in results:
                 medians.append(np.mean(i))
 
-            self.previousChampPointList = medians
+            self.previous_champ_point_list = medians
 
             # compute new champ points compared to previous champ
             newChampPoints = np.mean(medians)
-            self.cummulativeScore += newChampPoints
+            self.cumulative_score += newChampPoints
             # store points.
             self.progress.append(newChampPoints)
             self.population.players[
@@ -546,7 +544,7 @@ class Generator:
         else:
             # theres only one champion, don't play.
             self.progress.append(0)
-        self.AreChampionsPlaying = False
+        self.are_champions_playing = False
         self.display_status_info(force_display=True)
 
     def game_worker(self, i: int) -> dict:
@@ -592,33 +590,33 @@ class Generator:
         current_time = datetime.datetime.now().timestamp()
         recent_scores = self.progress[-7:]
 
-        average_gen_time = np.mean(self.GenerationTimeLengths)
+        average_gen_time = np.mean(self.gen_time_lengths)
 
         percentage_est = 0.0
         if not np.isnan(average_gen_time) and average_gen_time > 0:
             percentage_est = min(
-                (current_time - self.currentGenStartTime) / average_gen_time,
+                (current_time - self.current_gen_start_time) / average_gen_time,
                 1.0,
             )
 
         num_gens = np.size(self.progress)
         remaining_gen_seconds = average_gen_time - (
-            current_time - self.currentGenStartTime
+            current_time - self.current_gen_start_time
         )
         remaining_gen_count = self.generations - num_gens
 
         current_run_time = datetime.datetime.now() - datetime.datetime.fromtimestamp(
-            self.StartTime
+            self.start_time
         )
 
         est_remaining_seconds = (
             (remaining_gen_count * average_gen_time)
-            + np.sum(self.GenerationTimeLengths)
+            + np.sum(self.gen_time_lengths)
             - current_run_time.total_seconds()
         )
 
         est_end_timestamp = (
-            est_remaining_seconds + self.StartTime + current_run_time.total_seconds()
+            est_remaining_seconds + self.start_time + current_run_time.total_seconds()
         )
 
         # -- helpers --
@@ -649,16 +647,16 @@ class Generator:
         # -- progress --
         progress = {
             "generation": f"{num_gens}/{self.generations}",
-            "population": str(self.populationSize),
+            "population": str(self.population_size),
             "ply depth": str(self.ply_depth),
-            "mongo": "Yes" if self.mongoConnected else "No",
+            "mongo": "Yes" if self.mongo_connected else "No",
             "cores": str(self.processors),
-            "debug": "Yes" if self.is_debugMode else "No",
+            "debug": "Yes" if self.is_debug_mode else "No",
         }
 
         # -- timing --
         timing = {
-            "start": _ts(self.StartTime),
+            "start": _ts(self.start_time),
             "runtime": str(current_run_time),
             "est end": _ts(est_end_timestamp),
             "est remaining": _dur(est_remaining_seconds),
@@ -680,17 +678,17 @@ class Generator:
 
         champ_range_str = "—"
         if (
-            self.previousChampPointList is not None
-            and len(self.previousChampPointList) > 0
+            self.previous_champ_point_list is not None
+            and len(self.previous_champ_point_list) > 0
         ):
             champ_range_str = ", ".join(
-                "{:0.2f}".format(x) for x in self.previousChampPointList
+                "{:0.2f}".format(x) for x in self.previous_champ_point_list
             )
 
         champion = {
-            "playing": "Yes" if self.AreChampionsPlaying else "No",
-            "prev score": _maybe_nan(self.LastChampionScore),
-            "cumulative": f"{self.cummulativeScore:.2f}",
+            "playing": "Yes" if self.are_champions_playing else "No",
+            "prev score": _maybe_nan(self.last_champion_score),
+            "cumulative": f"{self.cumulative_score:.2f}",
             "avg growth": f"{avg_recent:.2f}",
             "recent scores": recent_str,
             "prev champ range": champ_range_str,

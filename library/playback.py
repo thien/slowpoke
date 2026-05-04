@@ -11,10 +11,10 @@ class Playback:
     def __init__(self, defaultResultsPath: str = None) -> None:
         self.games = {}
         self.debug = True
-        self.loadGM = True
+        self.load_gm = True
         # display options
-        self.timeDelay = 0.5
-        self.loadHowManyGames = 8
+        self.time_delay = 0.5
+        self.load_how_many_games = 8
 
     def load_champ_games(self, genObj: dict, champ: dict) -> list:
         games = genObj["games"]
@@ -73,7 +73,7 @@ class Playback:
     def run_replay_programme(self, gameMoves: list, champ=None, gen=None) -> None:
         checkers.CheckerBoard()
         # get some of the games.
-        games = gameMoves[: self.loadHowManyGames]
+        games = gameMoves[: self.load_how_many_games]
         # keep track of whether all games have finished
         max_game_length = 0
         # add checkerboards into each object
@@ -98,7 +98,7 @@ class Playback:
         # 	# make move
         # 	B.make_move(move)
         # 	print(B)
-        # 	time.sleep(self.timeDelay)
+        # 	time.sleep(self.time_delay)
         # 	#
 
         # this is for a specific game.
@@ -127,7 +127,7 @@ class Playback:
             boardPrints = self.process_board_displays(board_display)
             # Print!
             print("\n" + title, "\n" + lineSeparator, "\n" + boardPrints)
-            time.sleep(self.timeDelay)
+            time.sleep(self.time_delay)
         return True
 
     def process_board_displays(self, board_display) -> None:

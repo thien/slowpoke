@@ -11,17 +11,17 @@ import core.storage as storage
 class agentLoader:
     def __init__(self) -> None:
         self.basepath = os.path.join("..", "results")
-        self.championFiletype = ".npz"
-        self.championsFoldername = "champions"
-        self.statisticsFilename = "statistics.json"
+        self.champion_filetype = ".npz"
+        self.champions_folder_name = "champions"
+        self.statistics_filename = "statistics.json"
         self.systems = []
-        self.cacheFilename = "menuCache.json"
+        self.cache_filename = "menuCache.json"
         self.check_directory_change()
 
     def check_directory_change(self) -> None:
         cached = False
         # check if our cache file is there
-        if self.cacheFilename in os.listdir(self.basepath):
+        if self.cache_filename in os.listdir(self.basepath):
             # load the file
             cache = self.load_cache()
             # count number of items
@@ -37,7 +37,7 @@ class agentLoader:
             self.save_cache()
 
     def load_cache(self) -> None:
-        filepath = os.path.join(self.basepath, self.cacheFilename)
+        filepath = os.path.join(self.basepath, self.cache_filename)
         cache = {}
         try:
             f = open(filepath, "r")
@@ -48,7 +48,7 @@ class agentLoader:
             return False
 
     def save_cache(self) -> None:
-        filepath = os.path.join(self.basepath, self.cacheFilename)
+        filepath = os.path.join(self.basepath, self.cache_filename)
         cache = {"count": self.count_directory_items(), "systems": self.systems}
         if os.path.isfile(filepath):
             os.remove(filepath)
@@ -61,8 +61,8 @@ class agentLoader:
         for system in os.listdir(self.basepath):
             sysdir = os.path.join(self.basepath, system)
             if os.path.isdir(sysdir):
-                if self.championsFoldername in os.listdir(sysdir):
-                    champPath = os.path.join(sysdir, self.championsFoldername)
+                if self.champions_folder_name in os.listdir(sysdir):
+                    champPath = os.path.join(sysdir, self.champions_folder_name)
                     for entry in os.listdir(champPath):
                         count += 1
         return count
@@ -73,9 +73,9 @@ class agentLoader:
     def detect_agent_files(self, path: str) -> list:
         if os.path.isdir(path):
             contents = os.listdir(path)
-            if self.statisticsFilename in contents:
-                if self.championsFoldername in contents:
-                    p = os.listdir(os.path.join(path, self.championsFoldername))
+            if self.statistics_filename in contents:
+                if self.champions_folder_name in contents:
+                    p = os.listdir(os.path.join(path, self.champions_folder_name))
                     if len(p) > 0:
                         return True
         return False
@@ -87,16 +87,16 @@ class agentLoader:
         champPath = os.path.join(agentPath, "champions")
         directory = os.listdir(champPath)
         directory = sorted(
-            [int(i.replace(self.championFiletype, "")) for i in directory]
+            [int(i.replace(self.champion_filetype, "")) for i in directory]
         )
-        latestAgent = str(directory[-1]) + self.championFiletype
+        latestAgent = str(directory[-1]) + self.champion_filetype
         return os.path.join(champPath, latestAgent)
 
     def get_num_champions(self, path: str) -> int:
-        return len(os.listdir(os.path.join(path, self.championsFoldername)))
+        return len(os.listdir(os.path.join(path, self.champions_folder_name)))
 
     def scrape_stats(self, directory: str) -> list:
-        statFilepath = os.path.join(directory, self.statisticsFilename)
+        statFilepath = os.path.join(directory, self.statistics_filename)
         statistics = None
 
         try:
@@ -159,7 +159,7 @@ class agentLoader:
                     self.systems.append(stats)
                 stats["baseDir"] = os.path.join(self.basepath, stats["Name"])
                 stats["ChampDir"] = os.path.join(
-                    stats["baseDir"], self.championsFoldername
+                    stats["baseDir"], self.champions_folder_name
                 )
         print("", end="")
         # sort files by score
@@ -232,7 +232,7 @@ class agentLoader:
         return bestSystem
 
     def load_statistics_file(self, system: str) -> dict:
-        filepath = os.path.join(system["baseDir"], self.statisticsFilename)
+        filepath = os.path.join(system["baseDir"], self.statistics_filename)
         stats = {}
         try:
             f = open(filepath, "r")

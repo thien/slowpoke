@@ -121,7 +121,7 @@ class CheckerBoard:
         self.backward = [None, None]
         self.pieces = [None, None]
         self.new_game()
-        self.updateState()
+        self.update_state()
 
     def init_pgn(self) -> Dict[str, Any]:
         """Initialise the PGN dictionary for game export."""
@@ -263,7 +263,7 @@ class CheckerBoard:
         if self._has_core:
             self._core.swap_active()
         if full_update:
-            self.updateState()
+            self.update_state()
         elif not self._has_core:
             self._update_rank()
         return self
@@ -767,7 +767,7 @@ class CheckerBoard:
     This also updates the FEN.
     """
 
-    def updateState(self) -> None:
+    def update_state(self) -> None:
         if self._has_core:
             raw_arr = self._core.get_rank()
             self.ai_board_pos = [int(x) for x in raw_arr]
@@ -803,7 +803,7 @@ class CheckerBoard:
             return
 
         # genPDN helper
-        def genPDN(black_pieces, white_pieces):
+        def gen_pdn(black_pieces, white_pieces):
             Black_list = ",".join(black_pieces)
             White_list = ",".join(white_pieces)
             self.black_pieces = black_pieces
@@ -814,7 +814,7 @@ class CheckerBoard:
             li = current + ":W" + White_list + ":" + "B" + Black_list
             self.pdn["FEN"] = li
 
-        def cellPos(i, j):
+        def cell_pos(i, j):
             return 1 + j + 8 * i
 
         black_pieces = []
@@ -839,19 +839,19 @@ class CheckerBoard:
                 cell = 1 << (9 * i + j)
                 if cell & blackMen:
                     state[i][j] = Black
-                    black_pieces.append(str(cellPos(i, j)))
+                    black_pieces.append(str(cell_pos(i, j)))
                     rank.append(Black)
                 elif cell & whiteMen:
                     state[i][j] = White
-                    white_pieces.append(str(cellPos(i, j)))
+                    white_pieces.append(str(cell_pos(i, j)))
                     rank.append(White)
                 elif cell & blackKings:
                     state[i][j] = blackKing
-                    black_pieces.append(("K" + str(cellPos(i, j))))
+                    black_pieces.append(("K" + str(cell_pos(i, j))))
                     rank.append(blackKing)
                 elif cell & whiteKings:
                     state[i][j] = whiteKing
-                    white_pieces.append(("K" + str(cellPos(i, j))))
+                    white_pieces.append(("K" + str(cell_pos(i, j))))
                     rank.append(whiteKing)
                 else:
                     state[i][j] = empty
@@ -860,7 +860,7 @@ class CheckerBoard:
         self._ai_board_array = np.array(rank, dtype=np.int8)
         self.state = state
         self.turn_count += 1
-        genPDN(black_pieces, white_pieces)
+        gen_pdn(black_pieces, white_pieces)
 
     """
     Returns the positions of the pieces for the AI.
@@ -926,7 +926,7 @@ class CheckerBoard:
                     + ["|", "\n"]
                 )
 
-        def paddingCheck(i, j):
+        def padding_check(i, j):
             return " " if j + 8 * i < 9 else ""
 
         # render the ASCII board content
@@ -955,7 +955,7 @@ class CheckerBoard:
                     piece = colored("W", "cyan", attrs=["reverse"])
 
                 # initiate the board with values.
-                board[x][y] = piece + str(1 + j + 8 * i) + (paddingCheck(i, j))
+                board[x][y] = piece + str(1 + j + 8 * i) + (padding_check(i, j))
 
         # return "".join(map(lambda x: "".join(x), board))
         if not blackPOV:

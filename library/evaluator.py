@@ -20,13 +20,13 @@ class Evaluate:
         if defaultResultsPath:
             self.path = defaultResultsPath
         self.directory = os.path.join(self.path, self.date)
-        self.champFolderName = "champions"
+        self.champ_folder_name = "champions"
         # container for the agents
         self.agents = {}
         # container for statistics
         self.statistics = {}
         # used as parameters for the sims.
-        self.gameOpts = {
+        self.game_opts = {
             "show_dialog": False,
             "show_board": False,
             "human_white": False,
@@ -36,18 +36,18 @@ class Evaluate:
         # cpu information
         self.cores = multiprocessing.cpu_count()
         # simulation specific information
-        self.numberOfGames = 10
+        self.number_of_games = 10
         if self.cores > 64:
-            self.numberOfGames = 128
+            self.number_of_games = 128
 
         self.ply = ply
         # split to every nth parttioned player.
-        self.choiceRange = 6
+        self.choice_range = 6
         # file save information
         self.filename = "gm_stats"
 
     def load_champions(self, extensions: bool = True) -> list:
-        champsPath = os.path.join(self.directory, self.champFolderName)
+        champsPath = os.path.join(self.directory, self.champ_folder_name)
         print("Loading Agents.. ", end="")
         if not os.path.isdir(champsPath):
             print(f"No champions directory at {champsPath}")
@@ -59,10 +59,10 @@ class Evaluate:
         agentCount = len(items)
 
         tests = []
-        if self.choiceRange > 0:
+        if self.choice_range > 0:
             tests.append(items[0])
-        for i in range(self.choiceRange - 1):
-            tests.append(int(agentCount * (i + 1) / self.choiceRange))
+        for i in range(self.choice_range - 1):
+            tests.append(int(agentCount * (i + 1) / self.choice_range))
 
         self.gm_id = gmID
         # load the gold master agent.
@@ -125,10 +125,14 @@ class Evaluate:
                 ent[ev_ID][gID] = {}
 
                 gamePool = []
-                for i in range(0, int(self.numberOfGames / 2)):
+                for i in range(0, int(self.number_of_games / 2)):
                     # add game to list of games to play
                     gamePool.append(
-                        {"black": x[black], "white": x[white], "gameOpt": self.gameOpts}
+                        {
+                            "black": x[black],
+                            "white": x[white],
+                            "gameOpt": self.game_opts,
+                        }
                     )
 
                 # create game pool.

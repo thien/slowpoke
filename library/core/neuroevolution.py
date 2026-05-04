@@ -69,7 +69,7 @@ class StandardGA(EvolutionMethod):
         father_w = pop.get_weights(parent_b_id)
         num_w = pop.num_weights
 
-        if pop.crossoverMethod == 0:
+        if pop.crossover_method == 0:
             for _ in range(10):
                 idx = np.random.randint(0, num_w)
                 mother_w[idx], father_w[idx] = father_w[idx], mother_w[idx]

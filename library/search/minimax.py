@@ -25,7 +25,7 @@ class MiniMax:
         self.ply = ply
         self.evaluator = evaluator
         self.counter: int = 0
-        self.movesConsidered: List[int] = []
+        self.moves_considered: List[int] = []
 
     def decide(self, B: Any, colour: int) -> int:
         """Return the best move found by minimax search."""
@@ -94,7 +94,7 @@ class MiniMax:
             Best move as an integer.
         """
         self.counter = 0
-        self.movesConsidered = []
+        self.moves_considered = []
 
         moves = B.get_moves()
         best_move = moves[0]
@@ -118,5 +118,5 @@ class MiniMax:
             if score > best_score:
                 best_move = move
                 best_score = score
-        self.movesConsidered.append(self.counter)
+        self.moves_considered.append(self.counter)
         return best_move
