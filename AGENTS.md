@@ -6,14 +6,14 @@
 # Build once (required after cloning)
 make install
 
-# Train (generations, 15 players) — run from library/
-(cd library && ../.venv/bin/python train.py light)   # ply=1, 200 gen
-(cd library && ../.venv/bin/python train.py medium)  # ply=3, 200 gen
-(cd library && ../.venv/bin/python train.py heavy)   # ply=6, 200 gen
-(cd library && ../.venv/bin/python train.py heavy --parallel 8)
+# Train (generations, 15 players) — run from project root
+python -m slowpoke.train light         # ply=1, 200 gen
+python -m slowpoke.train medium        # ply=3, 200 gen
+python -m slowpoke.train heavy         # ply=6, 200 gen
+python -m slowpoke.train heavy --parallel 8
 
 # Play against a champion
-(cd library && ../.venv/bin/python play.py)
+python -m slowpoke.play
 
 # Format with ruff (black-compatible), then lint
 ruff format .
@@ -37,17 +37,17 @@ make smoke
 
 ## Architecture
 
-All source lives in `library/`. Imports use the `library`-relative path (e.g., `from core.checkers import CheckerBoard`). The `library/` directory must be on `PYTHONPATH` (set automatically by `make test`, or when running scripts from inside `library/`).
+All source lives in `slowpoke/` (a Python package). Imports use the full package path (e.g., `from slowpoke.core.checkers import CheckerBoard`). The package is installed as editable via `uv sync` or `make install`, so `python -m slowpoke.train ...` works from any directory.
 
 | Location | Purpose |
 |---|---|
-| `library/core/` | CheckerBoard, game loop, tournament, population |
-| `library/agents/` | Bots (Slowbro, Slowpoke, Geodude, Magikarp) |
-| `library/search/` | MCTS: `tmcts.py`, `parallel_tmcts.py`, `minimax.py` |
+| `slowpoke/core/` | CheckerBoard, game loop, tournament, population |
+| `slowpoke/agents/` | Bots (Slowbro, Slowpoke, Geodude, Magikarp) |
+| `slowpoke/search/` | MCTS: `tmcts.py`, `parallel_tmcts.py`, `minimax.py` |
 | `src/lib.rs` | Rust `checkers_core` — bitboard ops (hot path) |
 | `Cargo.toml` | Rust build config |
 
-**Rust backend**: `library/core/checkers.py` delegates `get_moves`, `push_move`, `pop_move`, `getBoardPosWeighted`, and `make_move` to `checkers_core.CheckerBoard` (a Rust PyO3 extension). Falls back to pure Python if the Rust module isn't installed.
+**Rust backend**: `slowpoke/core/checkers.py` delegates `get_moves`, `push_move`, `pop_move`, `getBoardPosWeighted`, and `make_move` to `checkers_core.CheckerBoard` (a Rust PyO3 extension). Falls back to pure Python if the Rust module isn't installed.
 
 Agent hierarchy:
 - `Agent` wraps a bot with Elo rating, ID, match history

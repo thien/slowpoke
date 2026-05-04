@@ -15,19 +15,19 @@ install: build
 
 # Run fast tests (default, excludes slow)
 test:
-	PYTHONPATH=library $(PYTHON) -m pytest
+	$(PYTHON) -m pytest
 
 # Run all tests including slow
 test-all:
-	PYTHONPATH=library $(PYTHON) -m pytest -m "slow or not slow"
+	$(PYTHON) -m pytest -m "slow or not slow"
 
 # Run benchmarks
 bench:
-	PYTHONPATH=library $(PYTHON) -m pytest tests/bench_perf.py -v --no-header || cd library && ../$(PYTHON) tests/bench_perf.py
+	$(PYTHON) -m pytest slowpoke/tests/bench_perf.py -v --no-header
 
 # Quick smoke test that the Rust extension loads
 smoke:
-	PYTHONPATH=library $(PYTHON) -c "from core.checkers import CheckerBoard; b = CheckerBoard(); print(f'Rust: {b._has_core}'); print(f'Moves: {len(b.get_moves())}')"
+	$(PYTHON) -c "from slowpoke.core.checkers import CheckerBoard; b = CheckerBoard(); print(f'Rust: {b._has_core}'); print(f'Moves: {len(b.get_moves())}')"
 
 # Dev shortcut: build, install, test
 dev: install test
