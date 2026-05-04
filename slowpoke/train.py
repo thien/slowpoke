@@ -115,17 +115,14 @@ def train() -> None:
         if use_tui:
             from slowpoke.core.tui import TournamentApp
 
-            try:
-                TournamentApp(generator=t).run()
-            except KeyboardInterrupt:
+            app = TournamentApp(generator=t)
+            app.run()
+            if not app.generations_complete:
                 print()
                 print("=" * 60)
-                print("Training interrupted.")
+                print("Training did not complete.")
                 print(f"To resume, run: python train.py --resume {t.save_location}")
                 print("=" * 60)
-                return
-            except Exception as e:
-                print(f"\n[Tournament error] {e}")
                 return
         else:
             try:

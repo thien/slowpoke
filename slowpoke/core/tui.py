@@ -100,16 +100,20 @@ class TournamentApp(App[None]):
         """Run the blocking generation loop in a worker thread."""
         try:
             self.generator.run_generations()
+            self._event_queue.put(("done", "complete"))
         except KeyboardInterrupt:
-            pass
-        finally:
-            self._event_queue.put(("done",))
+            self._event_queue.put(("done", "interrupted"))
+        except BaseException:
+            import traceback
+
+            traceback.print_exc()
+            self._event_queue.put(("done", "error"))
 
     # ── Periodic timer ──────────────────────────────────────────
 
     def _tick(self) -> None:
         """Drain the event queue and refresh metrics."""
-        interrupted = False
+        done_status = None
         try:
             while True:
                 event = self._event_queue.get_nowait()
@@ -119,13 +123,13 @@ class TournamentApp(App[None]):
                 elif event[0] == "refresh":
                     self._refresh_all()
                 elif event[0] == "done":
-                    interrupted = True
+                    done_status = event[1]
                     break
         except queue.Empty:
             pass
         self._refresh_metrics()
-        if interrupted:
-            self.generations_complete = True
+        if done_status is not None:
+            self.generations_complete = done_status == "complete"
             self.exit()
 
     # ── Public API (called from worker thread) ──────────────────
