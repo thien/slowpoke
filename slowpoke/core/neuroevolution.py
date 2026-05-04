@@ -130,6 +130,16 @@ class NEATEvolution(EvolutionMethod):
             debug=debug,
         )
         bot.nn = nn
+        # Re-sync the decision function's nn reference so that flush_batch and
+        # _evaluate_moves_batch use the NEAT network, not the stale default
+        # [32,40,10,1] nn that was captured at Slowbro construction time.
+        # Without this, all NEAT agents evaluate identically in MLX batch mode,
+        # producing degenerate 1-1 tournament distributions.
+        df = bot.decision_function
+        df.nn = nn
+        df.use_mlx = getattr(nn, "_use_mlx", False)
+        if hasattr(df, "_detect_mlx"):
+            df._detect_mlx()
         return bot
 
     def crossover(
